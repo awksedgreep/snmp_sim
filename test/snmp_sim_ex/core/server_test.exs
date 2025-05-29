@@ -72,8 +72,13 @@ defmodule SnmpSimEx.Core.ServerTest do
       end_time = :erlang.monotonic_time()
       duration_ms = :erlang.convert_time_unit(end_time - start_time, :native, :millisecond)
       
-      # Calculate requests per second
-      rps = 50 * 1000 / duration_ms
+      # Calculate requests per second (handle case where duration_ms might be 0)
+      rps = if duration_ms > 0 do
+        50 * 1000 / duration_ms
+      else
+        # If duration is 0, the test ran instantly, which means very high performance
+        1000
+      end
       
       # Should handle at least 25 requests per second (realistic performance)
       assert rps > 25

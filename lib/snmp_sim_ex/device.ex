@@ -1,28 +1,33 @@
-defmodule SnmpSimEx.Device do
+defmodule SNMPSimEx.Device do
   @moduledoc """
-  Individual device GenServer for handling SNMP requests.
-  Uses shared profiles and device-specific state only.
+  Lightweight Device GenServer for handling SNMP requests.
+  Uses shared profiles and minimal device-specific state for scalability.
+  
+  Features:
+  - Minimal memory footprint per device
+  - Shared profile data via ETS tables
+  - On-demand value simulation
+  - Integrated with LazyDevicePool management
   """
 
   use GenServer
   require Logger
 
-  alias SnmpSimEx.{ProfileLoader, Core.Server, Core.PDU, OIDTree, BulkOperations}
+  alias SNMPSimEx.{SharedProfiles, OIDTree, BulkOperations, DeviceDistribution}
+  alias SnmpSimEx.Core.{Server, PDU}
 
   defstruct [
     :device_id,
     :port,
     :device_type,
-    :profile,
-    :oid_tree,       # OID tree for efficient GETNEXT/GETBULK operations
     :server_pid,
     :mac_address,
     :uptime_start,
-    :counters,
-    :gauges,
-    :status_vars,
+    :counters,        # Device-specific counter state
+    :gauges,          # Device-specific gauge state  
+    :status_vars,     # Device-specific status variables
     :community,
-    :behaviors
+    :last_access      # For tracking access time
   ]
 
   @default_community "public"
@@ -43,27 +48,38 @@ defmodule SnmpSimEx.Device do
   @gen_err 5
 
   @doc """
-  Start a device with the given profile.
+  Start a device with the given device configuration.
   
-  ## Options
+  ## Device Config
   
+  Device config should contain:
   - `:port` - UDP port for the device (required)
+  - `:device_type` - Type of device (:cable_modem, :switch, etc.)
+  - `:device_id` - Unique device identifier
   - `:community` - SNMP community string (default: "public")
-  - `:mac_address` - MAC address for the device (auto-generated if not provided)
-  - `:behaviors` - List of behavior configurations
+  - `:mac_address` - MAC address (auto-generated if not provided)
   
   ## Examples
   
-      profile = SnmpSimEx.ProfileLoader.load_profile(
-        :cable_modem,
-        {:walk_file, "priv/walks/cable_modem.walk"}
-      )
+      device_config = %{
+        port: 9001,
+        device_type: :cable_modem,
+        device_id: "cable_modem_9001",
+        community: "public"
+      }
       
-      {:ok, device} = SnmpSimEx.Device.start_link(profile, port: 9001)
+      {:ok, device} = SNMPSimEx.Device.start_link(device_config)
       
   """
-  def start_link(profile, opts \\ []) do
-    GenServer.start_link(__MODULE__, {profile, opts})
+  def start_link(device_config) when is_map(device_config) do
+    GenServer.start_link(__MODULE__, device_config)
+  end
+
+  @doc """
+  Stop a device gracefully.
+  """
+  def stop(device_pid) when is_pid(device_pid) do
+    GenServer.stop(device_pid, :normal)
   end
 
   @doc """
@@ -97,27 +113,21 @@ defmodule SnmpSimEx.Device do
   # GenServer callbacks
 
   @impl true
-  def init({%ProfileLoader{} = profile, opts}) do
-    port = Keyword.fetch!(opts, :port)
-    community = Keyword.get(opts, :community, @default_community)
-    mac_address = Keyword.get(opts, :mac_address, generate_mac_address())
-    behaviors = Keyword.get(opts, :behaviors, profile.behaviors || [])
+  def init(device_config) when is_map(device_config) do
+    port = Map.fetch!(device_config, :port)
+    device_type = Map.fetch!(device_config, :device_type)
+    device_id = Map.fetch!(device_config, :device_id)
+    community = Map.get(device_config, :community, @default_community)
+    mac_address = Map.get(device_config, :mac_address, generate_mac_address(device_type, port))
 
-    device_id = "#{profile.device_type}_#{port}"
-    
     # Start the UDP server for this device  
     case Server.start_link(port, community: community) do
       {:ok, server_pid} ->
         
-        # Build OID tree from profile for efficient operations
-        oid_tree = build_oid_tree_from_profile(profile)
-        
         state = %__MODULE__{
           device_id: device_id,
           port: port,
-          device_type: profile.device_type,
-          profile: profile,
-          oid_tree: oid_tree,
+          device_type: device_type,
           server_pid: server_pid,
           mac_address: mac_address,
           uptime_start: :erlang.monotonic_time(),
@@ -125,21 +135,23 @@ defmodule SnmpSimEx.Device do
           gauges: %{},
           status_vars: %{},
           community: community,
-          behaviors: behaviors
+          last_access: System.monotonic_time(:millisecond)
         }
         
         # Set up the SNMP handler for this device
-        # Capture the device PID explicitly to avoid "process attempted to call itself" errors
         device_pid = self()
         handler_fn = fn pdu, context ->
           GenServer.call(device_pid, {:handle_snmp, pdu, context})
         end
         :ok = Server.set_device_handler(server_pid, handler_fn)
         
-        # Initialize device state from profile
+        # Initialize device state from shared profile
         case initialize_device_state(state) do
-          {:ok, initialized_state} -> {:ok, initialized_state}
-          {:error, reason} -> {:stop, reason}
+          {:ok, initialized_state} -> 
+            Logger.info("Device #{device_id} started on port #{port}")
+            {:ok, initialized_state}
+          {:error, reason} -> 
+            {:stop, reason}
         end
         
       {:error, reason} ->
@@ -149,28 +161,36 @@ defmodule SnmpSimEx.Device do
   end
 
   @impl true
-  def handle_call(:get_info, _from, %{device_id: device_id} = state) when is_map(state) do
+  def handle_call(:get_info, _from, state) when is_map(state) do
+    # Get OID count from shared profile
+    oid_count = case SharedProfiles.get_profile_info(state.device_type) do
+      {:ok, profile_info} -> Map.get(profile_info, :oid_count, 0)
+      {:error, _} -> 0
+    end
+    
     info = %{
-      device_id: Map.get(state, :device_id, "unknown"),
-      port: Map.get(state, :port, 0),
-      device_type: Map.get(state, :device_type, :unknown),
-      mac_address: Map.get(state, :mac_address, "unknown"),
+      device_id: state.device_id,
+      port: state.port,
+      device_type: state.device_type,
+      mac_address: state.mac_address,
       uptime: calculate_uptime(state),
-      oid_count: case Map.get(state, :profile) do
-        %{oid_map: oid_map} -> map_size(oid_map)
-        _ -> 0
-      end,
-      counters: map_size(Map.get(state, :counters, %{})),
-      gauges: map_size(Map.get(state, :gauges, %{})),
-      behaviors: length(Map.get(state, :behaviors, []))
+      oid_count: oid_count,
+      counters: map_size(state.counters),
+      gauges: map_size(state.gauges),
+      status_vars: map_size(state.status_vars),
+      last_access: state.last_access
     }
     
-    {:reply, info, state}
+    # Update last access time
+    new_state = %{state | last_access: System.monotonic_time(:millisecond)}
+    {:reply, info, new_state}
   end
 
-  def handle_call(:get_info, _from, state) do
-    Logger.warning("Device get_info called with invalid state: #{inspect(state)}")
-    {:reply, {:error, {:invalid_state, state}}, state}
+
+  @impl true
+  def handle_call({:handle_snmp, pdu, _context}, _from, state) do
+    response = process_snmp_pdu(pdu, state)
+    {:reply, response, state}
   end
 
   @impl true
@@ -222,12 +242,6 @@ defmodule SnmpSimEx.Device do
   end
 
   # Private functions
-
-  @impl true
-  def handle_call({:handle_snmp, pdu, _context}, _from, state) do
-    response = process_snmp_pdu(pdu, state)
-    {:reply, response, state}
-  end
 
   defp process_snmp_pdu(%PDU{pdu_type: @get_request} = pdu, state) do
     variable_bindings = process_get_request(pdu.variable_bindings, state)
@@ -301,10 +315,11 @@ defmodule SnmpSimEx.Device do
 
   defp process_getnext_request(variable_bindings, state) do
     Enum.map(variable_bindings, fn {oid, _value} ->
-      case OIDTree.get_next(state.oid_tree, oid) do
-        {:ok, next_oid, value, _behavior} -> 
-          # Apply dynamic value simulation if needed
-          dynamic_value = apply_dynamic_value(next_oid, value, state)
+      case SharedProfiles.get_next_oid(state.device_type, oid) do
+        {:ok, next_oid, value, behavior} -> 
+          # Apply device-specific behaviors
+          device_state = build_device_state(state)
+          dynamic_value = apply_device_behavior(next_oid, value, behavior, device_state)
           {next_oid, dynamic_value}
         :end_of_mib ->
           {oid, {:end_of_mib_view, nil}}
@@ -316,17 +331,18 @@ defmodule SnmpSimEx.Device do
     non_repeaters = pdu.non_repeaters || 0
     max_repetitions = pdu.max_repetitions || 10
     
-    # Use the efficient bulk operations module
-    case BulkOperations.handle_bulk_request(
-      state.oid_tree, 
+    # Use shared profiles for bulk operations
+    case SharedProfiles.handle_bulk_request(
+      state.device_type,
       non_repeaters, 
       max_repetitions, 
       pdu.variable_bindings
     ) do
       {:ok, results} ->
-        # Apply dynamic value simulation to results
-        Enum.map(results, fn {oid, value, _behavior} ->
-          dynamic_value = apply_dynamic_value(oid, value, state)
+        # Apply device-specific behaviors to results
+        device_state = build_device_state(state)
+        Enum.map(results, fn {oid, value, behavior} ->
+          dynamic_value = apply_device_behavior(oid, value, behavior, device_state)
           {oid, dynamic_value}
         end)
       
@@ -340,55 +356,31 @@ defmodule SnmpSimEx.Device do
     end
   end
 
-  defp process_bulk_repeating_oids(oids, max_repetitions, state) do
-    Enum.flat_map(oids, fn {start_oid, _} ->
-      get_bulk_sequence(start_oid, max_repetitions, state, [])
-    end)
-  end
-
-  defp get_bulk_sequence(_oid, 0, _state, acc), do: Enum.reverse(acc)
-  
-  defp get_bulk_sequence(oid, remaining, state, acc) do
-    case ProfileLoader.get_next_oid(state.profile, oid) do
-      {:ok, next_oid} ->
-        case get_oid_value(next_oid, state) do
-          {:ok, value} ->
-            get_bulk_sequence(next_oid, remaining - 1, state, [{next_oid, value} | acc])
-          {:error, :no_such_name} ->
-            Enum.reverse([{oid, {:end_of_mib_view, nil}} | acc])
-        end
-      :end_of_mib ->
-        Enum.reverse([{oid, {:end_of_mib_view, nil}} | acc])
-    end
-  end
 
   defp get_oid_value(oid, state) do
-    # Check for special dynamic OIDs first (before checking profile)
+    # Update last access time
+    new_state = %{state | last_access: System.monotonic_time(:millisecond)}
+    
+    # Check for special dynamic OIDs first
     case oid do
       "1.3.6.1.2.1.1.3.0" ->
         # sysUpTime - always dynamic
-        get_dynamic_oid_value(oid, state)
+        get_dynamic_oid_value(oid, new_state)
       _ ->
-        case ProfileLoader.get_oid_value(state.profile, oid) do
-          nil ->
-            # Check if it's a special system OID that needs dynamic values
-            case get_dynamic_oid_value(oid, state) do
+        # Check shared profile for this device type
+        case SharedProfiles.get_oid_value(state.device_type, oid) do
+          {:ok, value, behavior} ->
+            # Apply device-specific state and behaviors
+            device_state = build_device_state(new_state)
+            dynamic_value = apply_device_behavior(oid, value, behavior, device_state)
+            {:ok, dynamic_value}
+            
+          {:error, :not_found} ->
+            # Check if it's a device-specific dynamic OID
+            case get_dynamic_oid_value(oid, new_state) do
               {:error, :no_such_name} = error -> error
               {:ok, value} = success -> success
             end
-            
-          %{value: _value, type: _type, behavior: behavior} = profile_data ->
-            # Use the new value simulator with behavior configuration
-            device_state = build_device_state(state)
-            current_value = SnmpSimEx.ValueSimulator.simulate_value(profile_data, behavior, device_state)
-            {:ok, current_value}
-            
-          %{value: value, type: type} = profile_data ->
-            # Fallback for profiles without behavior configuration
-            behavior = {:static_value, %{}}
-            device_state = build_device_state(state)
-            current_value = SnmpSimEx.ValueSimulator.simulate_value(profile_data, behavior, device_state)
-            {:ok, current_value}
         end
     end
   end
@@ -482,28 +474,32 @@ defmodule SnmpSimEx.Device do
   end
 
   defp initialize_device_state(state) do
-    # Initialize counters and gauges from profile
-    profile_oids = state.profile.oid_map
-    
-    counters = 
-      profile_oids
-      |> Enum.filter(fn {_oid, %{type: type}} -> 
-        String.contains?(String.upcase(type), "COUNTER") 
-      end)
-      |> Enum.map(fn {oid, _} -> {oid, 0} end)
-      |> Map.new()
-    
-    gauges = 
-      profile_oids
-      |> Enum.filter(fn {_oid, %{type: type}} -> 
-        String.contains?(String.upcase(type), "GAUGE") 
-      end)
-      |> Enum.map(fn {oid, %{value: value}} -> {oid, value} end)
-      |> Map.new()
-    
-    Logger.info("Device #{state.device_id} initialized with #{map_size(profile_oids)} OIDs")
-    
-    {:ok, %{state | counters: counters, gauges: gauges}}
+    # Initialize counters and gauges from shared profile
+    case SharedProfiles.get_device_profile(state.device_type) do
+      {:ok, profile_info} ->
+        # Initialize device-specific counter and gauge state
+        counters = initialize_counters(profile_info, state)
+        gauges = initialize_gauges(profile_info, state)
+        status_vars = initialize_status_vars(state)
+        
+        oid_count = Map.get(profile_info, :oid_count, 0)
+        Logger.info("Device #{state.device_id} initialized with #{oid_count} OIDs from shared profile")
+        
+        {:ok, %{state | 
+          counters: counters, 
+          gauges: gauges, 
+          status_vars: status_vars
+        }}
+        
+      {:error, :not_found} ->
+        Logger.warning("No shared profile found for device type #{state.device_type}")
+        # Initialize with minimal state
+        {:ok, %{state | counters: %{}, gauges: %{}, status_vars: %{}}}
+        
+      {:error, reason} ->
+        Logger.error("Failed to load shared profile for #{state.device_type}: #{inspect(reason)}")
+        {:error, {:profile_load_failed, reason}}
+    end
   end
 
   defp build_device_state(state) do
@@ -581,79 +577,119 @@ defmodule SnmpSimEx.Device do
     %{}
   end
 
-  defp generate_mac_address do
-    # Generate a random MAC address in the form "00:1A:2B:XX:XX:XX"
-    # Use a fixed prefix to indicate simulated devices
-    prefix = "00:1A:2B"
-    suffix = for _ <- 1..3 do
-      :rand.uniform(255) |> Integer.to_string(16) |> String.pad_leading(2, "0")
-    end |> Enum.join(":")
-    
-    "#{prefix}:#{suffix}"
+  defp generate_mac_address(device_type, port) do
+    # Generate MAC address using DeviceDistribution module
+    DeviceDistribution.generate_device_id(device_type, port, format: :mac_based)
   end
   
-  # Phase 3: OID Tree and GETBULK support functions
-  
-  defp build_oid_tree_from_profile(%ProfileLoader{oid_map: oid_map}) do
-    # Build OID tree from profile's OID map
-    tree = OIDTree.new()
-    
-    Enum.reduce(oid_map, tree, fn {oid, value_info}, acc_tree ->
-      # Extract behavior information if available
-      behavior = Map.get(value_info, :behavior)
-      
-      # Insert OID with its value and behavior into tree
-      OIDTree.insert(acc_tree, oid, value_info.value, behavior)
-    end)
+  defp initialize_counters(profile_info, state) do
+    # Initialize counters to zero for this device instance
+    counter_oids = Map.get(profile_info, :counter_oids, [])
+    Enum.map(counter_oids, fn oid -> {oid, 0} end) |> Map.new()
   end
   
-  defp apply_dynamic_value(oid, base_value, state) do
-    # Apply dynamic value simulation based on behaviors
-    # This integrates with Phase 2 value simulation
-    case Map.get(state.counters, oid) do
-      nil ->
-        case Map.get(state.gauges, oid) do
-          nil -> base_value  # Return base value if no dynamic state
-          gauge_value -> gauge_value
+  defp initialize_gauges(profile_info, state) do
+    # Initialize gauges with base values from profile
+    gauge_oids = Map.get(profile_info, :gauge_oids, [])
+    Enum.map(gauge_oids, fn oid -> 
+      base_value = get_base_gauge_value(oid, state.device_type)
+      {oid, base_value}
+    end) |> Map.new()
+  end
+  
+  defp initialize_status_vars(state) do
+    # Initialize device-specific status variables
+    %{
+      "admin_status" => 1,  # up
+      "oper_status" => 1,   # up
+      "last_change" => 0
+    }
+  end
+  
+  defp get_base_gauge_value(oid, device_type) do
+    # Get realistic base values for gauge OIDs based on device type
+    characteristics = DeviceDistribution.get_device_characteristics(device_type)
+    
+    cond do
+      String.contains?(oid, "ifSpeed") ->
+        # Interface speed based on device type
+        case device_type do
+          :cable_modem -> 100_000_000  # 100 Mbps
+          :switch -> 1_000_000_000     # 1 Gbps
+          :router -> 1_000_000_000     # 1 Gbps
+          :cmts -> 10_000_000_000      # 10 Gbps
+          _ -> 10_000_000              # 10 Mbps default
         end
-      counter_value -> 
-        # For counters, apply increment based on behavior
-        apply_counter_increment(oid, counter_value, state)
+        
+      String.contains?(oid, "ifMtu") ->
+        1500  # Standard Ethernet MTU
+        
+      String.contains?(oid, "Temperature") ->
+        25 + :rand.uniform(20)  # 25-45°C
+        
+      true ->
+        :rand.uniform(100)  # Default gauge value
     end
   end
   
-  defp apply_counter_increment(oid, current_value, state) do
-    # Get behavior for this OID from the tree
-    case OIDTree.get(state.oid_tree, oid) do
-      {:ok, _value, behavior} when not is_nil(behavior) ->
-        # Apply behavior-based increment (simplified)
-        increment = calculate_behavior_increment(behavior, state)
-        current_value + increment
-      _ ->
-        # Default increment for counters without specific behavior
-        current_value + :rand.uniform(100)
-    end
-  end
-  
-  defp calculate_behavior_increment(behavior, _state) do
-    # Simple behavior-based increment calculation
-    # This would integrate with the Phase 2 value simulation system
+  defp apply_device_behavior(oid, base_value, behavior, device_state) do
+    # Apply device-specific behavior to the base value
     case behavior do
-      {:traffic_counter, config} ->
-        {min_rate, max_rate} = Map.get(config, :rate_range, {100, 10000})
-        min_rate + :rand.uniform(max_rate - min_rate)
-      
-      {:packet_counter, config} ->
-        {min_rate, max_rate} = Map.get(config, :rate_range, {10, 1000})
-        min_rate + :rand.uniform(max_rate - min_rate)
-      
-      {:error_counter, config} ->
-        {min_rate, max_rate} = Map.get(config, :rate_range, {0, 10})
-        min_rate + :rand.uniform(max(1, max_rate - min_rate))
-      
+      {:counter, config} ->
+        # Apply counter increment based on uptime and device characteristics
+        apply_counter_behavior(oid, base_value, config, device_state)
+        
+      {:gauge, config} ->
+        # Apply gauge variation based on device state
+        apply_gauge_behavior(oid, base_value, config, device_state)
+        
+      {:enum, possible_values} ->
+        # Select enum value based on device state
+        apply_enum_behavior(oid, possible_values, device_state)
+        
       _ ->
-        # Default increment
-        :rand.uniform(50)
+        # Return base value for static or unknown behaviors
+        base_value
     end
   end
+  
+  defp apply_counter_behavior(oid, base_value, config, device_state) do
+    # Calculate counter increment based on uptime and rate
+    uptime_seconds = device_state.uptime / 1000
+    rate = Map.get(config, :rate, 1000)  # Default 1000 units/second
+    jitter = Map.get(config, :jitter, 0.1)  # 10% jitter
+    
+    # Apply jitter
+    actual_rate = rate * (1.0 + ((:rand.uniform() - 0.5) * 2 * jitter))
+    increment = trunc(actual_rate * uptime_seconds)
+    
+    base_value + increment
+  end
+  
+  defp apply_gauge_behavior(oid, base_value, config, device_state) do
+    # Apply gauge variation based on device characteristics
+    variance = Map.get(config, :variance, 0.1)  # 10% variance
+    min_val = Map.get(config, :min, 0)
+    max_val = Map.get(config, :max, base_value * 2)
+    
+    # Apply random variation
+    variation = ((:rand.uniform() - 0.5) * 2 * variance * base_value)
+    new_value = base_value + variation
+    
+    # Clamp to min/max bounds
+    max(min_val, min(max_val, trunc(new_value)))
+  end
+  
+  defp apply_enum_behavior(oid, possible_values, device_state) do
+    # Select enum value based on device health/state
+    health_score = device_state.health_score
+    
+    # Higher health scores favor better enum values
+    if health_score > 0.8 do
+      Enum.at(possible_values, 0)  # Best value
+    else
+      Enum.random(possible_values)  # Random selection
+    end
+  end
+  
 end

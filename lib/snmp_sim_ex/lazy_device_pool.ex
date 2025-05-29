@@ -1,132 +1,408 @@
-defmodule SnmpSimEx.LazyDevicePool do
+defmodule SNMPSimEx.LazyDevicePool do
   @moduledoc """
-  Basic device pool management for Phase 1.
-  Simplified version that starts devices immediately.
-  Full lazy creation will be implemented in Phase 4.
+  Lazy Device Pool Manager for on-demand device creation and lifecycle management.
+  Supports 10K+ devices with minimal memory footprint through lazy instantiation.
+  
+  Features:
+  - On-demand device creation when first accessed
+  - Automatic cleanup of idle devices to conserve resources
+  - Port-based device type determination
+  - Efficient tracking of active devices and last access times
+  - Resource monitoring and cleanup scheduling
   """
-
-  alias SnmpSimEx.{ProfileLoader, Device}
-  require Logger
-
+  use GenServer
+  
+  alias SNMPSimEx.Device
+  alias SNMPSimEx.SharedProfiles
+  
+  defstruct [
+    :active_devices,      # Map: port -> device_pid
+    :device_configs,      # Map: port -> device_config
+    :last_access,         # Map: port -> timestamp
+    :cleanup_timer,       # Periodic cleanup timer
+    :port_assignments,    # Device type port ranges
+    :idle_timeout_ms,     # Idle timeout before cleanup
+    :max_devices,         # Maximum concurrent devices
+    :stats                # Statistics tracking
+  ]
+  
+  @default_idle_timeout_ms 30 * 60 * 1000  # 30 minutes
+  @default_max_devices 10_000
+  @cleanup_interval_ms 5 * 60 * 1000       # 5 minutes
+  
+  # Public API
+  
+  def start_link(opts \\ []) do
+    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
+  end
+  
   @doc """
-  Start a population of devices with the given configurations.
-  
-  ## Examples
-  
-      device_configs = [
-        {:cable_modem, {:walk_file, "priv/walks/cm.walk"}, count: 10},
-        {:switch, {:oid_walk, "priv/walks/switch.walk"}, count: 5}
-      ]
-      
-      {:ok, devices} = SnmpSimEx.LazyDevicePool.start_device_population(
-        device_configs,
-        port_range: 9001..9020
-      )
-      
+  Get or create a device for the specified port.
+  Creates the device on first access if it doesn't exist.
   """
+  def get_or_create_device(port) when is_integer(port) do
+    GenServer.call(__MODULE__, {:get_or_create_device, port})
+  end
+  
+  @doc """
+  Configure device types for specific port ranges.
+  """
+  def configure_port_assignments(port_assignments) do
+    GenServer.call(__MODULE__, {:configure_port_assignments, port_assignments})
+  end
+  
+  @doc """
+  Get statistics about the device pool.
+  """
+  def get_stats do
+    GenServer.call(__MODULE__, :get_stats)
+  end
+  
+  @doc """
+  Force cleanup of idle devices immediately.
+  """
+  def cleanup_idle_devices do
+    GenServer.cast(__MODULE__, :cleanup_idle_devices)
+  end
+  
+  @doc """
+  Shutdown a specific device.
+  """
+  def shutdown_device(port) do
+    GenServer.call(__MODULE__, {:shutdown_device, port})
+  end
+  
+  @doc """
+  Shutdown all devices and reset the pool.
+  """
+  def shutdown_all_devices do
+    GenServer.call(__MODULE__, :shutdown_all_devices)
+  end
+  
+  # Legacy API for backward compatibility
   def start_device_population(device_configs, opts \\ []) do
     port_range = Keyword.get(opts, :port_range, 9001..9100)
-    community = Keyword.get(opts, :community, "public")
     
-    # Calculate total device count
-    total_devices = Enum.sum(Enum.map(device_configs, fn {_type, _source, opts} ->
-      Keyword.get(opts, :count, 1)
-    end))
+    # Configure port assignments based on device configs
+    port_assignments = build_port_assignments(device_configs, port_range)
+    configure_port_assignments(port_assignments)
     
-    # Check if we have enough ports
-    available_ports = Enum.count(port_range)
-    if total_devices > available_ports do
-      {:error, {:insufficient_ports, total_devices, available_ports}}
+    # Pre-warm devices if requested
+    if Keyword.get(opts, :pre_warm, false) do
+      pre_warm_devices(device_configs, port_range)
     else
-      start_devices(device_configs, port_range, community)
+      {:ok, :lazy_pool_configured}
     end
   end
-
-  # Private functions
-
-  defp start_devices(device_configs, port_range, community) do
+  
+  # GenServer Callbacks
+  
+  def init(opts) do
+    idle_timeout_ms = Keyword.get(opts, :idle_timeout_ms, @default_idle_timeout_ms)
+    max_devices = Keyword.get(opts, :max_devices, @default_max_devices)
+    
+    # Schedule periodic cleanup
+    cleanup_timer = Process.send_after(self(), :cleanup_idle_devices, @cleanup_interval_ms)
+    
+    state = %__MODULE__{
+      active_devices: %{},
+      device_configs: %{},
+      last_access: %{},
+      cleanup_timer: cleanup_timer,
+      port_assignments: default_port_assignments(),
+      idle_timeout_ms: idle_timeout_ms,
+      max_devices: max_devices,
+      stats: %{
+        devices_created: 0,
+        devices_cleaned_up: 0,
+        active_count: 0,
+        peak_count: 0
+      }
+    }
+    
+    {:ok, state}
+  end
+  
+  def handle_call({:get_or_create_device, port}, _from, state) do
+    case Map.get(state.active_devices, port) do
+      nil ->
+        # Device doesn't exist, create it
+        case create_device(port, state) do
+          {:ok, device_pid, new_state} ->
+            {:reply, {:ok, device_pid}, new_state}
+          {:error, reason} ->
+            {:reply, {:error, reason}, state}
+        end
+      
+      device_pid ->
+        # Device exists, check if it's still alive
+        if Process.alive?(device_pid) do
+          # Update last access time
+          new_state = update_last_access(state, port)
+          {:reply, {:ok, device_pid}, new_state}
+        else
+          # Device died, remove it and create a new one
+          cleaned_state = remove_dead_device(state, port)
+          case create_device(port, cleaned_state) do
+            {:ok, device_pid, new_state} ->
+              {:reply, {:ok, device_pid}, new_state}
+            {:error, reason} ->
+              {:reply, {:error, reason}, cleaned_state}
+          end
+        end
+    end
+  end
+  
+  def handle_call({:configure_port_assignments, port_assignments}, _from, state) do
+    new_state = %{state | port_assignments: port_assignments}
+    {:reply, :ok, new_state}
+  end
+  
+  def handle_call(:get_stats, _from, state) do
+    current_stats = %{
+      state.stats |
+      active_count: map_size(state.active_devices),
+      total_ports_configured: count_configured_ports(state.port_assignments)
+    }
+    {:reply, current_stats, state}
+  end
+  
+  def handle_call({:shutdown_device, port}, _from, state) do
+    case Map.get(state.active_devices, port) do
+      nil ->
+        {:reply, {:error, :not_found}, state}
+      
+      device_pid ->
+        :ok = Device.stop(device_pid)
+        new_state = remove_device(state, port)
+        {:reply, :ok, new_state}
+    end
+  end
+  
+  def handle_call(:shutdown_all_devices, _from, state) do
+    # Shutdown all active devices
+    Enum.each(state.active_devices, fn {_port, device_pid} ->
+      if Process.alive?(device_pid) do
+        Device.stop(device_pid)
+      end
+    end)
+    
+    # Reset state
+    new_state = %{state |
+      active_devices: %{},
+      device_configs: %{},
+      last_access: %{},
+      stats: %{state.stats | active_count: 0}
+    }
+    
+    {:reply, :ok, new_state}
+  end
+  
+  def handle_cast(:cleanup_idle_devices, state) do
+    new_state = cleanup_idle_devices_impl(state)
+    {:noreply, new_state}
+  end
+  
+  def handle_info(:cleanup_idle_devices, state) do
+    new_state = cleanup_idle_devices_impl(state)
+    
+    # Schedule next cleanup
+    cleanup_timer = Process.send_after(self(), :cleanup_idle_devices, @cleanup_interval_ms)
+    new_state = %{new_state | cleanup_timer: cleanup_timer}
+    
+    {:noreply, new_state}
+  end
+  
+  def handle_info({:DOWN, _ref, :process, device_pid, _reason}, state) do
+    # Handle device process death
+    port = find_port_by_pid(state.active_devices, device_pid)
+    if port do
+      new_state = remove_device(state, port)
+      {:noreply, new_state}
+    else
+      {:noreply, state}
+    end
+  end
+  
+  # Private Functions
+  
+  defp create_device(port, state) do
+    if map_size(state.active_devices) >= state.max_devices do
+      {:error, :max_devices_reached}
+    else
+      device_type = determine_device_type(port, state.port_assignments)
+      
+      case device_type do
+        nil ->
+          {:error, :unknown_port_range}
+        
+        device_type ->
+          device_config = %{
+            port: port,
+            device_type: device_type,
+            device_id: generate_device_id(device_type, port),
+            community: "public"
+          }
+          
+          case Device.start_link(device_config) do
+            {:ok, device_pid} ->
+              # Monitor the device process
+              Process.monitor(device_pid)
+              
+              # Update state
+              new_state = %{state |
+                active_devices: Map.put(state.active_devices, port, device_pid),
+                device_configs: Map.put(state.device_configs, port, device_config),
+                last_access: Map.put(state.last_access, port, System.monotonic_time(:millisecond)),
+                stats: %{state.stats |
+                  devices_created: state.stats.devices_created + 1,
+                  active_count: map_size(state.active_devices) + 1,
+                  peak_count: max(state.stats.peak_count, map_size(state.active_devices) + 1)
+                }
+              }
+              
+              {:ok, device_pid, new_state}
+            
+            {:error, reason} ->
+              {:error, reason}
+          end
+      end
+    end
+  end
+  
+  defp determine_device_type(port, port_assignments) do
+    Enum.find_value(port_assignments, fn {device_type, range} ->
+      if port in range, do: device_type, else: nil
+    end)
+  end
+  
+  defp generate_device_id(device_type, port) do
+    "#{device_type}_#{port}"
+  end
+  
+  defp update_last_access(state, port) do
+    new_last_access = Map.put(state.last_access, port, System.monotonic_time(:millisecond))
+    %{state | last_access: new_last_access}
+  end
+  
+  defp cleanup_idle_devices_impl(state) do
+    current_time = System.monotonic_time(:millisecond)
+    idle_threshold = current_time - state.idle_timeout_ms
+    
+    idle_ports = Enum.filter(state.last_access, fn {_port, last_access} ->
+      last_access < idle_threshold
+    end) |> Enum.map(fn {port, _} -> port end)
+    
+    # Shutdown idle devices
+    cleanup_count = Enum.reduce(idle_ports, 0, fn port, acc ->
+      case Map.get(state.active_devices, port) do
+        nil -> acc
+        device_pid ->
+          if Process.alive?(device_pid) do
+            Device.stop(device_pid)
+            acc + 1
+          else
+            acc
+          end
+      end
+    end)
+    
+    # Remove idle devices from state
+    new_active_devices = Map.drop(state.active_devices, idle_ports)
+    new_device_configs = Map.drop(state.device_configs, idle_ports)
+    new_last_access = Map.drop(state.last_access, idle_ports)
+    
+    %{state |
+      active_devices: new_active_devices,
+      device_configs: new_device_configs,
+      last_access: new_last_access,
+      stats: %{state.stats |
+        devices_cleaned_up: state.stats.devices_cleaned_up + cleanup_count,
+        active_count: map_size(new_active_devices)
+      }
+    }
+  end
+  
+  defp remove_device(state, port) do
+    %{state |
+      active_devices: Map.delete(state.active_devices, port),
+      device_configs: Map.delete(state.device_configs, port),
+      last_access: Map.delete(state.last_access, port),
+      stats: %{state.stats | active_count: map_size(state.active_devices) - 1}
+    }
+  end
+  
+  defp remove_dead_device(state, port) do
+    %{state |
+      active_devices: Map.delete(state.active_devices, port),
+      device_configs: Map.delete(state.device_configs, port),
+      last_access: Map.delete(state.last_access, port)
+    }
+  end
+  
+  defp find_port_by_pid(active_devices, target_pid) do
+    Enum.find_value(active_devices, fn {port, pid} ->
+      if pid == target_pid, do: port, else: nil
+    end)
+  end
+  
+  defp count_configured_ports(port_assignments) do
+    Enum.reduce(port_assignments, 0, fn {_type, range}, acc ->
+      acc + Enum.count(range)
+    end)
+  end
+  
+  defp build_port_assignments(device_configs, port_range) do
     port_list = Enum.to_list(port_range)
     
-    {devices, _remaining_ports} = 
-      Enum.reduce(device_configs, {[], port_list}, fn config, {acc_devices, remaining_ports} ->
-        {new_devices, used_ports} = start_device_group(config, remaining_ports, community)
-        {acc_devices ++ new_devices, used_ports}
-      end)
+    {port_assignments, _} = Enum.reduce(device_configs, {%{}, port_list}, fn 
+      {device_type, _source, opts}, {assignments, remaining_ports} ->
+        count = Keyword.get(opts, :count, 1)
+        {assigned_ports, new_remaining} = Enum.split(remaining_ports, count)
+        
+        if length(assigned_ports) > 0 do
+          range = Enum.min(assigned_ports)..Enum.max(assigned_ports)
+          {Map.put(assignments, device_type, range), new_remaining}
+        else
+          {assignments, new_remaining}
+        end
+    end)
     
-    case Enum.find(devices, fn {_device_info, result} -> match?({:error, _}, result) end) do
-      nil ->
-        # All devices started successfully
-        successful_devices = 
-          devices
-          |> Enum.map(fn {device_info, {:ok, pid}} -> {device_info, pid} end)
-          |> Map.new()
-        
-        Logger.info("Successfully started #{map_size(successful_devices)} devices")
-        {:ok, successful_devices}
-        
-      {device_info, {:error, reason}} ->
-        # At least one device failed to start
-        Logger.error("Failed to start device #{inspect(device_info)}: #{inspect(reason)}")
-        
-        # Stop any devices that did start
-        devices
-        |> Enum.each(fn 
-          {_info, {:ok, pid}} -> GenServer.stop(pid)
-          _ -> :ok
-        end)
-        
-        {:error, {:device_start_failed, device_info, reason}}
-    end
+    port_assignments
   end
-
-  defp start_device_group({device_type, source, opts}, available_ports, community) do
-    count = Keyword.get(opts, :count, 1)
-    device_opts = Keyword.get(opts, :device_opts, [])
-    
-    # Load the profile once for this device type
-    case ProfileLoader.load_profile(device_type, source, opts) do
-      {:ok, profile} ->
-        {ports_to_use, remaining_ports} = Enum.split(available_ports, count)
-        
-        devices = 
-          ports_to_use
-          |> Enum.with_index()
-          |> Enum.map(fn {port, index} ->
-            device_info = %{
-              device_type: device_type,
-              port: port,
-              device_id: "#{device_type}_#{port}",
-              index: index
-            }
-            
-            start_opts = [
-              port: port,
-              community: community
-            ] ++ device_opts
-            
-            result = Device.start_link(profile, start_opts)
-            {device_info, result}
+  
+  defp pre_warm_devices(device_configs, port_range) do
+    Enum.reduce(device_configs, {:ok, []}, fn {device_type, _source, opts}, acc ->
+      case acc do
+        {:error, _} = error -> error
+        {:ok, devices} ->
+          count = Keyword.get(opts, :count, 1)
+          start_port = Enum.at(Enum.to_list(port_range), length(devices))
+          
+          new_devices = Enum.map(0..(count-1), fn i ->
+            port = start_port + i
+            case get_or_create_device(port) do
+              {:ok, pid} -> {port, pid}
+              {:error, reason} -> {:error, {port, reason}}
+            end
           end)
-        
-        {devices, remaining_ports}
-        
-      {:error, reason} ->
-        Logger.error("Failed to load profile for #{device_type}: #{inspect(reason)}")
-        
-        # Return error results for all devices in this group
-        error_devices = 
-          1..count
-          |> Enum.map(fn index ->
-            device_info = %{
-              device_type: device_type,
-              port: nil,
-              device_id: "#{device_type}_#{index}",
-              index: index
-            }
-            {device_info, {:error, {:profile_load_failed, reason}}}
-          end)
-        
-        {error_devices, available_ports}
-    end
+          
+          case Enum.find(new_devices, &match?({:error, _}, &1)) do
+            nil -> {:ok, devices ++ new_devices}
+            error -> error
+          end
+      end
+    end)
+  end
+  
+  defp default_port_assignments do
+    %{
+      cable_modem: 30_000..37_999,  # 8,000 cable modems
+      mta: 38_000..39_499,          # 1,500 MTAs
+      switch: 39_500..39_899,       # 400 switches
+      router: 39_900..39_949,       # 50 routers
+      cmts: 39_950..39_974,         # 25 CMTS devices
+      server: 39_975..39_999        # 25 servers
+    }
   end
 end
