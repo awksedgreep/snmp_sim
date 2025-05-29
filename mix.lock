@@ -1,0 +1,5 @@
+%{
+  "jason": {:hex, :jason, "1.4.4", "b9226785a9aa77b6857ca22832cffa5d5011a667207eb2a0ad56adb5db443b8a", [:mix], [{:decimal, "~> 1.0 or ~> 2.0", [hex: :decimal, repo: "hexpm", optional: true]}], "hexpm", "c5eb0cab91f094599f94d55bc63409236a8ec69a21a67814529e8d5f6cc90b3b"},
+  "netaddr_ex": {:hex, :netaddr_ex, "1.3.1", "ce5e8ebdf3ade9fb42a07e910a43a2f607c48bc5401f071772364f61263fc328", [:mix], [], "hexpm", "cae2d1deccc0becb31c8a5dcbf7010cc598a35eb0ff61689995dfbe7cda74224"},
+  "snmp_ex": {:hex, :snmp_ex, "0.7.0", "38adcf37a11a44b8968478f5a622acc359722f3fd2f9ef9eed24b92374ea13f2", [:mix], [{:netaddr_ex, "~> 1.3", [hex: :netaddr_ex, repo: "hexpm", optional: false]}], "hexpm", "01e13eb532f9561eb4d44606e5afb1004b56f766c0db05a81a0709dcdbe6b058"},
+}
