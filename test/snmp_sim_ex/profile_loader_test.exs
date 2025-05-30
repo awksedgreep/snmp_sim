@@ -1,7 +1,7 @@
-defmodule SnmpSimEx.ProfileLoaderTest do
+defmodule SNMPSimEx.ProfileLoaderTest do
   use ExUnit.Case, async: false
   
-  alias SnmpSimEx.ProfileLoader
+  alias SNMPSimEx.ProfileLoader
 
   describe "Profile Loading" do
     test "loads walk file into device profile" do

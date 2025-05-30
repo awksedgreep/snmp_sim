@@ -14,8 +14,8 @@ defmodule SNMPSimEx.Device do
   require Logger
 
   alias SNMPSimEx.{DeviceDistribution}
-  alias SnmpSimEx.Core.{Server, PDU}
-  alias SnmpSimEx.MIB.SharedProfiles
+  alias SNMPSimEx.Core.{Server, PDU}
+  alias SNMPSimEx.MIB.SharedProfiles
 
   defstruct [
     :device_id,

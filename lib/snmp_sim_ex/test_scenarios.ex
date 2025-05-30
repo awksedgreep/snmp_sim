@@ -1,4 +1,4 @@
-defmodule SnmpSimEx.TestScenarios do
+defmodule SNMPSimEx.TestScenarios do
   @moduledoc """
   Pre-built test scenarios for common network conditions.
   
@@ -30,7 +30,7 @@ defmodule SnmpSimEx.TestScenarios do
   """
   
   require Logger
-  alias SnmpSimEx.{ErrorInjector, LazyDevicePool}
+  alias SNMPSimEx.{ErrorInjector, LazyDevicePool}
   
   @type device_list :: list(pid()) | list({:device_type, integer()})
   @type scenario_result :: %{
@@ -698,7 +698,7 @@ defmodule SnmpSimEx.TestScenarios do
     
     conditions = Enum.map(initial_devices, fn device ->
       {:ok, injector} = ErrorInjector.start_link(device, get_device_port(device))
-      ErrorInjector.simulate_device_failure(injector, :power_failure, duration_ms: 300000)
+      ErrorInjector.simulate_device_failure(injector, :power_failure, duration_ms: 5000)
       
       %{device: device, condition: :cascade_failure, wave: 1, injector: injector}
     end)
@@ -807,6 +807,8 @@ defmodule SnmpSimEx.TestScenarios do
   
   defp calculate_cascade_waves(current_count, max_count, growth_factor) do
     next_count = trunc(current_count * growth_factor)
+    # Ensure we always make progress to prevent infinite loops
+    next_count = max(next_count, current_count + 1)
     1 + calculate_cascade_waves(next_count, max_count, growth_factor)
   end
   
@@ -880,7 +882,7 @@ defmodule SnmpSimEx.TestScenarios do
   defp apply_power_effects(injector, :severe, index) do
     # Major power instability
     ErrorInjector.inject_packet_loss(injector, loss_rate: 0.4)
-    ErrorInjector.simulate_device_failure(injector, :power_failure, duration_ms: 120000)
+    ErrorInjector.simulate_device_failure(injector, :power_failure, duration_ms: 3000)
   end
   
   defp apply_temperature_effects(injector, severity, _index) do
@@ -894,7 +896,7 @@ defmodule SnmpSimEx.TestScenarios do
         
       :severe ->
         ErrorInjector.inject_packet_loss(injector, loss_rate: 0.15)
-        ErrorInjector.simulate_device_failure(injector, :overload, duration_ms: 180000)
+        ErrorInjector.simulate_device_failure(injector, :overload, duration_ms: 4000)
     end
   end
   

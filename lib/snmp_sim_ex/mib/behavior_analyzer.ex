@@ -1,4 +1,4 @@
-defmodule SnmpSimEx.MIB.BehaviorAnalyzer do
+defmodule SNMPSimEx.MIB.BehaviorAnalyzer do
   @moduledoc """
   Automatically determine realistic behaviors from MIB object definitions.
   Analyze object names, descriptions, and types to infer simulation patterns.
@@ -11,7 +11,7 @@ defmodule SnmpSimEx.MIB.BehaviorAnalyzer do
   
   ## Examples
   
-      behavior = SnmpSimEx.MIB.BehaviorAnalyzer.analyze_object_behavior(%{
+      behavior = SNMPSimEx.MIB.BehaviorAnalyzer.analyze_object_behavior(%{
         name: "ifInOctets",
         oid: "1.3.6.1.2.1.2.2.1.10",
         type: :counter32,
@@ -35,7 +35,7 @@ defmodule SnmpSimEx.MIB.BehaviorAnalyzer do
   
   ## Examples
   
-      {:ok, behaviors} = SnmpSimEx.MIB.BehaviorAnalyzer.analyze_mib_behaviors(compiled_mib)
+      {:ok, behaviors} = SNMPSimEx.MIB.BehaviorAnalyzer.analyze_mib_behaviors(compiled_mib)
       
   """
   def analyze_mib_behaviors(mib_objects) when is_map(mib_objects) do

@@ -1,11 +1,11 @@
-defmodule SnmpSimEx.ProfileLoader do
+defmodule SNMPSimEx.ProfileLoader do
   @moduledoc """
   Flexible profile loading supporting multiple sources and progressive enhancement.
   Start with simple walk files, upgrade to MIB-based simulation when ready.
   """
 
   require Logger
-  alias SnmpSimEx.WalkParser
+  alias SNMPSimEx.WalkParser
 
   defstruct [
     :device_type,
@@ -28,13 +28,13 @@ defmodule SnmpSimEx.ProfileLoader do
   ## Examples
   
       # Load from SNMP walk file
-      profile = SnmpSimEx.ProfileLoader.load_profile(
+      profile = SNMPSimEx.ProfileLoader.load_profile(
         :cable_modem,
         {:walk_file, "priv/walks/cable_modem.walk"}
       )
       
       # Load with behaviors
-      profile = SnmpSimEx.ProfileLoader.load_profile(
+      profile = SNMPSimEx.ProfileLoader.load_profile(
         :cable_modem,
         {:walk_file, "priv/walks/cable_modem.walk"},
         behaviors: [
@@ -71,7 +71,7 @@ defmodule SnmpSimEx.ProfileLoader do
   
   ## Examples
   
-      value = SnmpSimEx.ProfileLoader.get_oid_value(profile, "1.3.6.1.2.1.1.1.0")
+      value = SNMPSimEx.ProfileLoader.get_oid_value(profile, "1.3.6.1.2.1.1.1.0")
       
   """
   def get_oid_value(%__MODULE__{oid_map: oid_map}, oid) do
@@ -119,11 +119,11 @@ defmodule SnmpSimEx.ProfileLoader do
         enhanced_oid_map = case Keyword.get(opts, :behaviors) do
           nil -> 
             # Apply default intelligent behavior analysis
-            SnmpSimEx.MIB.BehaviorAnalyzer.enhance_walk_file_behaviors(oid_map)
+            SNMPSimEx.MIB.BehaviorAnalyzer.enhance_walk_file_behaviors(oid_map)
           behavior_configs ->
             # Apply custom behavior configurations
             temp_profile = %__MODULE__{oid_map: oid_map}
-            enhanced_profile = SnmpSimEx.BehaviorConfig.apply_behaviors(temp_profile, behavior_configs)
+            enhanced_profile = SNMPSimEx.BehaviorConfig.apply_behaviors(temp_profile, behavior_configs)
             enhanced_profile.oid_map
         end
         
@@ -234,7 +234,7 @@ defmodule SnmpSimEx.ProfileLoader do
 
   defp load_from_compiled_mibs(device_type, mib_files, opts) do
     # Use the new MIB compiler integration
-    case SnmpSimEx.MIB.Compiler.compile_mib_files(mib_files) do
+    case SNMPSimEx.MIB.Compiler.compile_mib_files(mib_files) do
       {:ok, compiled_mibs} ->
         # Extract object definitions from compiled MIBs
         all_objects = 
@@ -243,14 +243,14 @@ defmodule SnmpSimEx.ProfileLoader do
           |> Enum.reduce(%{}, &Map.merge/2)
         
         # Analyze behaviors automatically
-        {:ok, enhanced_objects} = SnmpSimEx.MIB.BehaviorAnalyzer.analyze_mib_behaviors(all_objects)
+        {:ok, enhanced_objects} = SNMPSimEx.MIB.BehaviorAnalyzer.analyze_mib_behaviors(all_objects)
         
         # Apply any additional behavior configurations
         final_objects = case Keyword.get(opts, :behaviors) do
           nil -> enhanced_objects
           behavior_configs ->
             temp_profile = %__MODULE__{oid_map: enhanced_objects}
-            enhanced_profile = SnmpSimEx.BehaviorConfig.apply_behaviors(temp_profile, behavior_configs)
+            enhanced_profile = SNMPSimEx.BehaviorConfig.apply_behaviors(temp_profile, behavior_configs)
             enhanced_profile.oid_map
         end
         

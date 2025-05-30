@@ -11,7 +11,7 @@ defmodule SNMPSimEx.CorrelationEngine do
   This module provides sophisticated correlation modeling for authentic network simulation.
   """
   
-  alias SnmpSimEx.TimePatterns
+  alias SNMPSimEx.TimePatterns
   
   @type correlation_type :: 
     :positive |     # Metrics increase together

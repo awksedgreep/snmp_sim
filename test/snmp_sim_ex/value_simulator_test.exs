@@ -1,7 +1,7 @@
-defmodule SnmpSimEx.ValueSimulatorTest do
+defmodule SNMPSimEx.ValueSimulatorTest do
   use ExUnit.Case, async: false
   
-  alias SnmpSimEx.ValueSimulator
+  alias SNMPSimEx.ValueSimulator
 
   describe "Traffic Counter Simulation" do
     test "generates realistic traffic counter increments" do

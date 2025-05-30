@@ -1,7 +1,7 @@
-defmodule SnmpSimEx.OIDTreeTest do
+defmodule SNMPSimEx.OIDTreeTest do
   use ExUnit.Case, async: false
   
-  alias SnmpSimEx.OIDTree
+  alias SNMPSimEx.OIDTree
   
   describe "OID Tree Creation and Basic Operations" do
     test "creates new empty tree" do

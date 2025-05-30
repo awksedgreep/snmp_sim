@@ -1,4 +1,4 @@
-defmodule SnmpSimExSnmpExIntegrationTest do
+defmodule SNMPSimExSnmpExIntegrationTest do
   @moduledoc """
   True integration tests using the snmp_ex library to validate our SNMP simulator
   against a real SNMP client implementation. This ensures protocol compliance
@@ -7,9 +7,9 @@ defmodule SnmpSimExSnmpExIntegrationTest do
 
   use ExUnit.Case, async: false
 
-  alias SnmpSimEx.ProfileLoader
+  alias SNMPSimEx.ProfileLoader
   alias SNMPSimEx.Device
-  alias SnmpSimEx.MIB.SharedProfiles
+  alias SNMPSimEx.MIB.SharedProfiles
 
   # Helper module to provide backward compatibility with old SNMP API
   defmodule SNMPCompat do

@@ -1,7 +1,7 @@
-defmodule SnmpSimEx.WalkParserTest do
+defmodule SNMPSimEx.WalkParserTest do
   use ExUnit.Case, async: false
   
-  alias SnmpSimEx.WalkParser
+  alias SNMPSimEx.WalkParser
 
   describe "Walk File Parsing" do
     test "parses named MIB format walk files (IF-MIB::ifInOctets.2)" do

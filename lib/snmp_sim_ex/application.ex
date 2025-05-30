@@ -1,4 +1,4 @@
-defmodule SnmpSimEx.Application do
+defmodule SNMPSimEx.Application do
   # See https://hexdocs.pm/elixir/Application.html
   # for more information on OTP Applications
   @moduledoc false
@@ -8,13 +8,13 @@ defmodule SnmpSimEx.Application do
   @impl true
   def start(_type, _args) do
     children = [
-      # Starts a worker by calling: SnmpSimEx.Worker.start_link(arg)
-      # {SnmpSimEx.Worker, arg}
+      # Starts a worker by calling: SNMPSimEx.Worker.start_link(arg)
+      # {SNMPSimEx.Worker, arg}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
-    opts = [strategy: :one_for_one, name: SnmpSimEx.Supervisor]
+    opts = [strategy: :one_for_one, name: SNMPSimEx.Supervisor]
     Supervisor.start_link(children, opts)
   end
 end

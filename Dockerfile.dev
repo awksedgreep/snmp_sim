@@ -1,0 +1,39 @@
+# Development Dockerfile for SNMPSimEx
+FROM hexpm/elixir:1.15.7-erlang-26.1.2-alpine-3.18.4
+
+# Install development dependencies
+RUN apk add --no-cache \
+    build-base \
+    git \
+    nodejs \
+    npm \
+    inotify-tools \
+    bash
+
+# Set development environment
+ENV MIX_ENV=dev
+
+# Install hex and rebar
+RUN mix local.hex --force && \
+    mix local.rebar --force
+
+# Create app directory
+WORKDIR /app
+
+# Copy mix files for dependency installation
+COPY mix.exs mix.lock ./
+
+# Install dependencies
+RUN mix deps.get
+
+# Copy application code
+COPY . .
+
+# Compile application
+RUN mix compile
+
+# Expose ports
+EXPOSE 30000-30100/udp 4000 9001
+
+# Default command for development
+CMD ["mix", "run", "--no-halt"]

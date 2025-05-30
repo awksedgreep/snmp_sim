@@ -1,4 +1,4 @@
-defmodule SnmpSimEx.Core.PDU do
+defmodule SNMPSimEx.Core.PDU do
   @moduledoc """
   Complete SNMP PDU encoding/decoding for v1 and v2c protocols.
   Handles GET, GETNEXT, GETBULK, and SET operations.
@@ -49,7 +49,7 @@ defmodule SnmpSimEx.Core.PDU do
   
   ## Examples
   
-      {:ok, pdu} = SnmpSimEx.Core.PDU.decode(packet_data)
+      {:ok, pdu} = SNMPSimEx.Core.PDU.decode(packet_data)
       
   """
   def decode(binary_packet) when is_binary(binary_packet) do
@@ -67,7 +67,7 @@ defmodule SnmpSimEx.Core.PDU do
   
   ## Examples
   
-      response = %SnmpSimEx.Core.PDU{
+      response = %SNMPSimEx.Core.PDU{
         version: 1,
         community: "public",
         pdu_type: @get_response,
@@ -77,7 +77,7 @@ defmodule SnmpSimEx.Core.PDU do
         variable_bindings: [{"1.3.6.1.2.1.1.1.0", "Test Device"}]
       }
       
-      {:ok, binary} = SnmpSimEx.Core.PDU.encode(response)
+      {:ok, binary} = SNMPSimEx.Core.PDU.encode(response)
       
   """
   def encode(%__MODULE__{} = pdu) do

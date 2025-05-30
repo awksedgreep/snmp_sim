@@ -1,4 +1,4 @@
-defmodule SnmpSimEx.MixProject do
+defmodule SNMPSimEx.MixProject do
   use Mix.Project
 
   def project do
@@ -7,7 +7,8 @@ defmodule SnmpSimEx.MixProject do
       version: "0.1.0",
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      releases: releases()
     ]
   end
 
@@ -15,7 +16,7 @@ defmodule SnmpSimEx.MixProject do
   def application do
     [
       extra_applications: [:logger],
-      mod: {SnmpSimEx.Application, []}
+      mod: {SNMPSimEx.Application, []}
     ]
   end
 
@@ -23,7 +24,30 @@ defmodule SnmpSimEx.MixProject do
   defp deps do
     [
       {:jason, "~> 1.4"},
+      {:yaml_elixir, "~> 2.9", optional: true},
       {:snmp_ex, "~> 0.7.0", only: :test}
+    ]
+  end
+
+  # Release configuration
+  defp releases do
+    [
+      snmp_sim_ex: [
+        version: "0.1.0",
+        applications: [snmp_sim_ex: :permanent],
+        steps: [:assemble, :tar],
+        strip_beams: Mix.env() == :prod,
+        include_executables_for: [:unix],
+        include_erts: true,
+        config_providers: [
+          {Config.Reader, {:system, "RELEASE_ROOT", "/config/runtime.exs"}}
+        ],
+        overlays: [
+          {:copy, "priv", "priv"},
+          {:copy, "rel/runtime.exs", "config/runtime.exs"},
+          {:template, "rel/vm.args.eex", "releases/<%= @release.version %>/vm.args"}
+        ]
+      ]
     ]
   end
 end

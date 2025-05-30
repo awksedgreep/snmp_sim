@@ -1,7 +1,7 @@
-defmodule SnmpSimEx.Core.ServerTest do
+defmodule SNMPSimEx.Core.ServerTest do
   use ExUnit.Case, async: false  # UDP servers need unique ports
   
-  alias SnmpSimEx.Core.{Server, PDU}
+  alias SNMPSimEx.Core.{Server, PDU}
 
   describe "UDP Server" do
     test "handles concurrent requests without blocking" do
@@ -115,6 +115,7 @@ defmodule SnmpSimEx.Core.ServerTest do
       GenServer.stop(server)
     end
 
+    @tag :slow
     test "handles invalid community strings" do
       port = find_free_port()
       

@@ -1,11 +1,11 @@
-defmodule SnmpSimExIntegrationTest do
+defmodule SNMPSimExIntegrationTest do
   use ExUnit.Case, async: false
   
-  alias SnmpSimEx.ProfileLoader
+  alias SNMPSimEx.ProfileLoader
   alias SNMPSimEx.LazyDevicePool
   alias SNMPSimEx.Device
-  alias SnmpSimEx.Core.PDU
-  alias SnmpSimEx.MIB.SharedProfiles
+  alias SNMPSimEx.Core.PDU
+  alias SNMPSimEx.MIB.SharedProfiles
 
   describe "End-to-End Device Simulation" do
     setup do
@@ -379,6 +379,7 @@ defmodule SnmpSimExIntegrationTest do
       :ok
     end
     
+    @tag :slow
     test "handles invalid community strings" do
       {:ok, profile} = ProfileLoader.load_profile(
         :cable_modem,

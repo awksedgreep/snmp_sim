@@ -159,11 +159,10 @@ defmodule SNMPSimEx.LazyDevicePool do
   end
   
   def handle_call(:get_stats, _from, state) do
-    current_stats = %{
-      state.stats |
+    current_stats = Map.merge(state.stats, %{
       active_count: map_size(state.active_devices),
       total_ports_configured: count_configured_ports(state.port_assignments)
-    }
+    })
     {:reply, current_stats, state}
   end
   

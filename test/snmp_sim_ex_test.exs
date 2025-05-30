@@ -1,8 +1,8 @@
-defmodule SnmpSimExTest do
+defmodule SNMPSimExTest do
   use ExUnit.Case, async: false  # Changed to false to avoid process conflicts
-  doctest SnmpSimEx
+  doctest SNMPSimEx
 
-  alias SnmpSimEx.ProfileLoader
+  alias SNMPSimEx.ProfileLoader
   alias SNMPSimEx.LazyDevicePool
   
   setup do
@@ -43,7 +43,7 @@ defmodule SnmpSimExTest do
       :gen_udp.close(socket)
       
       # Start device
-      {:ok, device_pid} = SnmpSimEx.start_device(profile, port: port)
+      {:ok, device_pid} = SNMPSimEx.start_device(profile, port: port)
       
       # Verify device started
       assert is_pid(device_pid)
@@ -66,7 +66,7 @@ defmodule SnmpSimExTest do
       
       port_range = start_port..(start_port + 2)
       
-      {:ok, devices} = SnmpSimEx.start_device_population(
+      {:ok, devices} = SNMPSimEx.start_device_population(
         device_configs,
         port_range: port_range,
         pre_warm: true
@@ -90,7 +90,7 @@ defmodule SnmpSimExTest do
     test "handles errors gracefully" do
       # Note: Current implementation creates mock devices instead of failing for invalid walk files
       # This is actually a limitation that should be addressed in a future version
-      result = SnmpSimEx.start_device_population([
+      result = SNMPSimEx.start_device_population([
         {:bad_device, {:walk_file, "non_existent_file.walk"}, count: 1}
       ], port_range: 9001..9001, pre_warm: true)
       
@@ -109,7 +109,7 @@ defmodule SnmpSimExTest do
   describe "Module Documentation" do
     test "has proper module documentation" do
       {:docs_v1, _annotation, _beam_language, _format, module_doc, _metadata, _docs} = 
-        Code.fetch_docs(SnmpSimEx)
+        Code.fetch_docs(SNMPSimEx)
       
       assert module_doc != :hidden
       assert module_doc != :none

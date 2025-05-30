@@ -26,6 +26,7 @@ defmodule SNMPSimEx.Performance.PerformanceTest do
   describe "Large Scale Performance Tests" do
     @tag timeout: @performance_timeout
     @tag :performance
+    @tag :slow
     test "handles 10K+ concurrent devices" do
       Logger.info("Starting 10K device performance test")
       
@@ -79,6 +80,7 @@ defmodule SNMPSimEx.Performance.PerformanceTest do
 
     @tag timeout: @performance_timeout  
     @tag :performance
+    @tag :slow
     test "sustains 100K+ requests/second throughput" do
       Logger.info("Starting high throughput test")
       
@@ -104,7 +106,8 @@ defmodule SNMPSimEx.Performance.PerformanceTest do
     end
 
     @tag timeout: @performance_timeout
-    @tag :performance  
+    @tag :performance
+    @tag :slow
     test "maintains memory usage under 1GB for 10K devices" do
       Logger.info("Starting memory efficiency test")
       
@@ -152,6 +155,7 @@ defmodule SNMPSimEx.Performance.PerformanceTest do
 
     @tag timeout: @performance_timeout
     @tag :performance
+    @tag :slow
     test "achieves sub-5ms response times for cached lookups" do
       Logger.info("Starting response time optimization test")
       
@@ -233,6 +237,7 @@ defmodule SNMPSimEx.Performance.PerformanceTest do
   describe "Scaling and Efficiency Tests" do
     @tag timeout: @performance_timeout
     @tag :performance
+    @tag :slow
     test "scales performance linearly with device count" do
       Logger.info("Starting scaling efficiency test")
       
@@ -264,6 +269,7 @@ defmodule SNMPSimEx.Performance.PerformanceTest do
     end
 
     @tag :performance
+    @tag :slow
     test "maintains stable performance over 24+ hour simulation" do
       # This would be a very long-running test for production validation
       # For the test suite, we'll simulate with a shorter duration but similar patterns

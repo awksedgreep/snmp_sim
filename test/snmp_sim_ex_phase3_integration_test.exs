@@ -1,10 +1,10 @@
-defmodule SnmpSimExPhase3IntegrationTest do
+defmodule SNMPSimExPhase3IntegrationTest do
   use ExUnit.Case, async: false
   
-  alias SnmpSimEx.ProfileLoader
+  alias SNMPSimEx.ProfileLoader
   alias SNMPSimEx.Device
-  alias SnmpSimEx.Core.PDU
-  alias SnmpSimEx.MIB.SharedProfiles
+  alias SNMPSimEx.Core.PDU
+  alias SNMPSimEx.MIB.SharedProfiles
   
   setup do
     # Start SharedProfiles for tests that need it

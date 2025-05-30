@@ -1,6 +1,6 @@
-defmodule SnmpSimEx.ValueSimulatorPhase5Test do
+defmodule SNMPSimEx.ValueSimulatorPhase5Test do
   use ExUnit.Case, async: false
-  alias SnmpSimEx.ValueSimulator
+  alias SNMPSimEx.ValueSimulator
 
   describe "counter wrapping functionality" do
     test "handles 32-bit counter wrapping correctly" do

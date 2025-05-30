@@ -1,4 +1,4 @@
-defmodule SnmpSimEx.BulkOperations do
+defmodule SNMPSimEx.BulkOperations do
   @moduledoc """
   Efficient GETBULK implementation for SNMPv2c.
   Handles non-repeaters, max-repetitions, and response size management.
@@ -14,7 +14,7 @@ defmodule SnmpSimEx.BulkOperations do
   4. Return tooBig error if response would exceed limits
   """
   
-  alias SnmpSimEx.{OIDTree, Core.PDU}
+  alias SNMPSimEx.{OIDTree, Core.PDU}
   
   @max_udp_size 1400  # Conservative UDP payload size
   
@@ -37,7 +37,7 @@ defmodule SnmpSimEx.BulkOperations do
   ## Examples
   
       varbinds = [{"1.3.6.1.2.1.2.2.1.1", nil}, {"1.3.6.1.2.1.2.2.1.2", nil}]
-      {:ok, results} = SnmpSimEx.BulkOperations.handle_bulk_request(
+      {:ok, results} = SNMPSimEx.BulkOperations.handle_bulk_request(
         tree, 0, 10, varbinds
       )
       
@@ -70,7 +70,7 @@ defmodule SnmpSimEx.BulkOperations do
   
   ## Examples
   
-      {:ok, optimized} = SnmpSimEx.BulkOperations.optimize_bulk_response(results, 1400)
+      {:ok, optimized} = SNMPSimEx.BulkOperations.optimize_bulk_response(results, 1400)
       
   """
   def optimize_bulk_response(results, max_size \\ @max_udp_size) when is_list(results) do
@@ -83,7 +83,7 @@ defmodule SnmpSimEx.BulkOperations do
   
   ## Examples
   
-      size = SnmpSimEx.BulkOperations.estimate_response_size(varbinds)
+      size = SNMPSimEx.BulkOperations.estimate_response_size(varbinds)
       
   """
   def estimate_response_size(varbinds) when is_list(varbinds) do
@@ -106,7 +106,7 @@ defmodule SnmpSimEx.BulkOperations do
   
   ## Examples
   
-      {:ok, results} = SnmpSimEx.BulkOperations.process_interface_table(
+      {:ok, results} = SNMPSimEx.BulkOperations.process_interface_table(
         tree, "1.3.6.1.2.1.2.2.1", 10
       )
       

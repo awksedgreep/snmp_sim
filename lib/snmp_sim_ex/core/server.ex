@@ -1,4 +1,4 @@
-defmodule SnmpSimEx.Core.Server do
+defmodule SNMPSimEx.Core.Server do
   @moduledoc """
   High-performance UDP server for SNMP request handling.
   Supports concurrent packet processing with minimal latency.
@@ -7,7 +7,7 @@ defmodule SnmpSimEx.Core.Server do
   use GenServer
   require Logger
 
-  alias SnmpSimEx.Core.PDU
+  alias SNMPSimEx.Core.PDU
 
   defstruct [
     :socket,
@@ -31,7 +31,7 @@ defmodule SnmpSimEx.Core.Server do
   
   ## Examples
   
-      {:ok, server} = SnmpSimEx.Core.Server.start_link(9001,
+      {:ok, server} = SNMPSimEx.Core.Server.start_link(9001,
         community: "public",
         device_handler: &MyDevice.handle_request/2
       )

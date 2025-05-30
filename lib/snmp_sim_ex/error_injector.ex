@@ -1,4 +1,4 @@
-defmodule SnmpSimEx.ErrorInjector do
+defmodule SNMPSimEx.ErrorInjector do
   @moduledoc """
   Inject realistic error conditions for comprehensive testing.
   
@@ -17,20 +17,20 @@ defmodule SnmpSimEx.ErrorInjector do
   ## Usage
   
       # Inject timeout condition
-      SnmpSimEx.ErrorInjector.inject_timeout(device_pid, probability: 0.1, duration: 5000)
+      SNMPSimEx.ErrorInjector.inject_timeout(device_pid, probability: 0.1, duration: 5000)
       
       # Simulate packet loss
-      SnmpSimEx.ErrorInjector.inject_packet_loss(device_pid, loss_rate: 0.05)
+      SNMPSimEx.ErrorInjector.inject_packet_loss(device_pid, loss_rate: 0.05)
       
       # Generate SNMP errors
-      SnmpSimEx.ErrorInjector.inject_snmp_error(device_pid, :noSuchName, ["1.3.6.1.2.1.2.2.1.99"])
+      SNMPSimEx.ErrorInjector.inject_snmp_error(device_pid, :noSuchName, ["1.3.6.1.2.1.2.2.1.99"])
       
   """
   
   use GenServer
   require Logger
   
-  alias SnmpSimEx.{Device, LazyDevicePool}
+  alias SNMPSimEx.{Device, LazyDevicePool}
   
   @type error_type :: :timeout | :packet_loss | :snmp_error | :malformed | :device_failure
   @type error_config :: %{
@@ -244,7 +244,7 @@ defmodule SnmpSimEx.ErrorInjector do
     config = %{
       type: :device_failure,
       failure_type: failure_type,
-      duration_ms: Keyword.get(opts, :duration_ms, 30000),
+      duration_ms: Keyword.get(opts, :duration_ms, 3000),
       recovery_behavior: Keyword.get(opts, :recovery_behavior, :normal),
       failure_probability: Keyword.get(opts, :failure_probability, 1.0)
     }

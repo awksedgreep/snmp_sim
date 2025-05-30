@@ -1,0 +1,93 @@
+version: '3.8'
+
+services:
+  snmp-simulator:
+    build: .
+    container_name: snmp_sim_ex
+    hostname: snmp-simulator
+    ports:
+      # SNMP device ports (UDP)
+      - "30000-39999:30000-39999/udp"
+      # Management API port
+      - "4000:4000"
+    environment:
+      - MIX_ENV=prod
+      - SNMP_SIM_EX_HOST=0.0.0.0
+      - SNMP_SIM_EX_PORT_RANGE_START=30000
+      - SNMP_SIM_EX_PORT_RANGE_END=39999
+      - SNMP_SIM_EX_MAX_DEVICES=10000
+      - SNMP_SIM_EX_MAX_MEMORY_MB=1024
+      - SNMP_SIM_EX_LOG_LEVEL=info
+      # Configuration file support (alternative to env vars)
+      - SNMP_SIM_EX_CONFIG_FILE=/app/config/devices.yaml
+    env_file:
+      - .env
+    volumes:
+      # Persistent data for profiles and logs
+      - snmp_data:/app/data
+      # Configuration files
+      - ./config:/app/config:ro
+      # Custom profiles (optional)
+      - ./priv/walks:/app/priv/walks:ro
+      - ./priv/snmp/mibs:/app/priv/snmp/mibs:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["/app/bin/snmp_sim_ex", "eval", "SNMPSimEx.health_check()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 1.5G
+          cpus: '2.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  # Optional: Monitoring and metrics
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: snmp_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    profiles: ["monitoring"]
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: snmp_grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    restart: unless-stopped
+    profiles: ["monitoring"]
+
+volumes:
+  snmp_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  default:
+    name: snmp_network
+    driver: bridge

@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  snmp-simulator-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: snmp_sim_ex_dev
+    hostname: snmp-simulator-dev
+    ports:
+      - "30000-30100:30000-30100/udp"  # Smaller range for development
+      - "4000:4000"
+      - "9001:9001"  # IEx remote console
+    environment:
+      - MIX_ENV=dev
+      - SNMP_SIM_EX_HOST=0.0.0.0
+      - SNMP_SIM_EX_PORT_RANGE_START=30000
+      - SNMP_SIM_EX_PORT_RANGE_END=30100
+      - SNMP_SIM_EX_MAX_DEVICES=100
+      - SNMP_SIM_EX_MAX_MEMORY_MB=256
+      - SNMP_SIM_EX_LOG_LEVEL=debug
+    volumes:
+      # Mount source code for live development
+      - .:/app:cached
+      - snmp_dev_data:/app/data
+      - snmp_deps:/app/deps
+      - snmp_build:/app/_build
+    working_dir: /app
+    command: ["mix", "phx.server"]
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+
+volumes:
+  snmp_dev_data:
+    driver: local
+  snmp_deps:
+    driver: local  
+  snmp_build:
+    driver: local

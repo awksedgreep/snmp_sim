@@ -1,4 +1,4 @@
-defmodule SnmpSimEx.WalkParser do
+defmodule SNMPSimEx.WalkParser do
   @moduledoc """
   Parse both named MIB and numeric OID walk file formats.
   Handle different snmpwalk output variations automatically.
@@ -13,7 +13,7 @@ defmodule SnmpSimEx.WalkParser do
   
   ## Examples
   
-      {:ok, oid_map} = SnmpSimEx.WalkParser.parse_walk_file("priv/walks/cable_modem.walk")
+      {:ok, oid_map} = SNMPSimEx.WalkParser.parse_walk_file("priv/walks/cable_modem.walk")
       
   """
   def parse_walk_file(file_path) do
@@ -39,11 +39,11 @@ defmodule SnmpSimEx.WalkParser do
   ## Examples
   
       # Named MIB format
-      result = SnmpSimEx.WalkParser.parse_walk_line("IF-MIB::ifInOctets.2 = Counter32: 1234567890")
+      result = SNMPSimEx.WalkParser.parse_walk_line("IF-MIB::ifInOctets.2 = Counter32: 1234567890")
       # => {"1.3.6.1.2.1.2.2.1.10.2", %{type: "Counter32", value: 1234567890, mib_name: "IF-MIB::ifInOctets.2"}}
       
       # Numeric OID format  
-      result = SnmpSimEx.WalkParser.parse_walk_line(".1.3.6.1.2.1.2.2.1.10.2 = Counter32: 1234567890")
+      result = SNMPSimEx.WalkParser.parse_walk_line(".1.3.6.1.2.1.2.2.1.10.2 = Counter32: 1234567890")
       # => {"1.3.6.1.2.1.2.2.1.10.2", %{type: "Counter32", value: 1234567890}}
       
   """

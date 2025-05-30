@@ -1,4 +1,4 @@
-defmodule SnmpSimEx.MIB.Compiler do
+defmodule SNMPSimEx.MIB.Compiler do
   @moduledoc """
   Leverage Erlang's battle-tested :snmpc module for MIB compilation.
   Extract OID definitions, data types, and constraints from vendor MIBs.
@@ -11,7 +11,7 @@ defmodule SnmpSimEx.MIB.Compiler do
   
   ## Examples
   
-      {:ok, compiled_mibs} = SnmpSimEx.MIB.Compiler.compile_mib_directory("priv/mibs")
+      {:ok, compiled_mibs} = SNMPSimEx.MIB.Compiler.compile_mib_directory("priv/mibs")
       
   """
   def compile_mib_directory(mib_dir, opts \\ []) do
@@ -37,7 +37,7 @@ defmodule SnmpSimEx.MIB.Compiler do
   
   ## Examples
   
-      {:ok, mibs} = SnmpSimEx.MIB.Compiler.compile_mib_files([
+      {:ok, mibs} = SNMPSimEx.MIB.Compiler.compile_mib_files([
         "priv/mibs/IF-MIB.txt",
         "priv/mibs/DOCS-CABLE-DEVICE-MIB.txt"
       ])
@@ -77,7 +77,7 @@ defmodule SnmpSimEx.MIB.Compiler do
   
   ## Examples
   
-      {:ok, mib_info} = SnmpSimEx.MIB.Compiler.load_compiled_mib("IF-MIB.bin")
+      {:ok, mib_info} = SNMPSimEx.MIB.Compiler.load_compiled_mib("IF-MIB.bin")
       
   """
   def load_compiled_mib(bin_file) do

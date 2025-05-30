@@ -1,0 +1,129 @@
+## VM args for SNMPSimEx release
+## This file contains the command line arguments for the Erlang VM
+
+## Name of the node
+-name <%= @release.name %>@127.0.0.1
+
+## Cookie for distributed Erlang
+-setcookie snmp_sim_ex_cookie
+
+## Heartbeat management; auto-restarts VM if it dies or becomes unresponsive
+## (Disabled by default..use with caution!)
+##-heart
+
+## Enable kernel poll and a few async threads
++K true
++A 32
+
+## Increase number of concurrent ports/sockets
+-env ERL_MAX_PORTS 65536
+
+## Tweak GC to run more often
+-env ERL_FULLSWEEP_AFTER 10
+
+## Memory configuration
+## Set initial and maximum heap size (in words)
++hms 2048
++hmbs 2048
+
+## Set maximum number of processes
++P 2097152
+
+## Set maximum number of ETS tables
++e 65536
+
+## Set maximum number of atoms
++t 2097152
+
+## Scheduler configuration for high concurrency
+## Use all available CPU cores
++S <%= System.schedulers_online() %>
+
+## Memory allocator configuration for high concurrency workloads
++MBas aobf
++MHas aobf
++MMmcs 30
+
+## Binary memory allocator
++MBsmsbc 4096
++MHsmsbc 4096
+
+## Reduce memory fragmentation
++MMsbc 32
++MMmbc 32
+
+## Enable SMP and disable lock checking for production
++smp
+-smp
+
+## Disable ERTS internal statistics for better performance in production
+<%= if @release.mode == :prod do %>
++scl false
+<% end %>
+
+## Enable or disable distribution
+## Uncomment to enable distributed Erlang (clustering)
+## -proto_dist inet_tcp
+
+## SSL distribution (uncomment for secure clustering)
+## -proto_dist inet_tls
+
+## Configure SNMP agent if enabled
+## -snmp_agent
+
+## Network configuration
+## Set maximum number of network connections
+-env INET_DIST_LISTEN_MIN 9000
+-env INET_DIST_LISTEN_MAX 9999
+
+## Improve network buffer sizes for high throughput
++zdbbl 8192
+
+## Enable dirty schedulers for CPU-intensive tasks
++SDio <%= System.schedulers_online() %>
++SDcpu <%= System.schedulers_online() %>
+
+## Kernel options for better file handle management
++fnu
+
+## Enable async thread pool for file I/O
++A 64
+
+## Better allocation strategy for large binaries
++MBsbct 512
+
+## Performance tuning for high-concurrency UDP operations
++swt very_low
++swtddt very_low
+
+## Environment variables for runtime configuration
+-env SNMP_SIM_EX_VM_ARGS true
+
+## Custom error logger
+-boot_var SYSTEM_LIB_DIR /opt/lib
+
+## Set crash dump location
+-env ERL_CRASH_DUMP /app/data/logs/erl_crash.dump
+
+## Set SASL error log location
+-sasl errlog_type error
+-sasl error_logger_mf_dir "/app/data/logs"
+-sasl error_logger_mf_maxbytes 10485760
+-sasl error_logger_mf_maxfiles 5
+
+## Application-specific environment variables
+<%= if @release.mode == :prod do %>
+## Production-specific settings
+-env SNMP_SIM_EX_MODE production
+-env ERL_FULLSWEEP_AFTER 20
+<% else %>
+## Development-specific settings  
+-env SNMP_SIM_EX_MODE development
+-env ERL_FULLSWEEP_AFTER 5
+<% end %>
+
+## Security settings
+## Disable unnecessary features for better security in production
+<%= if @release.mode == :prod do %>
+-eval "application:set_env(kernel, inet_dist_use_interface, {127,0,0,1})."
+<% end %>

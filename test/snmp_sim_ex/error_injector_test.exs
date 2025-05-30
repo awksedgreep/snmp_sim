@@ -1,9 +1,9 @@
-defmodule SnmpSimEx.ErrorInjectorTest do
+defmodule SNMPSimEx.ErrorInjectorTest do
   use ExUnit.Case, async: false
   
-  alias SnmpSimEx.{ErrorInjector}
+  alias SNMPSimEx.{ErrorInjector}
   alias SNMPSimEx.Device
-  alias SnmpSimEx.MIB.SharedProfiles
+  alias SNMPSimEx.MIB.SharedProfiles
   alias SNMPSimEx.{LazyDevicePool}
   
   setup do
@@ -242,6 +242,7 @@ defmodule SnmpSimEx.ErrorInjectorTest do
   end
   
   describe "device failure simulation" do
+    @tag :slow
     test "simulates different failure types", %{device_pid: device_pid, device_config: config} do
       {:ok, injector_pid} = ErrorInjector.start_link(device_pid, config.port)
       

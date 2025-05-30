@@ -1,7 +1,7 @@
-defmodule SnmpSimEx.BehaviorConfigTest do
+defmodule SNMPSimEx.BehaviorConfigTest do
   use ExUnit.Case, async: false
   
-  alias SnmpSimEx.{BehaviorConfig, ProfileLoader}
+  alias SNMPSimEx.{BehaviorConfig, ProfileLoader}
 
   describe "Behavior Presets" do
     test "cable modem realistic preset contains appropriate behaviors" do

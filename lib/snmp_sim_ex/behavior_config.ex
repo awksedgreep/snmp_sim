@@ -1,4 +1,4 @@
-defmodule SnmpSimEx.BehaviorConfig do
+defmodule SNMPSimEx.BehaviorConfig do
   @moduledoc """
   Configuration system for enhancing walk files with realistic behaviors.
   Provides easy-to-use behavior presets and customization options.
@@ -10,7 +10,7 @@ defmodule SnmpSimEx.BehaviorConfig do
   ## Examples
   
       # Apply basic realistic behaviors
-      enhanced_profile = SnmpSimEx.BehaviorConfig.apply_behaviors(profile, [
+      enhanced_profile = SNMPSimEx.BehaviorConfig.apply_behaviors(profile, [
         :realistic_counters,
         :daily_patterns,
         {:custom_utilization, peak_hours: {9, 17}}
@@ -32,10 +32,10 @@ defmodule SnmpSimEx.BehaviorConfig do
   ## Examples
   
       # Cable modem realistic simulation
-      behaviors = SnmpSimEx.BehaviorConfig.get_preset(:cable_modem_realistic)
+      behaviors = SNMPSimEx.BehaviorConfig.get_preset(:cable_modem_realistic)
       
       # High traffic simulation  
-      behaviors = SnmpSimEx.BehaviorConfig.get_preset(:high_traffic_simulation)
+      behaviors = SNMPSimEx.BehaviorConfig.get_preset(:high_traffic_simulation)
       
   """
   def get_preset(preset_name) do
@@ -74,7 +74,7 @@ defmodule SnmpSimEx.BehaviorConfig do
   
   ## Examples
   
-      config = SnmpSimEx.BehaviorConfig.create_custom([
+      config = SNMPSimEx.BehaviorConfig.create_custom([
         {:traffic_counters, %{
           rate_multiplier: 1.5,
           daily_pattern: true,

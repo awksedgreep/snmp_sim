@@ -94,8 +94,8 @@ mix test test/snmp_sim_ex_phase2_integration_test.exs test/snmp_sim_ex_phase3_in
 - Fixed hex value syntax issues
 
 ### ✅ Module Naming Issues Fixed
-- Fixed inconsistent module aliases (SnmpSimEx vs SNMPSimEx)
-- Updated Device module references from `SnmpSimEx.Device` to `SNMPSimEx.Device`
+- Fixed inconsistent module aliases (SNMPSimEx vs SNMPSimEx)
+- Updated Device module references from `SNMPSimEx.Device` to `SNMPSimEx.Device`
 - Fixed aliases in all integration tests
 
 ### ✅ Test Infrastructure Fixed
@@ -179,9 +179,9 @@ mix test test/snmp_sim_ex_phase2_integration_test.exs test/snmp_sim_ex_phase3_in
 ## Module Alias Pattern
 All integration tests use:
 ```elixir
-alias SnmpSimEx.ProfileLoader
-alias SNMPSimEx.Device  # Note: SNMPSimEx, not SnmpSimEx
-alias SnmpSimEx.Core.PDU
+alias SNMPSimEx.ProfileLoader
+alias SNMPSimEx.Device  # Note: SNMPSimEx, not SNMPSimEx
+alias SNMPSimEx.Core.PDU
 ```
 
 ## Test Execution Strategy
@@ -196,7 +196,7 @@ alias SnmpSimEx.Core.PDU
 
 - SNMP application must be started for integration tests
 - Device API expects device_config map format
-- Module naming must be consistent (SNMPSimEx.Device vs SnmpSimEx.Device)
+- Module naming must be consistent (SNMPSimEx.Device vs SNMPSimEx.Device)
 - Test isolation requires proper cleanup of GenServer processes
 - Some MIB compilation warnings are expected and don't affect functionality
 

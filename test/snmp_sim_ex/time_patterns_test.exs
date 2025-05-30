@@ -1,7 +1,7 @@
-defmodule SnmpSimEx.TimePatternsTest do
+defmodule SNMPSimEx.TimePatternsTest do
   use ExUnit.Case, async: false
   
-  alias SnmpSimEx.TimePatterns
+  alias SNMPSimEx.TimePatterns
 
   describe "Daily Utilization Patterns" do
     test "returns low utilization during early morning hours" do

@@ -1,7 +1,7 @@
-defmodule SnmpSimEx.Core.PDUTest do
+defmodule SNMPSimEx.Core.PDUTest do
   use ExUnit.Case, async: false
   
-  alias SnmpSimEx.Core.PDU
+  alias SNMPSimEx.Core.PDU
 
   describe "SNMP PDU Processing" do
     test "decodes SNMPv1 GET request with multiple OIDs" do

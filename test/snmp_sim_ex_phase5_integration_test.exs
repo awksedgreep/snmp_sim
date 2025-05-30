@@ -1,7 +1,7 @@
-defmodule SnmpSimEx.Phase5IntegrationTest do
+defmodule SNMPSimEx.Phase5IntegrationTest do
   use ExUnit.Case, async: false
   
-  alias SnmpSimEx.{ValueSimulator, TimePatterns, CorrelationEngine}
+  alias SNMPSimEx.{ValueSimulator, TimePatterns, CorrelationEngine}
 
   @moduletag :integration
 

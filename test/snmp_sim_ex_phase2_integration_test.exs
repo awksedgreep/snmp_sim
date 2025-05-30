@@ -1,11 +1,11 @@
-defmodule SnmpSimExPhase2IntegrationTest do
+defmodule SNMPSimExPhase2IntegrationTest do
   use ExUnit.Case, async: false
   
-  alias SnmpSimEx.ProfileLoader
+  alias SNMPSimEx.ProfileLoader
   alias SNMPSimEx.Device
-  alias SnmpSimEx.BehaviorConfig
-  alias SnmpSimEx.Core.PDU
-  alias SnmpSimEx.MIB.SharedProfiles
+  alias SNMPSimEx.BehaviorConfig
+  alias SNMPSimEx.Core.PDU
+  alias SNMPSimEx.MIB.SharedProfiles
 
   setup do
     # Start SharedProfiles for tests that need it
@@ -78,6 +78,7 @@ defmodule SnmpSimExPhase2IntegrationTest do
       assert Map.has_key?(value_info, :behavior)
     end
 
+    @tag :slow
     test "device generates realistic values with enhanced behaviors" do
       {:ok, profile} = ProfileLoader.load_profile(
         :cable_modem,

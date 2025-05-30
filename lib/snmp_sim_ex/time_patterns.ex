@@ -1,4 +1,4 @@
-defmodule SnmpSimEx.TimePatterns do
+defmodule SNMPSimEx.TimePatterns do
   @moduledoc """
   Realistic time-based variations for network metrics.
   Implements daily, weekly, and seasonal patterns for authentic simulation.
@@ -17,11 +17,11 @@ defmodule SnmpSimEx.TimePatterns do
   ## Examples
   
       # 2 PM business hours
-      factor = SnmpSimEx.TimePatterns.get_daily_utilization_pattern(~U[2024-01-15 14:00:00Z])
+      factor = SNMPSimEx.TimePatterns.get_daily_utilization_pattern(~U[2024-01-15 14:00:00Z])
       # Returns: ~1.1
       
       # 7 PM evening peak
-      factor = SnmpSimEx.TimePatterns.get_daily_utilization_pattern(~U[2024-01-15 19:00:00Z])
+      factor = SNMPSimEx.TimePatterns.get_daily_utilization_pattern(~U[2024-01-15 19:00:00Z])
       # Returns: ~1.5
       
   """
@@ -75,11 +75,11 @@ defmodule SnmpSimEx.TimePatterns do
   ## Examples
   
       # Tuesday
-      factor = SnmpSimEx.TimePatterns.get_weekly_pattern(~U[2024-01-16 14:00:00Z])
+      factor = SNMPSimEx.TimePatterns.get_weekly_pattern(~U[2024-01-16 14:00:00Z])
       # Returns: 1.0
       
       # Saturday
-      factor = SnmpSimEx.TimePatterns.get_weekly_pattern(~U[2024-01-20 14:00:00Z])
+      factor = SNMPSimEx.TimePatterns.get_weekly_pattern(~U[2024-01-20 14:00:00Z])
       # Returns: 0.7
       
   """
@@ -127,11 +127,11 @@ defmodule SnmpSimEx.TimePatterns do
   ## Examples
   
       # January (winter)
-      offset = SnmpSimEx.TimePatterns.get_seasonal_temperature_pattern(~U[2024-01-15 14:00:00Z])
+      offset = SNMPSimEx.TimePatterns.get_seasonal_temperature_pattern(~U[2024-01-15 14:00:00Z])
       # Returns: -8.5
       
       # July (summer)  
-      offset = SnmpSimEx.TimePatterns.get_seasonal_temperature_pattern(~U[2024-07-15 14:00:00Z])
+      offset = SNMPSimEx.TimePatterns.get_seasonal_temperature_pattern(~U[2024-07-15 14:00:00Z])
       # Returns: 12.3
       
   """
@@ -163,11 +163,11 @@ defmodule SnmpSimEx.TimePatterns do
   ## Examples
   
       # 6 AM (coldest)
-      offset = SnmpSimEx.TimePatterns.get_daily_temperature_pattern(~U[2024-01-15 06:00:00Z])
+      offset = SNMPSimEx.TimePatterns.get_daily_temperature_pattern(~U[2024-01-15 06:00:00Z])
       # Returns: -3.2
       
       # 3 PM (warmest)
-      offset = SnmpSimEx.TimePatterns.get_daily_temperature_pattern(~U[2024-01-15 15:00:00Z])
+      offset = SNMPSimEx.TimePatterns.get_daily_temperature_pattern(~U[2024-01-15 15:00:00Z])
       # Returns: 4.1
       
   """
@@ -198,7 +198,7 @@ defmodule SnmpSimEx.TimePatterns do
   
   ## Examples
   
-      factor = SnmpSimEx.TimePatterns.apply_weather_variation(~U[2024-01-15 14:00:00Z])
+      factor = SNMPSimEx.TimePatterns.apply_weather_variation(~U[2024-01-15 14:00:00Z])
       # Returns: 0.85 (some weather impact)
       
   """
@@ -256,10 +256,10 @@ defmodule SnmpSimEx.TimePatterns do
   ## Examples
   
       # Apply to equipment failure rates (higher in summer heat)
-      factor = SnmpSimEx.TimePatterns.apply_seasonal_variation(datetime, :equipment_stress)
+      factor = SNMPSimEx.TimePatterns.apply_seasonal_variation(datetime, :equipment_stress)
       
       # Apply to power consumption (higher in winter/summer for heating/cooling)
-      factor = SnmpSimEx.TimePatterns.apply_seasonal_variation(datetime, :power_consumption)
+      factor = SNMPSimEx.TimePatterns.apply_seasonal_variation(datetime, :power_consumption)
       
   """
   def apply_seasonal_variation(datetime, pattern_type \\ :generic) do
@@ -300,7 +300,7 @@ defmodule SnmpSimEx.TimePatterns do
   
   ## Examples
   
-      rate = SnmpSimEx.TimePatterns.get_interface_traffic_rate(:ethernet_gigabit, datetime)
+      rate = SNMPSimEx.TimePatterns.get_interface_traffic_rate(:ethernet_gigabit, datetime)
       # Returns: {min_rate, max_rate, current_factor}
       
   """
