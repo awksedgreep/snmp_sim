@@ -11,7 +11,7 @@ defmodule SNMPSimEx.MultiDeviceStartup do
   """
   
   require Logger
-  alias SNMPSimEx.{LazyDevicePool, DeviceDistribution, SharedProfiles}
+  alias SNMPSimEx.{LazyDevicePool, DeviceDistribution}
   
   @type device_spec :: {device_type :: atom(), count :: non_neg_integer()}
   @type startup_opts :: [
@@ -222,14 +222,13 @@ defmodule SNMPSimEx.MultiDeviceStartup do
     # Execute tasks in parallel batches
     startup_tasks
     |> Enum.chunk_every(parallel_workers)
-    |> Enum.reduce({:ok, []}, fn batch, acc ->
+    |> Enum.reduce({:ok, %{}}, fn batch, acc ->
       case acc do
         {:error, _} = error -> error
         {:ok, results} ->
-          case execute_batch(batch, timeout_ms) do
-            {:ok, batch_results} -> {:ok, results ++ batch_results}
-            {:error, reason} -> {:error, reason}
-          end
+          # execute_batch always returns {:ok, batch_results}
+          {:ok, batch_results} = execute_batch(batch, timeout_ms)
+          {:ok, Map.merge(results, batch_results)}
       end
     end)
   end
@@ -253,9 +252,9 @@ defmodule SNMPSimEx.MultiDeviceStartup do
   defp start_single_device(%{port: port} = task) do
     case LazyDevicePool.get_or_create_device(port) do
       {:ok, device_pid} ->
-        {:ok, %{task | device_pid: device_pid, status: :started}}
+        {:ok, task |> Map.put(:device_pid, device_pid) |> Map.put(:status, :started)}
       {:error, reason} ->
-        {:error, %{task | status: :failed, reason: reason}}
+        {:error, task |> Map.put(:status, :failed) |> Map.put(:reason, reason)}
     end
   end
   
@@ -268,7 +267,11 @@ defmodule SNMPSimEx.MultiDeviceStartup do
       Logger.warning("#{length(failures)} devices failed to start: #{inspect(failed_tasks)}")
     end
     
-    success_results = Enum.map(successes, fn {:ok, result} -> result end)
+    success_results = 
+      successes
+      |> Enum.map(fn {:ok, result} -> result end)
+      |> Enum.into(%{}, fn result -> {result.port, result} end)
+    
     {:ok, success_results}
   end
   

@@ -268,10 +268,20 @@ defmodule SNMPSimEx.TestHelpers.PerformanceHelper do
     error_threshold = Map.get(options, :error_threshold, 5.0)  # 5% error rate
     latency_threshold = Map.get(options, :latency_threshold, 1000.0)  # 1 second
     
-    current_rps = initial_rps
-    breaking_point = nil
-    
-    while current_rps <= max_rps and is_nil(breaking_point) do
+    find_breaking_point_loop(devices, initial_rps, max_rps, increment, test_duration_ms, error_threshold, latency_threshold)
+  end
+  
+  # Private helper functions
+  
+  defp find_breaking_point_loop(devices, current_rps, max_rps, increment, test_duration_ms, error_threshold, latency_threshold) do
+    if current_rps > max_rps do
+      %{
+        rps: max_rps,
+        error_rate: 0.0,
+        avg_latency_ms: 0.0,
+        reason: :max_rps_reached
+      }
+    else
       IO.puts "Testing breaking point at #{current_rps} RPS..."
       
       results = run_sustained_load_test(
@@ -290,7 +300,7 @@ defmodule SNMPSimEx.TestHelpers.PerformanceHelper do
       
       # Check if we've hit breaking point
       if error_rate > error_threshold or avg_latency > latency_threshold do
-        breaking_point = %{
+        %{
           rps: current_rps,
           error_rate: error_rate,
           avg_latency_ms: avg_latency,
@@ -301,19 +311,10 @@ defmodule SNMPSimEx.TestHelpers.PerformanceHelper do
           end
         }
       else
-        current_rps = current_rps + increment
+        find_breaking_point_loop(devices, current_rps + increment, max_rps, increment, test_duration_ms, error_threshold, latency_threshold)
       end
     end
-    
-    breaking_point || %{
-      rps: max_rps,
-      error_rate: 0.0,
-      avg_latency_ms: 0.0,
-      reason: :max_rps_reached
-    }
   end
-  
-  # Private helper functions
   
   defp execute_sustained_load(devices, target_rps, duration_ms) do
     request_interval_ms = 1000 / target_rps
@@ -411,7 +412,7 @@ defmodule SNMPSimEx.TestHelpers.PerformanceHelper do
   end
   
   defp get_current_memory_usage do
-    {:ok, memory_info} = :erlang.system_info(:memory)
+    memory_info = :erlang.memory()
     memory_info[:total]
   end
   

@@ -26,7 +26,7 @@ defmodule SNMPSimEx.Config do
       {:ok, devices} = SNMPSimEx.Config.start_from_config(config)
   """
   
-  alias SNMPSimEx.{Device, LazyDevicePool, Performance.ResourceManager}
+  alias SNMPSimEx.{Device, Performance.ResourceManager}
   
   require Logger
   
@@ -213,7 +213,7 @@ defmodule SNMPSimEx.Config do
         File.write(file_path, json_content)
       :yaml ->
         if Code.ensure_loaded?(YamlElixir) do
-          case YamlElixir.write_to_file(file_path, config) do
+          case Jason.encode!(config) |> then(&File.write(file_path, &1)) do
             :ok -> :ok
             error -> error
           end
@@ -434,7 +434,7 @@ defmodule SNMPSimEx.Config do
   defp parse_device_groups_from_env do
     # Parse device groups from environment variables
     # This is a simplified implementation - could be extended for more complex scenarios
-    device_count = get_env_int("SNMP_SIM_EX_DEVICE_COUNT", 10)
+    device_count = get_env_int("SNMP_SIM_EX_DEVICE_COUNT", 0)
     port_start = get_env_int("SNMP_SIM_EX_PORT_RANGE_START", 30000)
     walk_file = System.get_env("SNMP_SIM_EX_WALK_FILE", "priv/walks/cable_modem.walk")
     community = System.get_env("SNMP_SIM_EX_COMMUNITY", "public")

@@ -246,7 +246,7 @@ defmodule SNMPSimEx.MIB.BehaviorAnalyzer do
     {behavior, behavior_config}
   end
 
-  defp determine_final_behavior(name_pattern, type_pattern, oid_pattern, description_patterns) do
+  defp determine_final_behavior(name_pattern, type_pattern, _oid_pattern, description_patterns) do
     # Name patterns have highest priority
     case name_pattern do
       :traffic_counter -> :traffic_counter
@@ -376,12 +376,12 @@ defmodule SNMPSimEx.MIB.BehaviorAnalyzer do
     |> Enum.flat_map(&create_interface_correlations/1)
   end
 
-  defp find_error_correlations(behaviors) do
+  defp find_error_correlations(_behaviors) do
     # Error counters should correlate with high utilization
     []
   end
 
-  defp find_quality_correlations(behaviors) do
+  defp find_quality_correlations(_behaviors) do
     # Signal quality metrics should be inversely correlated with utilization
     []
   end
@@ -425,54 +425,6 @@ defmodule SNMPSimEx.MIB.BehaviorAnalyzer do
     end
   end
 
-  defp determine_traffic_rate_range(analysis_result) do
-    # Base rate on interface type if available
-    case analysis_result.name do
-      name when name in ["ifInOctets", "ifOutOctets"] ->
-        # Ethernet interface: 1KB/s to 125MB/s (gigabit)
-        {1_000, 125_000_000}
-      _ ->
-        # Generic traffic counter
-        {100, 10_000_000}
-    end
-  end
-
-  defp determine_packet_rate_range(analysis_result) do
-    # Packet rates are typically much higher than byte rates
-    case analysis_result.name do
-      name when name in ["ifInUcastPkts", "ifOutUcastPkts"] ->
-        {10, 1_000_000}
-      _ ->
-        {1, 100_000}
-    end
-  end
-
-  defp determine_power_range(analysis_result) do
-    name = String.downcase(analysis_result.name || "")
-    
-    cond do
-      String.contains?(name, "downstream") -> {-15, 15}  # DOCSIS downstream power
-      String.contains?(name, "upstream") -> {35, 65}     # DOCSIS upstream power
-      true -> {-20, 20}  # Generic power range
-    end
-  end
-
-  defp find_related_octets_counter(analysis_result) do
-    # For packet counters, find the corresponding octets counter
-    case analysis_result.oid do
-      oid when is_binary(oid) ->
-        cond do
-          String.contains?(oid, "1.3.6.1.2.1.2.2.1.11") ->
-            # ifInUcastPkts -> ifInOctets
-            String.replace(oid, "1.3.6.1.2.1.2.2.1.11", "1.3.6.1.2.1.2.2.1.10")
-          String.contains?(oid, "1.3.6.1.2.1.2.2.1.17") ->
-            # ifOutUcastPkts -> ifOutOctets  
-            String.replace(oid, "1.3.6.1.2.1.2.2.1.17", "1.3.6.1.2.1.2.2.1.16")
-          true -> nil
-        end
-      _ -> nil
-    end
-  end
 
   defp group_by_interface(interface_objects) do
     # Group interface objects by interface index
@@ -487,7 +439,7 @@ defmodule SNMPSimEx.MIB.BehaviorAnalyzer do
     |> Map.values()
   end
 
-  defp create_interface_correlations(interface_group) do
+  defp create_interface_correlations(_interface_group) do
     # Create correlations between objects on the same interface
     # For now, return empty list - this would be expanded in production
     []

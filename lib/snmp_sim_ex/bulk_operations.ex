@@ -14,7 +14,7 @@ defmodule SNMPSimEx.BulkOperations do
   4. Return tooBig error if response would exceed limits
   """
   
-  alias SNMPSimEx.{OIDTree, Core.PDU}
+  alias SNMPSimEx.OIDTree
   
   @max_udp_size 1400  # Conservative UDP payload size
   

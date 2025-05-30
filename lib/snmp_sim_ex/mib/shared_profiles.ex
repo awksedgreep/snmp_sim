@@ -419,7 +419,7 @@ defmodule SNMPSimEx.MIB.SharedProfiles do
     :ets.new(table_name, @table_opts)
   end
 
-  defp extract_objects_from_compiled_mib(compiled_mib) do
+  defp extract_objects_from_compiled_mib(_compiled_mib) do
     # This would extract objects from the compiled MIB
     # For now, return empty map - would be implemented based on actual MIB structure
     %{}

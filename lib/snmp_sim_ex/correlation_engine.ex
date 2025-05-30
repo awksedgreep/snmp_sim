@@ -292,32 +292,44 @@ defmodule SNMPSimEx.CorrelationEngine do
   
   defp calculate_correlated_value(primary_value, current_secondary, correlation_type, strength, 
                                   primary_oid, secondary_oid, current_time) do
+    # Normalize primary value to handle both decimal (0.0-1.0) and percentage (0-100) formats
+    normalized_primary = if primary_value <= 1.0, do: primary_value * 100, else: primary_value
+    
     # Base correlation calculation
     base_correlation = case correlation_type do
       :positive ->
         # Positive correlation: both increase together
-        change_factor = (primary_value - 50) / 50  # Normalize around 50
+        change_factor = (normalized_primary - 50) / 50  # Normalize around 50
         current_secondary * (1 + change_factor * strength * 0.1)
         
       :negative ->
         # Negative correlation: one increases as other decreases
-        change_factor = (primary_value - 50) / 50
+        change_factor = (normalized_primary - 50) / 50
         current_secondary * (1 - change_factor * strength * 0.1)
         
       :threshold ->
         # Threshold correlation: step change at specific value
         threshold = get_threshold_value(primary_oid, secondary_oid)
-        if primary_value > threshold do
+        threshold_normalized = if threshold <= 1.0, do: threshold * 100, else: threshold
+        if normalized_primary > threshold_normalized do
           current_secondary * (1 + strength)
         else
           current_secondary * (1 - strength * 0.5)
         end
         
       :exponential ->
-        # Exponential correlation: exponential relationship
-        normalized_primary = primary_value / 100.0
-        base_value = get_base_value(secondary_oid)
-        base_value * :math.pow(normalized_primary, strength * 2)
+        # Exponential correlation: exponential relationship for interface_utilization -> error_rate
+        if primary_oid == :interface_utilization and secondary_oid == :error_rate do
+          # Special case: utilization directly affects error rate exponentially
+          utilization_factor = normalized_primary / 100.0
+          # Error rate increases exponentially with utilization
+          current_secondary * (1 + :math.pow(utilization_factor, 2) * strength * 5)
+        else
+          # Standard exponential correlation
+          utilization_factor = normalized_primary / 100.0
+          base_value = get_base_value(secondary_oid)
+          base_value * :math.pow(utilization_factor, strength * 2)
+        end
         
       :logarithmic ->
         # Logarithmic correlation: logarithmic relationship

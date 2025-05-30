@@ -8,7 +8,7 @@ defmodule SNMPSimEx.Performance.ResourceManager do
   use GenServer
   require Logger
 
-  alias SNMPSimEx.LazyDevicePool
+  alias SNMPSimEx.{LazyDevicePool, Device}
 
   # Resource limits configuration
   @default_max_devices 10_000
@@ -124,7 +124,7 @@ defmodule SNMPSimEx.Performance.ResourceManager do
                    memory_within_limits?(state)
 
     unless can_allocate do
-      Logger.warn("Device allocation denied: #{state.device_count}/#{state.max_devices} devices, #{state.memory_usage_mb}/#{state.max_memory_mb}MB memory")
+      Logger.warning("Device allocation denied: #{state.device_count}/#{state.max_devices} devices, #{state.memory_usage_mb}/#{state.max_memory_mb}MB memory")
     end
 
     {:reply, can_allocate, state}
@@ -179,7 +179,7 @@ defmodule SNMPSimEx.Performance.ResourceManager do
     within_limits = current_memory <= state.max_memory_mb
 
     unless within_limits do
-      Logger.warn("Memory limit exceeded: #{current_memory}MB > #{state.max_memory_mb}MB")
+      Logger.warning("Memory limit exceeded: #{current_memory}MB > #{state.max_memory_mb}MB")
     end
 
     {:reply, within_limits, %{state | memory_usage_mb: current_memory}}
@@ -247,12 +247,12 @@ defmodule SNMPSimEx.Performance.ResourceManager do
     
     # Log warning if memory usage is high
     if current_memory > state.max_memory_mb * 0.9 do
-      Logger.warn("High memory usage: #{current_memory}MB (#{Float.round(current_memory / state.max_memory_mb * 100, 1)}%)")
+      Logger.warning("High memory usage: #{current_memory}MB (#{Float.round(current_memory / state.max_memory_mb * 100, 1)}%)")
       
       # Force cleanup if memory is critically high
       if current_memory > state.max_memory_mb do
         {cleaned_count, _} = perform_cleanup(state)
-        Logger.warn("Emergency cleanup triggered due to memory pressure: removed #{cleaned_count} devices")
+        Logger.warning("Emergency cleanup triggered due to memory pressure: removed #{cleaned_count} devices")
       end
     end
 
@@ -291,15 +291,25 @@ defmodule SNMPSimEx.Performance.ResourceManager do
   end
 
   defp get_current_memory_usage() do
-    # Get current memory usage in MB
-    {:ok, memory_data} = :memsup.get_memory_data()
-    system_memory = Keyword.get(memory_data, :system_total_memory, 0)
-    free_memory = Keyword.get(memory_data, :free_memory, 0)
-    used_memory = system_memory - free_memory
-    
-    # Convert to MB and return approximate process memory usage
-    process_memory = :erlang.memory(:total)
-    round(process_memory / (1024 * 1024))
+    # Try to get system memory usage, fallback to process memory if os_mon not available
+    try do
+      case :memsup.get_memory_data() do
+        {:ok, memory_data} ->
+          system_memory = Keyword.get(memory_data, :system_total_memory, 0)
+          free_memory = Keyword.get(memory_data, :free_memory, 0)
+          used_memory = system_memory - free_memory
+          round(used_memory / (1024 * 1024))
+        _ ->
+          # Fallback to process memory
+          process_memory = :erlang.memory(:total)
+          round(process_memory / (1024 * 1024))
+      end
+    catch
+      _type, _error ->
+        # os_mon not available, use process memory as fallback
+        process_memory = :erlang.memory(:total)
+        round(process_memory / (1024 * 1024))
+    end
   end
 
   defp perform_cleanup(state) do
@@ -307,13 +317,13 @@ defmodule SNMPSimEx.Performance.ResourceManager do
     idle_devices = find_idle_devices(state.active_devices, current_time, state.idle_threshold)
     
     cleaned_count = Enum.reduce(idle_devices, 0, fn {device_pid, device_info}, acc ->
-      case LazyDevicePool.stop_device(device_pid) do
+      case Device.stop(device_pid) do
         :ok ->
           Logger.debug("Cleaned up idle #{device_info.type} device: #{inspect(device_pid)}")
           acc + 1
         
         {:error, reason} ->
-          Logger.warn("Failed to clean up device #{inspect(device_pid)}: #{inspect(reason)}")
+          Logger.warning("Failed to clean up device #{inspect(device_pid)}: #{inspect(reason)}")
           acc
       end
     end)

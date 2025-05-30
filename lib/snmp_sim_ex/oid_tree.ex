@@ -233,7 +233,7 @@ defmodule SNMPSimEx.OIDTree do
   end
   
   defp find_next_oid(sorted_oids, target_oid_parts) do
-    target_oid_string = Enum.join(target_oid_parts, ".")
+    _target_oid_string = Enum.join(target_oid_parts, ".")
     
     sorted_oids
     |> Enum.find(fn oid_string ->
@@ -248,7 +248,7 @@ defmodule SNMPSimEx.OIDTree do
     end) || length(sorted_oids)
   end
   
-  defp collect_bulk_results(%__MODULE__{} = tree, start_index, max_repetitions, non_repeaters) do
+  defp collect_bulk_results(%__MODULE__{} = tree, start_index, max_repetitions, _non_repeaters) do
     available_oids = Enum.drop(tree.sorted_oids, start_index)
     
     # Take up to max_repetitions OIDs (considering non_repeaters)

@@ -118,14 +118,14 @@ defmodule SNMPSimEx.TestHelpers.StabilityTestHelper do
   Checks overall system health and returns metrics.
   """
   def check_system_health do
-    {:ok, memory_info} = :erlang.system_info(:memory)
+    memory_info = :erlang.memory()
     process_count = :erlang.system_info(:process_count)
     
     # Check device pool health
     device_stats = try do
       LazyDevicePool.get_stats()
     catch
-      _type, _error -> %{active_count: 0, total_requests: 0}
+      _type, _error -> %{active_count: 0, devices_created: 0}
     end
     
     # Calculate health metrics
@@ -136,7 +136,7 @@ defmodule SNMPSimEx.TestHelpers.StabilityTestHelper do
       memory_total_bytes: memory_info[:total],
       process_count: process_count,
       active_devices: device_stats.active_count,
-      total_requests: device_stats.total_requests,
+      devices_created: Map.get(device_stats, :devices_created, 0),
       system_healthy: memory_usage_ratio < 2.0 and process_count < 50_000
     }
   end
@@ -225,7 +225,7 @@ defmodule SNMPSimEx.TestHelpers.StabilityTestHelper do
     if current_time >= end_time do
       Enum.reverse(samples)
     else
-      {:ok, memory_info} = :erlang.system_info(:memory)
+      memory_info = :erlang.memory()
       new_samples = [memory_info[:total] | samples]
       
       Process.sleep(interval_ms)
@@ -431,17 +431,50 @@ defmodule SNMPSimEx.TestHelpers.StabilityTestHelper do
   end
   
   defp kill_random_processes(count) do
-    all_processes = Process.list()
-    |> Enum.filter(fn pid -> Process.alive?(pid) end)
-    |> Enum.take_random(count)
+    # Get only device processes, not critical system processes
+    all_device_processes = Process.list()
+    |> Enum.filter(fn pid -> 
+      is_device_process?(pid) and Process.alive?(pid)
+    end)
     
-    Enum.each(all_processes, fn pid ->
+    device_processes = Enum.take_random(all_device_processes, min(count, length(all_device_processes)))
+    
+    require Logger
+    Logger.info("Killing #{length(device_processes)} device processes for stability test")
+    
+    Enum.each(device_processes, fn pid ->
       try do
         Process.exit(pid, :kill)
       catch
         _type, _error -> :ok
       end
     end)
+  end
+  
+  # Helper function to identify if a process is a device process (safe to kill)
+  defp is_device_process?(pid) do
+    try do
+      case Process.info(pid, :registered_name) do
+        {:registered_name, []} ->
+          # Check if it's a device process by looking at initial call
+          case Process.info(pid, :initial_call) do
+            {:initial_call, {SNMPSimEx.Device, :init, 1}} -> true
+            {:initial_call, {SNMPSimEx.Core.Server, :init, 1}} -> true
+            _ -> false
+          end
+        {:registered_name, name} ->
+          # Don't kill critical named processes
+          case name do
+            SNMPSimEx.MIB.SharedProfiles -> false
+            SNMPSimEx.LazyDevicePool -> false
+            SNMPSimEx.Application -> false
+            _ -> false
+          end
+        nil -> false
+      end
+    catch
+      _type, _error -> false
+    end
   end
   
   defp create_memory_pressure(intensity) do

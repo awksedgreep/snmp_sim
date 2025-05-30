@@ -13,7 +13,6 @@ defmodule SNMPSimEx.LazyDevicePool do
   use GenServer
   
   alias SNMPSimEx.Device
-  alias SNMPSimEx.SharedProfiles
   
   defstruct [
     :active_devices,      # Map: port -> device_pid
@@ -270,9 +269,17 @@ defmodule SNMPSimEx.LazyDevicePool do
   end
   
   defp determine_device_type(port, port_assignments) do
-    Enum.find_value(port_assignments, fn {device_type, range} ->
-      if port in range, do: device_type, else: nil
+    Enum.find_value(port_assignments, fn {device_type, ranges} ->
+      if port_in_ranges?(port, ranges), do: device_type, else: nil
     end)
+  end
+  
+  defp port_in_ranges?(port, ranges) when is_list(ranges) do
+    Enum.any?(ranges, fn range -> port in range end)
+  end
+  
+  defp port_in_ranges?(port, range) do
+    port in range
   end
   
   defp generate_device_id(device_type, port) do
@@ -346,9 +353,17 @@ defmodule SNMPSimEx.LazyDevicePool do
   end
   
   defp count_configured_ports(port_assignments) do
-    Enum.reduce(port_assignments, 0, fn {_type, range}, acc ->
-      acc + Enum.count(range)
+    Enum.reduce(port_assignments, 0, fn {_type, ranges}, acc ->
+      acc + count_ports_in_ranges(ranges)
     end)
+  end
+  
+  defp count_ports_in_ranges(ranges) when is_list(ranges) do
+    Enum.reduce(ranges, 0, fn range, acc -> acc + Enum.count(range) end)
+  end
+  
+  defp count_ports_in_ranges(range) do
+    Enum.count(range)
   end
   
   defp build_port_assignments(device_configs, port_range) do
@@ -371,7 +386,7 @@ defmodule SNMPSimEx.LazyDevicePool do
   end
   
   defp pre_warm_devices(device_configs, port_range) do
-    Enum.reduce(device_configs, {:ok, []}, fn {device_type, _source, opts}, acc ->
+    Enum.reduce(device_configs, {:ok, []}, fn {_device_type, _source, opts}, acc ->
       case acc do
         {:error, _} = error -> error
         {:ok, devices} ->
@@ -396,12 +411,12 @@ defmodule SNMPSimEx.LazyDevicePool do
   
   defp default_port_assignments do
     %{
-      cable_modem: 30_000..37_999,  # 8,000 cable modems
-      mta: 38_000..39_499,          # 1,500 MTAs
-      switch: 39_500..39_899,       # 400 switches
-      router: 39_900..39_949,       # 50 routers
-      cmts: 39_950..39_974,         # 25 CMTS devices
-      server: 39_975..39_999        # 25 servers
+      cable_modem: [30_000..37_999, 40_000..48_999], # Cable modems: 30k-37k and 40k-48k ranges
+      mta: 38_000..38_999,                           # MTAs: 38k range
+      switch: [39_500..39_899, 51_000..51_999],      # Switches: includes 39_550 test port + 51k range
+      router: [39_900..39_949, 52_000..52_999],      # Routers: includes existing + 52k range (port 52_001)
+      cmts: [39_950..39_999, 53_000..53_999],        # CMTS: includes 39_960 test port + 53k range  
+      server: 54_000..59_999                         # Servers: 54k-59k range
     }
   end
 end

@@ -30,7 +30,7 @@ defmodule SNMPSimEx.TestScenarios do
   """
   
   require Logger
-  alias SNMPSimEx.{ErrorInjector, LazyDevicePool}
+  alias SNMPSimEx.ErrorInjector
   
   @type device_list :: list(pid()) | list({:device_type, integer()})
   @type scenario_result :: %{
@@ -517,7 +517,7 @@ defmodule SNMPSimEx.TestScenarios do
     end)
   end
   
-  defp apply_steady_signal_degradation(injector, config) do
+  defp apply_steady_signal_degradation(injector, _config) do
     # Increase error rates due to poor signal
     ErrorInjector.inject_snmp_error(injector, :genErr,
       probability: 0.1,
@@ -531,7 +531,7 @@ defmodule SNMPSimEx.TestScenarios do
     )
   end
   
-  defp apply_fluctuating_signal_degradation(injector, config) do
+  defp apply_fluctuating_signal_degradation(injector, _config) do
     # Variable packet loss
     ErrorInjector.inject_packet_loss(injector,
       loss_rate: 0.08,
@@ -603,7 +603,7 @@ defmodule SNMPSimEx.TestScenarios do
     )
   end
   
-  defp apply_bursty_high_load(injector, config) do
+  defp apply_bursty_high_load(injector, _config) do
     # Burst packet loss
     ErrorInjector.inject_packet_loss(injector,
       loss_rate: 0.1,
@@ -621,7 +621,7 @@ defmodule SNMPSimEx.TestScenarios do
     )
   end
   
-  defp apply_cascade_high_load(injector, config) do
+  defp apply_cascade_high_load(injector, _config) do
     # Progressively worsening conditions
     base_delay = 60000  # 1 minute intervals
     
@@ -801,7 +801,7 @@ defmodule SNMPSimEx.TestScenarios do
     waves * delay_seconds
   end
   
-  defp calculate_cascade_waves(current_count, max_count, growth_factor) when current_count >= max_count do
+  defp calculate_cascade_waves(current_count, max_count, _growth_factor) when current_count >= max_count do
     0
   end
   
@@ -879,7 +879,7 @@ defmodule SNMPSimEx.TestScenarios do
     Process.send_after(self(), {:schedule_reboot, injector}, reboot_delay)
   end
   
-  defp apply_power_effects(injector, :severe, index) do
+  defp apply_power_effects(injector, :severe, _index) do
     # Major power instability
     ErrorInjector.inject_packet_loss(injector, loss_rate: 0.4)
     ErrorInjector.simulate_device_failure(injector, :power_failure, duration_ms: 3000)

@@ -652,7 +652,7 @@ defmodule SNMPSimEx.BehaviorConfig do
     end
   end
 
-  defp determine_counter_behavior(oid, value_info) do
+  defp determine_counter_behavior(oid, _value_info) do
     cond do
       String.contains?(String.downcase(oid), "octets") ->
         {:traffic_counter, %{rate_range: {1_000, 50_000_000}}}

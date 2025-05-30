@@ -25,6 +25,7 @@ defmodule SNMPSimEx.MixProject do
     [
       {:jason, "~> 1.4"},
       {:yaml_elixir, "~> 2.9", optional: true},
+      {:telemetry, "~> 1.0", optional: true},
       {:snmp_ex, "~> 0.7.0", only: :test}
     ]
   end

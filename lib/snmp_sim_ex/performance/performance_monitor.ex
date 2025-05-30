@@ -91,11 +91,15 @@ defmodule SNMPSimEx.Performance.PerformanceMonitor do
   """
   def record_request_timing(port, oid, duration_microseconds, success \\ true) do
     # Emit telemetry event
-    :telemetry.execute(
-      @telemetry_prefix ++ @device_events,
-      %{duration: duration_microseconds, success: if(success, do: 1, else: 0)},
-      %{port: port, oid: oid}
-    )
+    try do
+      :telemetry.execute(
+        @telemetry_prefix ++ @device_events,
+        %{duration: duration_microseconds, success: if(success, do: 1, else: 0)},
+        %{port: port, oid: oid}
+      )
+    catch
+      :error, :undef -> :ok
+    end
     
     GenServer.cast(__MODULE__, {:record_request, port, oid, duration_microseconds, success})
   end
@@ -104,11 +108,15 @@ defmodule SNMPSimEx.Performance.PerformanceMonitor do
   Record device lifecycle events.
   """
   def record_device_event(event_type, port, device_type) when event_type in [:created, :destroyed] do
-    :telemetry.execute(
-      @telemetry_prefix ++ [:device, event_type],
-      %{count: 1},
-      %{port: port, device_type: device_type}
-    )
+    try do
+      :telemetry.execute(
+        @telemetry_prefix ++ [:device, event_type],
+        %{count: 1},
+        %{port: port, device_type: device_type}
+      )
+    catch
+      :error, :undef -> :ok
+    end
     
     GenServer.cast(__MODULE__, {:device_event, event_type, port, device_type})
   end
@@ -239,11 +247,15 @@ defmodule SNMPSimEx.Performance.PerformanceMonitor do
     end
     
     # Emit resource telemetry
-    :telemetry.execute(
-      @telemetry_prefix ++ @resource_events,
-      resource_stats,
-      %{source: :resource_manager}
-    )
+    try do
+      :telemetry.execute(
+        @telemetry_prefix ++ @resource_events,
+        resource_stats,
+        %{source: :resource_manager}
+      )
+    catch
+      :error, :undef -> :ok
+    end
     
     # Schedule next check
     resource_timer = Process.send_after(self(), :check_resources, @resource_check_interval)
@@ -264,11 +276,15 @@ defmodule SNMPSimEx.Performance.PerformanceMonitor do
     pruned_history = prune_old_history(new_history, 24 * 60 * 60 * 1000)
     
     # Emit performance report telemetry
-    :telemetry.execute(
-      @telemetry_prefix ++ [:performance, :report],
-      report,
-      %{interval_minutes: @performance_report_interval / 60_000}
-    )
+    try do
+      :telemetry.execute(
+        @telemetry_prefix ++ [:performance, :report],
+        report,
+        %{interval_minutes: @performance_report_interval / 60_000}
+      )
+    catch
+      :error, :undef -> :ok
+    end
     
     # Log performance summary
     log_performance_summary(report)
@@ -290,16 +306,22 @@ defmodule SNMPSimEx.Performance.PerformanceMonitor do
 
   defp setup_telemetry_handlers() do
     # Attach telemetry handlers for external monitoring integration
-    :telemetry.attach_many(
-      "snmp-sim-ex-performance-monitor",
-      [
-        @telemetry_prefix ++ @device_events,
-        @telemetry_prefix ++ @performance_events,
-        @telemetry_prefix ++ @resource_events
-      ],
-      &handle_telemetry_event/4,
-      %{}
-    )
+    try do
+      :telemetry.attach_many(
+        "snmp-sim-ex-performance-monitor",
+        [
+          @telemetry_prefix ++ @device_events,
+          @telemetry_prefix ++ @performance_events,
+          @telemetry_prefix ++ @resource_events
+        ],
+        &handle_telemetry_event/4,
+        %{}
+      )
+    catch
+      :error, :undef ->
+        Logger.debug("Telemetry not available, monitoring will continue without external telemetry integration")
+        :ok
+    end
   end
 
   defp handle_telemetry_event(event, measurements, metadata, _config) do
@@ -432,18 +454,24 @@ defmodule SNMPSimEx.Performance.PerformanceMonitor do
   end
 
   defp emit_performance_telemetry(metrics) do
-    :telemetry.execute(
-      @telemetry_prefix ++ @performance_events,
-      %{
-        response_time_avg: metrics.requests.avg_response_time_us,
-        response_time_max: metrics.requests.max_response_time_us,
-        requests_per_second: metrics.requests.requests_per_second,
-        success_ratio: calculate_success_ratio(metrics.requests),
-        memory_usage_mb: metrics.system.memory_total_mb,
-        device_count: metrics.devices.currently_active
-      },
-      %{source: :performance_monitor}
-    )
+    try do
+      :telemetry.execute(
+        @telemetry_prefix ++ @performance_events,
+        %{
+          response_time_avg: metrics.requests.avg_response_time_us,
+          response_time_max: metrics.requests.max_response_time_us,
+          requests_per_second: metrics.requests.requests_per_second,
+          success_ratio: calculate_success_ratio(metrics.requests),
+          memory_usage_mb: metrics.system.memory_total_mb,
+          device_count: metrics.devices.currently_active
+        },
+        %{source: :performance_monitor}
+      )
+    catch
+      :error, :undef ->
+        Logger.debug("Telemetry not available, skipping telemetry emission")
+        :ok
+    end
   end
 
   defp calculate_success_ratio(requests) do
@@ -502,7 +530,7 @@ defmodule SNMPSimEx.Performance.PerformanceMonitor do
 
   defp handle_performance_alerts(alerts, alert_callbacks) do
     Enum.each(alerts, fn alert ->
-      Logger.warn("Performance alert: #{inspect(alert)}")
+      Logger.warning("Performance alert: #{inspect(alert)}")
       
       # Execute registered callbacks
       Enum.each(alert_callbacks, fn {name, callback_fun} ->
@@ -524,7 +552,7 @@ defmodule SNMPSimEx.Performance.PerformanceMonitor do
       
       # Throttle alerts to prevent spam
       if should_send_alert?(alert_key, current_time, last_alert_times) do
-        Logger.warn("Resource alert: #{inspect(alert)}")
+        Logger.warning("Resource alert: #{inspect(alert)}")
         
         # Execute registered callbacks
         Enum.each(alert_callbacks, fn {name, callback_fun} ->

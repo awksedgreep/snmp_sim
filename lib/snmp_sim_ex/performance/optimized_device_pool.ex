@@ -281,7 +281,12 @@ defmodule SNMPSimEx.Performance.OptimizedDevicePool do
         device_type = determine_device_type(port)
         profile = get_device_profile(device_type)
         
-        case Device.start_link(port: port, profile: profile) do
+        case Device.start_link(%{
+          port: port, 
+          device_type: device_type,
+          device_id: "device_#{port}",
+          community: Map.get(profile, :community, "public")
+        }) do
           {:ok, device_pid} ->
             # Register device in ETS for fast lookup
             current_time = System.monotonic_time(:millisecond)
@@ -315,7 +320,7 @@ defmodule SNMPSimEx.Performance.OptimizedDevicePool do
   defp update_access_time(port, tier) do
     current_time = System.monotonic_time(:millisecond)
     case :ets.lookup(@device_registry, port) do
-      [{^port, device_pid, ^tier, _}] ->
+      [{^port, _device_pid, ^tier, _}] ->
         :ets.update_element(@device_registry, port, {4, current_time})
         increment_performance_stat(:device_accesses)
       [] ->
@@ -324,11 +329,34 @@ defmodule SNMPSimEx.Performance.OptimizedDevicePool do
   end
 
   defp load_and_cache_profile(device_type) do
-    profile = SharedProfiles.get_profile(device_type)
+    # Try to get profile from SharedProfiles, fallback to default profile
+    profile = try do
+      case SNMPSimEx.MIB.SharedProfiles.get_oid_value(device_type, "1.3.6.1.2.1.1.1.0", %{}) do
+        {:ok, _} -> 
+          # SharedProfiles has data for this device type, create a simple profile
+          %{device_type: device_type, has_data: true}
+        _ -> 
+          create_default_profile(device_type)
+      end
+    catch
+      _type, _error ->
+        # SharedProfiles not available or device type not found, use default profile
+        create_default_profile(device_type)
+    end
+    
     current_time = System.monotonic_time(:millisecond)
     :ets.insert(@profile_cache, {device_type, profile, current_time})
     increment_performance_stat(:profile_loads)
     profile
+  end
+  
+  defp create_default_profile(device_type) do
+    %{
+      device_type: device_type,
+      has_data: false,
+      walk_file: "priv/walks/cable_modem.walk",  # Default walk file
+      community: "public"
+    }
   end
 
   defp determine_device_type(port) do
@@ -359,7 +387,7 @@ defmodule SNMPSimEx.Performance.OptimizedDevicePool do
     current_time = System.monotonic_time(:millisecond)
     all_devices = :ets.tab2list(@device_registry)
     
-    {promoted, demoted} = Enum.reduce(all_devices, {[], []}, fn {port, device_pid, tier, last_access}, {prom_acc, dem_acc} ->
+    {promoted, demoted} = Enum.reduce(all_devices, {[], []}, fn {port, _device_pid, tier, last_access}, {prom_acc, dem_acc} ->
       idle_time = current_time - last_access
       access_frequency = get_access_frequency(port)
       

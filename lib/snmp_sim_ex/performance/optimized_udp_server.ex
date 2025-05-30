@@ -201,7 +201,7 @@ defmodule SNMPSimEx.Performance.OptimizedUdpServer do
       :backpressure ->
         # Drop packet under backpressure
         new_stats = update_server_stats(state.stats, :packets_dropped, 1)
-        Logger.warn("Packet dropped due to backpressure")
+        Logger.warning("Packet dropped due to backpressure")
         
         {:noreply, %{state | stats: new_stats}}
     end

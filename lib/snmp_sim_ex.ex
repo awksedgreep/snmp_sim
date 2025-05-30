@@ -6,7 +6,6 @@ defmodule SNMPSimEx do
   realistic behaviors, and large-scale testing scenarios.
   """
 
-  alias SNMPSimEx.ProfileLoader
   alias SNMPSimEx.{Device, LazyDevicePool}
 
   @doc """

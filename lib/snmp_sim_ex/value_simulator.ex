@@ -140,7 +140,7 @@ defmodule SNMPSimEx.ValueSimulator do
   end
 
   # Error Counter Simulation
-  defp simulate_error_counter(profile_data, config, device_state, current_time) do
+  defp simulate_error_counter(profile_data, config, device_state, _current_time) do
     base_value = get_base_counter_value(profile_data)
     uptime_seconds = Map.get(device_state, :uptime, 0)
     
@@ -262,7 +262,7 @@ defmodule SNMPSimEx.ValueSimulator do
   end
 
   # SNR Gauge Simulation
-  defp simulate_snr_gauge(profile_data, config, device_state, current_time) do
+  defp simulate_snr_gauge(profile_data, _config, device_state, current_time) do
     base_snr = get_base_gauge_value(profile_data)
     
     # SNR inversely correlates with utilization and environmental factors
@@ -307,7 +307,7 @@ defmodule SNMPSimEx.ValueSimulator do
   end
 
   # Temperature Gauge Simulation
-  defp simulate_temperature_gauge(profile_data, config, device_state, current_time) do
+  defp simulate_temperature_gauge(profile_data, _config, device_state, current_time) do
     base_temp = get_base_gauge_value(profile_data)
     
     # Temperature varies with time of day and seasonal patterns
@@ -328,7 +328,7 @@ defmodule SNMPSimEx.ValueSimulator do
   end
 
   # Uptime Counter Simulation
-  defp simulate_uptime_counter(profile_data, _config, device_state, _current_time) do
+  defp simulate_uptime_counter(_profile_data, _config, device_state, _current_time) do
     uptime_seconds = Map.get(device_state, :uptime, 0)
     
     # SNMP sysUpTime is in TimeTicks (1/100th of a second)
@@ -341,7 +341,7 @@ defmodule SNMPSimEx.ValueSimulator do
   end
 
   # Status Enumeration Simulation
-  defp simulate_status_enum(profile_data, config, device_state, _current_time) do
+  defp simulate_status_enum(profile_data, _config, device_state, _current_time) do
     base_status = get_base_enum_value(profile_data)
     
     # Status can change based on device health
@@ -415,7 +415,7 @@ defmodule SNMPSimEx.ValueSimulator do
     end
   end
 
-  defp add_packet_variance(base_pps, _config) do
+  defp add_packet_variance(_base_pps, _config) do
     # Packet counters are more bursty than byte counters
     burst_factor = :rand.uniform() * 0.3 + 0.85  # 85% to 115%
     burst_factor
@@ -695,7 +695,7 @@ defmodule SNMPSimEx.ValueSimulator do
     hourly_factor * weekday_factor
   end
   
-  defp backbone_pattern(hour, day_of_week) do
+  defp backbone_pattern(hour, _day_of_week) do
     # ISP backbone - more constant but still has daily patterns
     base = 0.7  # High baseline
     
@@ -820,7 +820,7 @@ defmodule SNMPSimEx.ValueSimulator do
     end
   end
   
-  defp apply_cmts_wrap_behavior(value, type, config) do
+  defp apply_cmts_wrap_behavior(value, _type, config) do
     # CMTS devices typically handle wrapping more precisely
     # May sync counter wraps across interfaces
     if Map.get(config, :synchronized_wrap, false) do
@@ -850,7 +850,7 @@ defmodule SNMPSimEx.ValueSimulator do
     end
   end
   
-  defp apply_router_wrap_behavior(value, type, config) do
+  defp apply_router_wrap_behavior(value, _type, config) do
     # Routers may reset related counters when primary counters wrap
     reset_related = Map.get(config, :reset_related_counters, false)
     
@@ -907,7 +907,7 @@ defmodule SNMPSimEx.ValueSimulator do
     end
   end
   
-  defp apply_time_correlated_variance(base_rate, variance_factor, config) do
+  defp apply_time_correlated_variance(_base_rate, variance_factor, config) do
     # Use current time to create slowly-changing variance
     current_time = DateTime.utc_now()
     time_seed = current_time.hour * 3600 + current_time.minute * 60 + current_time.second
@@ -1059,15 +1059,15 @@ defmodule SNMPSimEx.ValueSimulator do
   
   defp apply_burst_jitter(value, jitter_amount, config) do
     burst_probability = Map.get(config, :jitter_burst_probability, 0.1)
-    burst_magnitude = Map.get(config, :jitter_burst_magnitude, 3.0)
+    burst_magnitude = Map.get(config, :jitter_burst_magnitude, 8.0)  # Increased from 3.0 to 8.0
     
     if :rand.uniform() < burst_probability do
-      # Burst jitter event
+      # Burst jitter event - more dramatic variation
       burst_jitter = (:rand.uniform() - 0.5) * 2 * jitter_amount * burst_magnitude * value
       value + burst_jitter
     else
-      # Normal jitter
-      apply_uniform_jitter(value, jitter_amount * 0.3)  # Reduced normal jitter
+      # Normal jitter - but not too reduced to ensure some variation
+      apply_uniform_jitter(value, jitter_amount * 0.5)  # Increased from 0.3 to 0.5
     end
   end
   

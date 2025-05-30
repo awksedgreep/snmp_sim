@@ -30,7 +30,6 @@ defmodule SNMPSimEx.ErrorInjector do
   use GenServer
   require Logger
   
-  alias SNMPSimEx.{Device, LazyDevicePool}
   
   @type error_type :: :timeout | :packet_loss | :snmp_error | :malformed | :device_failure
   @type error_config :: %{
@@ -339,18 +338,13 @@ defmodule SNMPSimEx.ErrorInjector do
     end)
     
     # Reset device to normal operation
-    case clear_device_errors(state.device_pid) do
-      :ok ->
-        cleared_state = %{state |
-          error_conditions: %{},
-          schedule_timers: %{},
-          burst_state: %{}
-        }
-        {:reply, :ok, cleared_state}
-        
-      {:error, reason} ->
-        {:reply, {:error, reason}, state}
-    end
+    :ok = clear_device_errors(state.device_pid)
+    cleared_state = %{state |
+      error_conditions: %{},
+      schedule_timers: %{},
+      burst_state: %{}
+    }
+    {:reply, :ok, cleared_state}
   end
   
   @impl true

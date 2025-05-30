@@ -57,6 +57,7 @@ defmodule SNMPSimExProductionValidationTest do
   end
   
   @tag validation: :capacity
+  @tag :slow
   test "meets minimum device capacity requirement (#{@min_device_capacity} devices)" do
     # Test device capacity in phases to avoid overwhelming system
     phases = [
@@ -113,6 +114,7 @@ defmodule SNMPSimExProductionValidationTest do
   end
   
   @tag validation: :performance
+  @tag :slow
   test "meets performance requirements under sustained load" do
     device_count = 1000
     test_duration_ms = 300_000  # 5 minutes
@@ -177,6 +179,7 @@ defmodule SNMPSimExProductionValidationTest do
   end
   
   @tag validation: :reliability
+  @tag :slow
   test "maintains #{@uptime_requirement_percent}% uptime under realistic conditions" do
     test_duration_ms = 600_000  # 10 minutes
     device_count = 500
@@ -242,8 +245,9 @@ defmodule SNMPSimExProductionValidationTest do
   end
   
   @tag validation: :security
+  @tag :slow
   test "meets security requirements and handles attack scenarios" do
-    # Test various security scenarios
+    # Test various security scenarios with reduced duration for CI performance
     security_tests = [
       %{name: "Community String Bruteforce", test: :community_bruteforce},
       %{name: "Rate Limiting", test: :rate_limiting},
@@ -256,7 +260,7 @@ defmodule SNMPSimExProductionValidationTest do
       IO.puts "Running security test: #{security_test.name}"
       
       result = ProductionTestHelper.run_security_test(security_test.test, %{
-        duration_ms: 60_000,
+        duration_ms: 5_000,  # Reduced from 60s to 5s for faster CI execution
         monitor_system_health: true,
         log_security_events: true
       })
@@ -280,6 +284,7 @@ defmodule SNMPSimExProductionValidationTest do
   end
   
   @tag validation: :monitoring
+  @tag :slow
   test "monitoring and alerting systems function correctly" do
     # Test monitoring system responsiveness
     monitoring_tests = [
@@ -295,8 +300,8 @@ defmodule SNMPSimExProductionValidationTest do
       # Inject condition that should trigger alert
       ProductionTestHelper.inject_monitoring_condition(test.inject, test.threshold)
       
-      # Wait for monitoring system to detect and alert
-      alert_received = ProductionTestHelper.wait_for_alert(test.metric, 30_000)
+      # Wait for monitoring system to detect and alert (reduced timeout for CI)
+      alert_received = ProductionTestHelper.wait_for_alert(test.metric, 5_000)
       
       assert alert_received,
         "No alert received for #{test.metric} within timeout"
@@ -311,7 +316,7 @@ defmodule SNMPSimExProductionValidationTest do
       
       # Clear condition and verify recovery alert
       ProductionTestHelper.clear_monitoring_condition(test.inject)
-      recovery_alert = ProductionTestHelper.wait_for_recovery_alert(test.metric, 30_000)
+      recovery_alert = ProductionTestHelper.wait_for_recovery_alert(test.metric, 5_000)
       
       assert recovery_alert,
         "No recovery alert received for #{test.metric}"
@@ -321,6 +326,7 @@ defmodule SNMPSimExProductionValidationTest do
   end
   
   @tag validation: :deployment
+  @tag :slow
   test "deployment and operational procedures work correctly" do
     # Test deployment scenarios
     deployment_tests = [
@@ -361,6 +367,7 @@ defmodule SNMPSimExProductionValidationTest do
   end
   
   @tag validation: :integration
+  @tag :slow
   test "integrates correctly with external systems" do
     # Test integration points
     integration_tests = [

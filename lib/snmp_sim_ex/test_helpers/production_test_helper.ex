@@ -4,7 +4,6 @@ defmodule SNMPSimEx.TestHelpers.ProductionTestHelper do
   """
   
   alias SNMPSimEx.{Device, LazyDevicePool}
-  alias SNMPSimEx.TestHelpers.PerformanceHelper
   
   @doc """
   Creates devices efficiently in batches for large-scale testing.
@@ -27,12 +26,13 @@ defmodule SNMPSimEx.TestHelpers.ProductionTestHelper do
       end
       
       Enum.map(batch, fn i ->
-        {:ok, device} = Device.start_link(
+        {:ok, device} = Device.start_link(%{
           community: community,
           host: host,
           port: port_start + i,
-          walk_file: walk_file
-        )
+          device_type: :cable_modem,
+          device_id: "device_#{port_start + i}"
+        })
         device
       end)
     end, max_concurrency: 10, timeout: 60_000)

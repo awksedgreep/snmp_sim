@@ -12,14 +12,13 @@ defmodule SNMPSimEx.Performance.Benchmarks do
   """
 
   require Logger
-  alias SNMPSimEx.Performance.{ResourceManager, PerformanceMonitor, OptimizedDevicePool}
+  alias SNMPSimEx.Performance.{ResourceManager, OptimizedDevicePool}
 
   # Benchmark configuration
   @default_benchmark_duration 60_000      # 1 minute
   @default_concurrent_clients 50          # Concurrent SNMP clients
   @default_request_rate 1000              # Requests per second
   @default_warm_up_duration 10_000        # 10 seconds warm-up
-  @benchmark_report_interval 5_000        # Report every 5 seconds
 
   # Test OIDs for benchmarking
   @test_oids [
@@ -61,7 +60,7 @@ defmodule SNMPSimEx.Performance.Benchmarks do
   @doc """
   Run comprehensive benchmark suite.
   """
-  def run_benchmark_suite(opts \\ []) do
+  def run_benchmark_suite(_opts \\ []) do
     Logger.info("Starting comprehensive benchmark suite")
     
     suite_start = System.monotonic_time(:millisecond)
@@ -232,7 +231,7 @@ defmodule SNMPSimEx.Performance.Benchmarks do
   @doc """
   Benchmark response to various error conditions.
   """
-  def run_error_resilience_benchmark(opts \\ []) do
+  def run_error_resilience_benchmark(_opts \\ []) do
     Logger.info("Running error resilience benchmark")
     
     # Test different error scenarios
@@ -268,13 +267,13 @@ defmodule SNMPSimEx.Performance.Benchmarks do
 
   defp setup_benchmark_devices(device_ports) do
     Enum.each(device_ports, fn port ->
-      device_type = determine_device_type_for_port(port)
+      _device_type = determine_device_type_for_port(port)
       case OptimizedDevicePool.get_device(port) do
         {:ok, _device_pid} ->
           :ok  # Device already exists
         
         {:error, _reason} ->
-          Logger.warn("Failed to create device on port #{port}")
+          Logger.warning("Failed to create device on port #{port}")
       end
     end)
     
@@ -282,7 +281,7 @@ defmodule SNMPSimEx.Performance.Benchmarks do
     Process.sleep(1000)
   end
 
-  defp cleanup_benchmark_devices(device_ports) do
+  defp cleanup_benchmark_devices(_device_ports) do
     # Cleanup is handled by resource manager
     :ok
   end

@@ -26,11 +26,6 @@ defmodule SNMPSimEx.Core.PDU do
 
   # SNMP Error Status
   @no_error 0
-  @too_big 1
-  @no_such_name 2
-  @bad_value 3
-  @read_only 4
-  @gen_err 5
 
   defstruct [
     :version,

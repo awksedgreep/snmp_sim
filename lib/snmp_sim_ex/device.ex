@@ -106,6 +106,13 @@ defmodule SNMPSimEx.Device do
   end
 
   @doc """
+  Get an OID value from the device (for testing).
+  """
+  def get(device_pid, oid) do
+    GenServer.call(device_pid, {:get_oid, oid})
+  end
+
+  @doc """
   Simulate a device reboot.
   """
   def reboot(device_pid) do
@@ -149,13 +156,9 @@ defmodule SNMPSimEx.Device do
         :ok = Server.set_device_handler(server_pid, handler_fn)
         
         # Initialize device state from shared profile
-        case initialize_device_state(state) do
-          {:ok, initialized_state} -> 
-            Logger.info("Device #{device_id} started on port #{port}")
-            {:ok, initialized_state}
-          {:error, reason} -> 
-            {:stop, reason}
-        end
+        {:ok, initialized_state} = initialize_device_state(state)
+        Logger.info("Device #{device_id} started on port #{port}")
+        {:ok, initialized_state}
         
       {:error, reason} ->
         Logger.error("Failed to start UDP server for device #{device_id} on port #{port}: #{inspect(reason)}")
@@ -214,6 +217,21 @@ defmodule SNMPSimEx.Device do
   end
 
   @impl true
+  def handle_call({:get_oid, oid}, _from, state) do
+    # Simple OID value retrieval for testing
+    # Return a mock value based on the OID
+    value = case oid do
+      "1.3.6.1.2.1.1.1.0" -> "SNMPSimEx Device #{state.device_id}"  # sysDescr
+      "1.3.6.1.2.1.1.3.0" -> calculate_uptime(state)  # sysUpTime
+      _ -> Map.get(state.gauges, oid, Map.get(state.counters, oid, "No Such Instance"))
+    end
+    
+    # Update last access time
+    new_state = %{state | last_access: System.monotonic_time(:millisecond)}
+    {:reply, {:ok, value}, new_state}
+  end
+
+  @impl true
   def handle_call(:reboot, _from, state) do
     Logger.info("Device #{state.device_id} rebooting")
     
@@ -225,10 +243,8 @@ defmodule SNMPSimEx.Device do
       error_conditions: %{}
     }
     
-    case initialize_device_state(new_state) do
-      {:ok, initialized_state} -> {:reply, :ok, initialized_state}
-      {:error, reason} -> {:reply, {:error, reason}, state}
-    end
+    {:ok, initialized_state} = initialize_device_state(new_state)
+    {:reply, :ok, initialized_state}
   end
 
   # Error injection message handlers
@@ -568,7 +584,7 @@ defmodule SNMPSimEx.Device do
     {:ok, response_pdu}
   end
 
-  defp process_snmp_pdu(%PDU{pdu_type: @set_request} = pdu, state) do
+  defp process_snmp_pdu(%PDU{pdu_type: @set_request} = pdu, _state) do
     # SET operations not supported in this phase
     error_response = PDU.create_error_response(pdu, @read_only, 1)
     {:ok, error_response}
@@ -792,57 +808,7 @@ defmodule SNMPSimEx.Device do
     end
   end
 
-  defp apply_behaviors(oid, base_value, type, state) do
-    # Apply any configured behaviors to modify the base value
-    # This is a simplified implementation - full behavior engine comes in Phase 5
-    case type do
-      "Counter32" ->
-        # Simple counter increment
-        increment = get_counter_increment(oid, state)
-        base_value + increment
-        
-      "Gauge32" ->
-        # Simple gauge variation
-        variation = get_gauge_variation(oid, state)
-        max(0, base_value + variation)
-        
-      _ ->
-        base_value
-    end
-  end
 
-  defp get_counter_increment(oid, state) do
-    # Simple implementation - increment based on uptime
-    uptime_seconds = calculate_uptime(state)
-    base_rate = 1000  # 1000 units per second
-    
-    # Apply some randomness to make it realistic
-    jitter = :rand.uniform(200) - 100  # ±100 variation
-    max(0, base_rate + jitter) * uptime_seconds
-  end
-
-  defp get_gauge_variation(oid, state) do
-    # Simple gauge variation - random walk
-    case :rand.uniform(3) do
-      1 -> -:rand.uniform(10)  # Decrease
-      2 -> :rand.uniform(10)   # Increase  
-      3 -> 0                   # No change
-    end
-  end
-
-  defp format_snmp_value(value, type) do
-    case String.upcase(type) do
-      "INTEGER" -> value
-      "COUNTER32" -> {:counter32, value}
-      "COUNTER64" -> {:counter64, value}
-      "GAUGE32" -> {:gauge32, value}
-      "GAUGE" -> {:gauge32, value}
-      "TIMETICKS" -> {:timeticks, value}
-      "STRING" -> to_string(value)
-      "OCTET" -> to_string(value)
-      _ -> to_string(value)
-    end
-  end
 
   defp calculate_uptime(%{uptime_start: uptime_start}) when is_integer(uptime_start) do
     current_time = :erlang.monotonic_time()
@@ -902,13 +868,13 @@ defmodule SNMPSimEx.Device do
     }
   end
 
-  defp calculate_interface_utilization(state) do
+  defp calculate_interface_utilization(_state) do
     # Calculate based on current traffic levels
     # For now, return a random utilization between 0.1 and 0.8
     0.1 + (:rand.uniform() * 0.7)
   end
 
-  defp calculate_signal_quality(state) do
+  defp calculate_signal_quality(_state) do
     # Calculate signal quality (0.0 to 1.0)
     # Could be based on SNR, power levels, etc.
     base_quality = 0.8
@@ -965,22 +931,8 @@ defmodule SNMPSimEx.Device do
     DeviceDistribution.generate_device_id(device_type, port, format: :mac_based)
   end
   
-  defp initialize_counters(profile_info, state) do
-    # Mock implementation for testing
-    counter_oids = Map.get(profile_info, :counter_oids, [])
-    Enum.map(counter_oids, fn oid -> {oid, 0} end) |> Map.new()
-  end
   
-  defp initialize_gauges(profile_info, state) do
-    # Mock implementation for testing  
-    gauge_oids = Map.get(profile_info, :gauge_oids, [])
-    Enum.map(gauge_oids, fn oid -> 
-      base_value = get_base_gauge_value(oid, state.device_type)
-      {oid, base_value}
-    end) |> Map.new()
-  end
-  
-  defp initialize_status_vars(state) do
+  defp initialize_status_vars(_state) do
     # Initialize device-specific status variables
     %{
       "admin_status" => 1,  # up
@@ -989,91 +941,6 @@ defmodule SNMPSimEx.Device do
     }
   end
   
-  defp get_base_gauge_value(oid, device_type) do
-    # Get realistic base values for gauge OIDs based on device type
-    characteristics = DeviceDistribution.get_device_characteristics(device_type)
-    
-    cond do
-      String.contains?(oid, "ifSpeed") ->
-        # Interface speed based on device type
-        case device_type do
-          :cable_modem -> 100_000_000  # 100 Mbps
-          :switch -> 1_000_000_000     # 1 Gbps
-          :router -> 1_000_000_000     # 1 Gbps
-          :cmts -> 10_000_000_000      # 10 Gbps
-          _ -> 10_000_000              # 10 Mbps default
-        end
-        
-      String.contains?(oid, "ifMtu") ->
-        1500  # Standard Ethernet MTU
-        
-      String.contains?(oid, "Temperature") ->
-        25 + :rand.uniform(20)  # 25-45°C
-        
-      true ->
-        :rand.uniform(100)  # Default gauge value
-    end
-  end
-  
-  defp apply_device_behavior(oid, base_value, behavior, device_state) do
-    # Apply device-specific behavior to the base value
-    case behavior do
-      {:counter, config} ->
-        # Apply counter increment based on uptime and device characteristics
-        apply_counter_behavior(oid, base_value, config, device_state)
-        
-      {:gauge, config} ->
-        # Apply gauge variation based on device state
-        apply_gauge_behavior(oid, base_value, config, device_state)
-        
-      {:enum, possible_values} ->
-        # Select enum value based on device state
-        apply_enum_behavior(oid, possible_values, device_state)
-        
-      _ ->
-        # Return base value for static or unknown behaviors
-        base_value
-    end
-  end
-  
-  defp apply_counter_behavior(oid, base_value, config, device_state) do
-    # Calculate counter increment based on uptime and rate
-    uptime_seconds = device_state.uptime / 1000
-    rate = Map.get(config, :rate, 1000)  # Default 1000 units/second
-    jitter = Map.get(config, :jitter, 0.1)  # 10% jitter
-    
-    # Apply jitter
-    actual_rate = rate * (1.0 + ((:rand.uniform() - 0.5) * 2 * jitter))
-    increment = trunc(actual_rate * uptime_seconds)
-    
-    base_value + increment
-  end
-  
-  defp apply_gauge_behavior(oid, base_value, config, device_state) do
-    # Apply gauge variation based on device characteristics
-    variance = Map.get(config, :variance, 0.1)  # 10% variance
-    min_val = Map.get(config, :min, 0)
-    max_val = Map.get(config, :max, base_value * 2)
-    
-    # Apply random variation
-    variation = ((:rand.uniform() - 0.5) * 2 * variance * base_value)
-    new_value = base_value + variation
-    
-    # Clamp to min/max bounds
-    max(min_val, min(max_val, trunc(new_value)))
-  end
-  
-  defp apply_enum_behavior(oid, possible_values, device_state) do
-    # Select enum value based on device health/state
-    health_score = device_state.health_score
-    
-    # Higher health scores favor better enum values
-    if health_score > 0.8 do
-      Enum.at(possible_values, 0)  # Best value
-    else
-      Enum.random(possible_values)  # Random selection
-    end
-  end
 
   defp get_fallback_next_oid(oid, state) do
     # Simple fallback for common OID patterns

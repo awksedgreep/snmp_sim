@@ -175,38 +175,39 @@ defmodule SNMPSimEx.Core.Server do
     send(server_pid, {:update_stats, :processing_times, processing_time})
   end
 
-  defp handle_snmp_packet(state, client_ip, client_port, packet) do
-    start_time = :erlang.monotonic_time()
-    
-    updated_state = try do
-      case PDU.decode(packet) do
-        {:ok, pdu} ->
-          if validate_community(pdu, state.community) do
-            process_snmp_request(state, client_ip, client_port, pdu)
-          else
-            Logger.warning("Invalid community string from #{format_ip(client_ip)}:#{client_port}")
-            new_stats = update_stats(state.stats, :auth_failures)
-            %{state | stats: new_stats}
-          end
-          
-        {:error, reason} ->
-          Logger.warning("Failed to decode SNMP packet from #{format_ip(client_ip)}:#{client_port}: #{inspect(reason)}")
-          new_stats = update_stats(state.stats, :decode_errors)
-          %{state | stats: new_stats}
-      end
-    rescue
-      error ->
-        Logger.error("Error processing SNMP packet: #{inspect(error)}")
-        new_stats = update_stats(state.stats, :processing_errors)
-        %{state | stats: new_stats}
-    end
-    
-    # Track processing time
-    end_time = :erlang.monotonic_time()
-    processing_time = :erlang.convert_time_unit(end_time - start_time, :native, :microsecond)
-    final_stats = update_stats(updated_state.stats, :processing_times, processing_time)
-    %{updated_state | stats: final_stats}
-  end
+  # Unused functions - kept for future use
+  # defp handle_snmp_packet(state, client_ip, client_port, packet) do
+  #   start_time = :erlang.monotonic_time()
+  #   
+  #   updated_state = try do
+  #     case PDU.decode(packet) do
+  #       {:ok, pdu} ->
+  #         if validate_community(pdu, state.community) do
+  #           process_snmp_request(state, client_ip, client_port, pdu)
+  #         else
+  #           Logger.warning("Invalid community string from #{format_ip(client_ip)}:#{client_port}")
+  #           new_stats = update_stats(state.stats, :auth_failures)
+  #           %{state | stats: new_stats}
+  #         end
+  #         
+  #       {:error, reason} ->
+  #         Logger.warning("Failed to decode SNMP packet from #{format_ip(client_ip)}:#{client_port}: #{inspect(reason)}")
+  #         new_stats = update_stats(state.stats, :decode_errors)
+  #         %{state | stats: new_stats}
+  #     end
+  #   rescue
+  #     error ->
+  #       Logger.error("Error processing SNMP packet: #{inspect(error)}")
+  #       new_stats = update_stats(state.stats, :processing_errors)
+  #       %{state | stats: new_stats}
+  #   end
+  #   
+  #   # Track processing time
+  #   end_time = :erlang.monotonic_time()
+  #   processing_time = :erlang.convert_time_unit(end_time - start_time, :native, :microsecond)
+  #   final_stats = update_stats(updated_state.stats, :processing_times, processing_time)
+  #   %{updated_state | stats: final_stats}
+  # end
 
   defp process_snmp_request_async(server_pid, state, client_ip, client_port, pdu) do
     case state.device_handler do
@@ -277,53 +278,6 @@ defmodule SNMPSimEx.Core.Server do
     end
   end
 
-  defp process_snmp_request(state, client_ip, client_port, pdu) do
-    case state.device_handler do
-      nil ->
-        # No device handler - send generic error
-        error_response = PDU.create_error_response(pdu, 5, 0)  # genErr
-        updated_state = send_response(state, client_ip, client_port, error_response)
-        new_stats = update_stats(updated_state.stats, :error_responses)
-        %{updated_state | stats: new_stats}
-        
-      handler when is_function(handler, 2) ->
-        # Function handler
-        case handler.(pdu, %{client_ip: client_ip, client_port: client_port}) do
-          {:ok, response_pdu} ->
-            updated_state = send_response(state, client_ip, client_port, response_pdu)
-            new_stats = update_stats(updated_state.stats, :successful_responses)
-            %{updated_state | stats: new_stats}
-            
-          {:error, error_status} ->
-            error_response = PDU.create_error_response(pdu, error_status, 0)
-            updated_state = send_response(state, client_ip, client_port, error_response)
-            new_stats = update_stats(updated_state.stats, :error_responses)
-            %{updated_state | stats: new_stats}
-        end
-        
-      {module, function} ->
-        # Module/function handler
-        case apply(module, function, [pdu, %{client_ip: client_ip, client_port: client_port}]) do
-          {:ok, response_pdu} ->
-            updated_state = send_response(state, client_ip, client_port, response_pdu)
-            new_stats = update_stats(updated_state.stats, :successful_responses)
-            %{updated_state | stats: new_stats}
-            
-          {:error, error_status} ->
-            error_response = PDU.create_error_response(pdu, error_status, 0)
-            updated_state = send_response(state, client_ip, client_port, error_response)
-            new_stats = update_stats(updated_state.stats, :error_responses)
-            %{updated_state | stats: new_stats}
-        end
-        
-      _ ->
-        Logger.error("Invalid device handler: #{inspect(state.device_handler)}")
-        error_response = PDU.create_error_response(pdu, 5, 0)  # genErr
-        updated_state = send_response(state, client_ip, client_port, error_response)
-        new_stats = update_stats(updated_state.stats, :error_responses)
-        %{updated_state | stats: new_stats}
-    end
-  end
 
   defp send_response_async(state, client_ip, client_port, response_pdu) do
     case PDU.encode(response_pdu) do
@@ -341,26 +295,6 @@ defmodule SNMPSimEx.Core.Server do
     end
   end
 
-  defp send_response(state, client_ip, client_port, response_pdu) do
-    case PDU.encode(response_pdu) do
-      {:ok, response_packet} ->
-        case :gen_udp.send(state.socket, client_ip, client_port, response_packet) do
-          :ok ->
-            new_stats = update_stats(state.stats, :packets_sent)
-            %{state | stats: new_stats}
-            
-          {:error, reason} ->
-            Logger.warning("Failed to send SNMP response to #{format_ip(client_ip)}:#{client_port}: #{inspect(reason)}")
-            new_stats = update_stats(state.stats, :send_errors)
-            %{state | stats: new_stats}
-        end
-        
-      {:error, reason} ->
-        Logger.error("Failed to encode SNMP response: #{inspect(reason)}")
-        new_stats = update_stats(state.stats, :encode_errors)
-        %{state | stats: new_stats}
-    end
-  end
 
   defp validate_community(pdu, expected_community) do
     pdu.community == expected_community
