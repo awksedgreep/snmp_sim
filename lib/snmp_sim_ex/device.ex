@@ -830,6 +830,22 @@ defmodule SNMPSimEx.Device do
       String.starts_with?(oid_string, "1.3.6.1.2.1.2.2.1.") ->
         handle_interface_oid(oid_string, state)
         
+      # High Capacity (HC) Interface Counters (1.3.6.1.2.1.31.1.1.1.x.y)
+      String.starts_with?(oid_string, "1.3.6.1.2.1.31.1.1.1.") ->
+        handle_hc_interface_oid(oid_string, state)
+        
+      # DOCSIS Cable Modem SNR (1.3.6.1.2.1.10.127.1.1.4.1.5.x)
+      String.starts_with?(oid_string, "1.3.6.1.2.1.10.127.1.1.4.1.5.") ->
+        handle_docsis_snr_oid(oid_string, state)
+        
+      # Host Resources MIB - Processor Load (1.3.6.1.2.1.25.3.3.1.2.x)
+      String.starts_with?(oid_string, "1.3.6.1.2.1.25.3.3.1.2.") ->
+        handle_host_processor_oid(oid_string, state)
+        
+      # Host Resources MIB - Storage Used (1.3.6.1.2.1.25.2.3.1.6.x)
+      String.starts_with?(oid_string, "1.3.6.1.2.1.25.2.3.1.6.") ->
+        handle_host_storage_oid(oid_string, state)
+        
       true ->
         {:error, :no_such_name}
     end
@@ -882,6 +898,42 @@ defmodule SNMPSimEx.Device do
             # ifLastChange.1 - last change (TimeTicks)
             {:ok, {:timeticks, 0}}
             
+          {"10", "1"} ->
+            # ifInOctets.1 - input octets (Counter32)
+            base_count = 1_000_000
+            increment = calculate_traffic_increment(state, :in_octets)
+            {:ok, {:counter32, base_count + increment}}
+            
+          {"16", "1"} ->
+            # ifOutOctets.1 - output octets (Counter32)  
+            base_count = 800_000
+            increment = calculate_traffic_increment(state, :out_octets)
+            {:ok, {:counter32, base_count + increment}}
+            
+          {"11", "1"} ->
+            # ifInUcastPkts.1 - input unicast packets (Counter32)
+            base_count = 50_000
+            increment = calculate_packet_increment(state, :in_ucast_pkts)
+            {:ok, {:counter32, base_count + increment}}
+            
+          {"17", "1"} ->
+            # ifOutUcastPkts.1 - output unicast packets (Counter32)
+            base_count = 40_000
+            increment = calculate_packet_increment(state, :out_ucast_pkts)
+            {:ok, {:counter32, base_count + increment}}
+            
+          {"14", "1"} ->
+            # ifInErrors.1 - input errors (Counter32)
+            base_count = 5
+            increment = calculate_error_increment(state, :in_errors)
+            {:ok, {:counter32, base_count + increment}}
+            
+          {"20", "1"} ->
+            # ifOutErrors.1 - output errors (Counter32)
+            base_count = 3
+            increment = calculate_error_increment(state, :out_errors)
+            {:ok, {:counter32, base_count + increment}}
+            
           _ ->
             # Unsupported interface column or index
             {:error, :no_such_name}
@@ -893,7 +945,294 @@ defmodule SNMPSimEx.Device do
     end
   end
 
+  defp handle_hc_interface_oid(oid, state) do
+    # Parse HC interface OID: 1.3.6.1.2.1.31.1.1.1.column.interface_index
+    case String.split(oid, ".") do
+      ["1", "3", "6", "1", "2", "1", "31", "1", "1", "1", column, interface_index] ->
+        case {column, interface_index} do
+          {"6", "1"} ->
+            # ifHCInOctets.1 - high capacity input octets (Counter64)
+            base_count = 50_000_000_000  # 50GB base
+            increment = calculate_traffic_increment(state, :hc_in_octets)
+            {:ok, {:counter64, base_count + increment}}
+            
+          {"10", "1"} ->
+            # ifHCOutOctets.1 - high capacity output octets (Counter64)
+            base_count = 35_000_000_000  # 35GB base
+            increment = calculate_traffic_increment(state, :hc_out_octets)
+            {:ok, {:counter64, base_count + increment}}
+            
+          _ ->
+            {:error, :no_such_name}
+        end
+        
+      _ ->
+        {:error, :no_such_name}
+    end
+  end
 
+  defp handle_docsis_snr_oid(oid, state) do
+    # Parse DOCSIS SNR OID: 1.3.6.1.2.1.10.127.1.1.4.1.5.channel_index
+    case String.split(oid, ".") do
+      ["1", "3", "6", "1", "2", "1", "10", "127", "1", "1", "4", "1", "5", channel_index] ->
+        case channel_index do
+          "3" ->
+            # docsIfSigQSignalNoise.3 - SNR for downstream channel 3
+            snr_value = calculate_snr_gauge(state)
+            {:ok, {:gauge32, snr_value}}
+            
+          _ ->
+            {:error, :no_such_name}
+        end
+        
+      _ ->
+        {:error, :no_such_name}
+    end
+  end
+
+  defp handle_host_processor_oid(oid, state) do
+    # Parse Host Resources processor OID: 1.3.6.1.2.1.25.3.3.1.2.processor_index
+    case String.split(oid, ".") do
+      ["1", "3", "6", "1", "2", "1", "25", "3", "3", "1", "2", processor_index] ->
+        case processor_index do
+          "1" ->
+            # hrProcessorLoad.1 - CPU utilization percentage
+            cpu_load = calculate_cpu_gauge(state)
+            {:ok, {:gauge32, cpu_load}}
+            
+          _ ->
+            {:error, :no_such_name}
+        end
+        
+      _ ->
+        {:error, :no_such_name}
+    end
+  end
+
+  defp handle_host_storage_oid(oid, state) do
+    # Parse Host Resources storage OID: 1.3.6.1.2.1.25.2.3.1.6.storage_index
+    case String.split(oid, ".") do
+      ["1", "3", "6", "1", "2", "1", "25", "2", "3", "1", "6", storage_index] ->
+        case storage_index do
+          "1" ->
+            # hrStorageUsed.1 - Storage units used (typically memory)
+            storage_used = calculate_storage_gauge(state)
+            {:ok, {:gauge32, storage_used}}
+            
+          _ ->
+            {:error, :no_such_name}
+        end
+        
+      _ ->
+        {:error, :no_such_name}
+    end
+  end
+
+  defp calculate_traffic_increment(state, counter_type) do
+    uptime_seconds = div(calculate_uptime(state), 1000)
+    
+    # Base rate depends on device type and counter type
+    base_rate = case {state.device_type, counter_type} do
+      {:cable_modem, :in_octets} -> 125_000      # ~1 Mbps
+      {:cable_modem, :out_octets} -> 62_500      # ~500 Kbps  
+      {:cable_modem, :hc_in_octets} -> 1_250_000 # ~10 Mbps
+      {:cable_modem, :hc_out_octets} -> 625_000  # ~5 Mbps
+      {:cmts, :in_octets} -> 12_500_000          # ~100 Mbps
+      {:cmts, :out_octets} -> 12_500_000         # ~100 Mbps
+      {:cmts, :hc_in_octets} -> 125_000_000      # ~1 Gbps
+      {:cmts, :hc_out_octets} -> 125_000_000     # ~1 Gbps
+      _ -> 10_000                                # Default ~80 Kbps
+    end
+    
+    # Add time-of-day variation (peak evening hours)
+    time_factor = get_time_factor()
+    
+    # Add some randomness for realistic simulation
+    jitter = :rand.uniform(21) - 10  # -10% to +10%
+    jitter_factor = 1.0 + (jitter / 100.0)
+    
+    # Calculate total increment
+    rate_with_variation = trunc(base_rate * time_factor * jitter_factor)
+    total_increment = rate_with_variation * uptime_seconds
+    
+    # Add some accumulated variance
+    base_variance = div(total_increment, 20)  # 5% base variance
+    variance = :rand.uniform(base_variance * 2) - base_variance
+    
+    max(0, total_increment + variance)
+  end
+
+  defp calculate_packet_increment(state, counter_type) do
+    uptime_seconds = div(calculate_uptime(state), 1000)
+    
+    # Packet rates are typically much lower than byte rates
+    # Average packet size ~1000 bytes for mixed traffic
+    base_pps = case {state.device_type, counter_type} do
+      {:cable_modem, :in_ucast_pkts} -> 125      # ~125 pps
+      {:cable_modem, :out_ucast_pkts} -> 63      # ~63 pps
+      {:cmts, :in_ucast_pkts} -> 12_500          # ~12.5K pps
+      {:cmts, :out_ucast_pkts} -> 12_500         # ~12.5K pps  
+      _ -> 10                                    # Default ~10 pps
+    end
+    
+    # Add time-of-day variation
+    time_factor = get_time_factor()
+    
+    # Packet variation (more bursty than bytes)
+    jitter = :rand.uniform(31) - 15  # -15% to +15%
+    jitter_factor = 1.0 + (jitter / 100.0)
+    
+    # Calculate total packets
+    rate_with_variation = trunc(base_pps * time_factor * jitter_factor)
+    total_packets = rate_with_variation * uptime_seconds
+    
+    # Add some accumulated variance  
+    base_variance = div(total_packets, 15)  # ~7% variance
+    variance = :rand.uniform(base_variance * 2) - base_variance
+    
+    max(0, total_packets + variance)
+  end
+
+  defp calculate_error_increment(state, counter_type) do
+    uptime_seconds = div(calculate_uptime(state), 1000)
+    
+    # Error rates should be very low under normal conditions
+    # Higher during poor signal quality or high utilization
+    base_error_rate = case {state.device_type, counter_type} do
+      {:cable_modem, :in_errors} -> 0.01        # ~1 error per 100 seconds
+      {:cable_modem, :out_errors} -> 0.005      # ~1 error per 200 seconds
+      {:cmts, :in_errors} -> 0.1                # ~1 error per 10 seconds (more traffic)
+      {:cmts, :out_errors} -> 0.05              # ~1 error per 20 seconds
+      _ -> 0.001                                # Very low default
+    end
+    
+    # Environmental factors affect error rates
+    time_factor = get_time_factor()
+    
+    # Higher utilization = more errors (congestion)
+    utilization_impact = 1.0 + (time_factor - 0.8) * 2.0  # 0.6x to 2.4x
+    
+    # Signal quality impact (simulated via random factor)
+    signal_quality = 0.7 + :rand.uniform(6) / 10  # 0.7 to 1.3
+    signal_impact = 2.0 - signal_quality  # Worse signal = more errors
+    
+    # Calculate error increment
+    effective_rate = base_error_rate * utilization_impact * signal_impact
+    total_errors = effective_rate * uptime_seconds
+    
+    # Add burst errors occasionally
+    burst_probability = 0.05  # 5% chance of error burst
+    if :rand.uniform() < burst_probability do
+      burst_errors = :rand.uniform(10) + 5  # 5-15 extra errors
+      trunc(total_errors + burst_errors)
+    else
+      trunc(total_errors)
+    end
+  end
+
+  defp calculate_snr_gauge(state) do
+    # Base SNR for cable modem (typically 25-40 dB, higher is better)
+    base_snr = case state.device_type do
+      :cable_modem -> 32  # Good signal quality
+      _ -> 25             # Default
+    end
+    
+    # Add environmental factors
+    time_factor = get_time_factor()
+    weather_impact = :rand.uniform(6) - 3  # -3 to +3 dB weather variation
+    
+    # Traffic load affects SNR (higher utilization = slightly lower SNR)
+    utilization_factor = 1.0 - (time_factor - 0.7) * 0.1  # Small impact
+    
+    # Calculate final SNR with realistic bounds
+    snr = base_snr * utilization_factor + weather_impact
+    
+    # Clamp to realistic cable modem SNR range (15-45 dB)
+    max(15, min(45, trunc(snr)))
+  end
+
+  defp calculate_cpu_gauge(state) do
+    # Base CPU load depends on device type
+    base_cpu = case state.device_type do
+      :cable_modem -> 15   # Light load for residential device
+      :cmts -> 45          # Higher load for head-end equipment
+      :switch -> 25        # Moderate load for network equipment
+      :router -> 35        # Higher load for routing
+      _ -> 20              # Default
+    end
+    
+    # Add time-of-day variation (more load during peak hours)
+    time_factor = get_time_factor()
+    time_cpu_impact = (time_factor - 0.8) * 20  # 0-14% additional load during peak
+    
+    # Add traffic correlation (higher traffic = higher CPU)
+    traffic_factor = min(time_factor, 1.2)  # Cap at 1.2x
+    traffic_cpu_impact = (traffic_factor - 1.0) * 15  # 0-3% additional load
+    
+    # Add random variation for realistic simulation
+    cpu_jitter = :rand.uniform(21) - 10  # -10% to +10%
+    jitter_impact = base_cpu * (cpu_jitter / 100.0)
+    
+    # Occasional CPU spikes (process startup, background tasks)
+    spike_probability = 0.02  # 2% chance
+    spike_impact = if :rand.uniform() < spike_probability do
+      :rand.uniform(30) + 10  # 10-40% spike
+    else
+      0
+    end
+    
+    # Calculate final CPU percentage
+    final_cpu = base_cpu + time_cpu_impact + traffic_cpu_impact + jitter_impact + spike_impact
+    
+    # Clamp to realistic range (0-100%)
+    max(0, min(100, trunc(final_cpu)))
+  end
+
+  defp calculate_storage_gauge(state) do
+    # Base storage usage depends on device type (in allocation units)
+    # Typical allocation unit is 1KB, so values represent KB used
+    base_storage = case state.device_type do
+      :cable_modem -> 65_536    # ~64MB for embedded device
+      :cmts -> 524_288          # ~512MB for head-end equipment  
+      :switch -> 131_072        # ~128MB for network equipment
+      :router -> 262_144        # ~256MB for routing equipment
+      _ -> 32_768               # ~32MB default
+    end
+    
+    # Add uptime-based growth (memory leaks, log files, etc.)
+    uptime_hours = div(calculate_uptime(state), 3_600_000)  # Convert to hours
+    growth_factor = 1.0 + (uptime_hours * 0.001)  # 0.1% growth per hour
+    
+    # Add traffic-based memory usage (buffers, connection tables)
+    time_factor = get_time_factor()
+    traffic_memory_factor = 1.0 + ((time_factor - 0.8) * 0.05)  # Up to 1% more during peak
+    
+    # Add random variation for cache usage, temporary files, etc.
+    usage_jitter = :rand.uniform(11) - 5  # -5% to +5%
+    jitter_factor = 1.0 + (usage_jitter / 100.0)
+    
+    # Calculate final storage usage
+    final_storage = base_storage * growth_factor * traffic_memory_factor * jitter_factor
+    
+    # Ensure reasonable bounds
+    min_storage = trunc(base_storage * 0.8)  # Never below 80% of base
+    max_storage = trunc(base_storage * 1.3)  # Never above 130% of base
+    
+    max(min_storage, min(max_storage, trunc(final_storage)))
+  end
+
+  defp get_time_factor do
+    # Simple time-of-day factor (peak at 8-10 PM)
+    hour = DateTime.utc_now().hour
+    
+    case hour do
+      h when h >= 20 and h <= 22 -> 1.5   # Peak evening
+      h when h >= 18 and h <= 19 -> 1.3   # Early evening  
+      h when h >= 8 and h <= 17 -> 1.0    # Business hours
+      h when h >= 0 and h <= 6 -> 0.6     # Overnight
+      _ -> 0.8                             # Other times
+    end
+  end
 
   defp calculate_uptime(%{uptime_start: uptime_start}) when is_integer(uptime_start) do
     current_time = :erlang.monotonic_time()
