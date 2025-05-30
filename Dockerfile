@@ -1,6 +1,6 @@
 # Multi-stage Dockerfile for SNMPSimEx
 # Stage 1: Build environment
-FROM hexpm/elixir:1.15.7-erlang-26.1.2-alpine-3.18.4 AS build
+FROM hexpm/elixir:1.17.3-erlang-27.1.2-alpine-3.20.3 AS build
 
 # Install build dependencies
 RUN apk add --no-cache \
@@ -36,7 +36,7 @@ RUN mix compile
 RUN mix release
 
 # Stage 2: Runtime environment
-FROM alpine:3.18.4 AS runtime
+FROM alpine:3.20.3 AS runtime
 
 # Install runtime dependencies
 RUN apk add --no-cache \

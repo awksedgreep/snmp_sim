@@ -454,9 +454,35 @@ defmodule SNMPSimEx.MIB.SharedProfiles do
   defp compare_oid_parts([h1 | t1], [h2 | t2]) when h1 == h2, do: compare_oid_parts(t1, t2)
 
   defp find_next_oid_in_list(oids, target_oid) do
-    Enum.find(oids, fn oid ->
-      compare_oids_lexicographically(target_oid, oid)
-    end)
+    # For GETNEXT, we need to find the first OID that is lexicographically greater than target_oid
+    # OR the first descendant of target_oid if target_oid is a prefix
+    
+    # First try to find descendants (for cases like "1.3.6.1.2.1" -> "1.3.6.1.2.1.1.1.0")
+    descendants = Enum.filter(oids, fn oid -> oid_is_descendant(target_oid, oid) end)
+    
+    case descendants do
+      [] ->
+        # No descendants, find the next OID lexicographically
+        Enum.find(oids, fn oid -> compare_oids_lexicographically(target_oid, oid) end)
+      _ ->
+        # Return the first (smallest) descendant
+        Enum.min_by(descendants, fn oid -> 
+          String.split(oid, ".") |> Enum.map(&String.to_integer/1) 
+        end, fn -> nil end)
+    end
+  end
+  
+  # Check if an OID is a descendant of a target OID (i.e., target is a prefix)
+  defp oid_is_descendant(target_oid, candidate_oid) do
+    target_parts = String.split(target_oid, ".")
+    candidate_parts = String.split(candidate_oid, ".")
+    
+    # If target is shorter and matches the beginning of candidate, candidate is a descendant
+    if length(target_parts) < length(candidate_parts) do
+      target_parts == Enum.take(candidate_parts, length(target_parts))
+    else
+      false
+    end
   end
 
   defp init_stats do

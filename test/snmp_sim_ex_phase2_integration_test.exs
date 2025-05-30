@@ -6,6 +6,7 @@ defmodule SNMPSimExPhase2IntegrationTest do
   alias SNMPSimEx.BehaviorConfig
   alias SNMPSimEx.Core.PDU
   alias SNMPSimEx.MIB.SharedProfiles
+  alias SNMPSimEx.TestHelpers.PortHelper
 
   setup do
     # Start SharedProfiles for tests that need it
@@ -15,6 +16,8 @@ defmodule SNMPSimExPhase2IntegrationTest do
       _pid -> 
         :ok
     end
+    
+    # PortHelper automatically handles port allocation
     
     :ok
   end
@@ -86,7 +89,7 @@ defmodule SNMPSimExPhase2IntegrationTest do
         behaviors: BehaviorConfig.get_preset(:cable_modem_realistic)
       )
       
-      port = find_free_port()
+      port = PortHelper.get_port()
       device_config = %{
         port: port,
         device_type: :cable_modem,
@@ -155,7 +158,7 @@ defmodule SNMPSimExPhase2IntegrationTest do
         behaviors: preset_behaviors
       )
       
-      port = find_free_port()
+      port = PortHelper.get_port()
       device_config = %{
         port: port,
         device_type: :cable_modem,
@@ -184,7 +187,7 @@ defmodule SNMPSimExPhase2IntegrationTest do
         behaviors: [:daily_patterns, :realistic_counters]
       )
       
-      port = find_free_port()
+      port = PortHelper.get_port()
       device_config = %{
         port: port,
         device_type: :cable_modem,
@@ -230,7 +233,7 @@ defmodule SNMPSimExPhase2IntegrationTest do
         behaviors: custom_behaviors
       )
       
-      port = find_free_port()
+      port = PortHelper.get_port()
       device_config = %{
         port: port,
         device_type: :cable_modem,
@@ -265,7 +268,7 @@ defmodule SNMPSimExPhase2IntegrationTest do
         }}
       )
       
-      port = find_free_port()
+      port = PortHelper.get_port()
       device_config = %{
         port: port,
         device_type: :cable_modem,
@@ -290,7 +293,7 @@ defmodule SNMPSimExPhase2IntegrationTest do
         behaviors: [:invalid_behavior]  # This should be ignored
       )
       
-      port = find_free_port()
+      port = PortHelper.get_port()
       device_config = %{
         port: port,
         device_type: :cable_modem,
@@ -338,7 +341,7 @@ defmodule SNMPSimExPhase2IntegrationTest do
          count: 3, behaviors: [:realistic_counters]}
       ]
       
-      port_range = find_free_port_range(3)
+      port_range = PortHelper.get_port_range(3)
       
       # This should use the basic device pool for now
       # Full lazy device pool with shared profiles is Phase 4
@@ -363,18 +366,6 @@ defmodule SNMPSimExPhase2IntegrationTest do
   end
 
   # Helper functions
-
-  defp find_free_port do
-    {:ok, socket} = :gen_udp.open(0, [:binary])
-    {:ok, port} = :inet.port(socket)
-    :gen_udp.close(socket)
-    port
-  end
-
-  defp find_free_port_range(count) do
-    start_port = find_free_port()
-    start_port..(start_port + count - 1)
-  end
 
   defp start_manual_devices(device_configs, port_range) do
     ports = Enum.to_list(port_range)

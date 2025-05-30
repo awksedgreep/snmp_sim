@@ -2,6 +2,7 @@ defmodule SNMPSimExPhase4IntegrationTest do
   use ExUnit.Case, async: false
   
   alias SNMPSimEx.{LazyDevicePool, DeviceDistribution, MultiDeviceStartup, Device}
+  alias SNMPSimEx.TestHelpers.PortHelper
   
   @moduletag :integration
   
@@ -19,22 +20,27 @@ defmodule SNMPSimExPhase4IntegrationTest do
       {:ok, _} = LazyDevicePool.start_link()
     end
     
+    # PortHelper automatically handles port allocation
+    
     :ok
   end
   
   describe "Phase 4: End-to-End Integration" do
     test "complete lazy device pool lifecycle" do
-      # Configure custom port assignments
+      # Configure custom port assignments using PortHelper
+      cm_range = PortHelper.get_port_range(100)
+      sw_range = PortHelper.get_port_range(50)
+      
       port_assignments = %{
-        cable_modem: 40_000..40_099,
-        switch: 40_100..40_149
+        cable_modem: cm_range,
+        switch: sw_range
       }
       
       assert :ok = LazyDevicePool.configure_port_assignments(port_assignments)
       
       # Create devices on demand
-      cable_modem_port = 40_050
-      switch_port = 40_125
+      cable_modem_port = Enum.at(cm_range, 50)
+      switch_port = Enum.at(sw_range, 25)
       
       # First access should create devices
       assert {:ok, cm_pid} = LazyDevicePool.get_or_create_device(cable_modem_port)
@@ -89,7 +95,7 @@ defmodule SNMPSimExPhase4IntegrationTest do
       assert enterprise_mix.switch > enterprise_mix.router
       
       # Build port assignments - need enough ports for cable_network mix (9535 devices)
-      port_range = 41_000..51_000  # 10,001 ports to accommodate cable_network
+      port_range = PortHelper.get_port_range(10_001)
       cable_assignments = DeviceDistribution.build_port_assignments(cable_mix, port_range)
       
       # Validate assignments
@@ -116,9 +122,11 @@ defmodule SNMPSimExPhase4IntegrationTest do
         {:router, 2}
       ]
       
+      startup_range = PortHelper.get_port_range(101)
+      
       result = MultiDeviceStartup.start_device_population(
         device_specs,
-        port_range: 43_000..43_100,
+        port_range: startup_range,
         parallel_workers: 5
       )
       
@@ -131,8 +139,9 @@ defmodule SNMPSimExPhase4IntegrationTest do
       assert pool_stats.active_count >= 17
       
       # Test device access patterns
-      cable_ports = 43_000..43_009 |> Enum.to_list()
-      switch_ports = 43_010..43_014 |> Enum.to_list()
+      startup_list = Enum.to_list(startup_range)
+      cable_ports = Enum.take(startup_list, 10)
+      switch_ports = Enum.slice(startup_list, 10, 5)
       
       # Access cable modems
       cable_pids = Enum.map(cable_ports, fn port ->
@@ -163,10 +172,10 @@ defmodule SNMPSimExPhase4IntegrationTest do
     end
     
     test "device characteristics affect behavior" do
-      # Create different device types
-      cable_modem_port = 30_050
-      switch_port = 39_550
-      cmts_port = 39_960
+      # Create different device types using known port ranges from default_port_assignments
+      cable_modem_port = 30_100  # In cable_modem range (30_000..37_999)
+      switch_port = 39_550       # In switch range (39_500..39_899)
+      cmts_port = 39_960         # In cmts range (39_950..39_999)
       
       assert {:ok, cm_pid} = LazyDevicePool.get_or_create_device(cable_modem_port)
       assert {:ok, sw_pid} = LazyDevicePool.get_or_create_device(switch_port)
@@ -203,7 +212,7 @@ defmodule SNMPSimExPhase4IntegrationTest do
     
     test "concurrent device access patterns" do
       # Configure for high concurrency
-      port_range = 44_000..44_999
+      port_range = PortHelper.get_port_range(1000)
       port_assignments = %{
         cable_modem: port_range
       }
@@ -258,7 +267,10 @@ defmodule SNMPSimExPhase4IntegrationTest do
       {:ok, _} = LazyDevicePool.start_link(idle_timeout_ms: 500, max_devices: 10)
       
       # Create devices
-      ports = [45_001, 45_002, 45_003]
+      port1 = PortHelper.get_port()
+      port2 = PortHelper.get_port()
+      port3 = PortHelper.get_port()
+      ports = [port1, port2, port3]
       device_pids = Enum.map(ports, fn port ->
         {:ok, pid} = LazyDevicePool.get_or_create_device(port)
         pid
@@ -289,16 +301,19 @@ defmodule SNMPSimExPhase4IntegrationTest do
       end)
       
       # Access again should create new devices
-      {:ok, new_pid} = LazyDevicePool.get_or_create_device(45_001)
+      {:ok, new_pid} = LazyDevicePool.get_or_create_device(port1)
       assert Process.alive?(new_pid)
       assert new_pid not in device_pids
     end
     
     test "predefined device mix startup patterns" do
       # Test different startup patterns
+      small_range = PortHelper.get_port_range(101)
+      medium_range = PortHelper.get_port_range(501)
+      
       test_configs = [
-        {:small_test, 46_000..46_100},
-        {:medium_test, 47_000..47_500}
+        {:small_test, small_range},
+        {:medium_test, medium_range}
       ]
       
       Enum.each(test_configs, fn {mix_type, port_range} ->
@@ -345,7 +360,7 @@ defmodule SNMPSimExPhase4IntegrationTest do
         {:router, 5}
       ]
       
-      port_range = 50_000..50_500
+      port_range = PortHelper.get_port_range(501)
       
       # Measure startup time
       {time_us, result} = :timer.tc(fn ->
@@ -395,9 +410,11 @@ defmodule SNMPSimExPhase4IntegrationTest do
       # Measure memory before
       memory_before = :erlang.memory(:total)
       
+      mem_range = PortHelper.get_port_range(101)
+      
       {:ok, _} = MultiDeviceStartup.start_device_population(
         device_specs,
-        port_range: 51_000..51_100
+        port_range: mem_range
       )
       
       # Measure memory after
@@ -417,7 +434,7 @@ defmodule SNMPSimExPhase4IntegrationTest do
       # Trap exits to prevent test process from being killed when we kill the device
       original_trap_exit = Process.flag(:trap_exit, true)
       
-      port = 52_001
+      port = PortHelper.get_port()
       
       # Ensure LazyDevicePool is alive
       case Process.whereis(LazyDevicePool) do
@@ -466,7 +483,7 @@ defmodule SNMPSimExPhase4IntegrationTest do
     end
     
     test "handles rapid device creation and destruction" do
-      ports = 53_000..53_020 |> Enum.to_list()
+      ports = PortHelper.get_port_range(21) |> Enum.to_list()
       
       # Rapid creation
       device_pids = Enum.map(ports, fn port ->

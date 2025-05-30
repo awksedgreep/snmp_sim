@@ -5,6 +5,7 @@ defmodule SNMPSimEx.ErrorInjectorTest do
   alias SNMPSimEx.Device
   alias SNMPSimEx.MIB.SharedProfiles
   alias SNMPSimEx.{LazyDevicePool}
+  alias SNMPSimEx.TestHelpers.PortHelper
   
   setup do
     # Start shared profiles for testing only if not already started
@@ -15,7 +16,7 @@ defmodule SNMPSimEx.ErrorInjectorTest do
     
     # Create a test device
     device_config = %{
-      port: 9000 + :rand.uniform(1000),
+      port: PortHelper.get_port(),
       device_type: :cable_modem,
       device_id: "test_device_#{:rand.uniform(10000)}",
       community: "public"

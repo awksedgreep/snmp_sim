@@ -5,7 +5,7 @@ defmodule SNMPSimEx.MixProject do
     [
       app: :snmp_sim_ex,
       version: "0.1.0",
-      elixir: "~> 1.18",
+      elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       releases: releases()
@@ -40,14 +40,6 @@ defmodule SNMPSimEx.MixProject do
         strip_beams: Mix.env() == :prod,
         include_executables_for: [:unix],
         include_erts: true,
-        config_providers: [
-          {Config.Reader, {:system, "RELEASE_ROOT", "/config/runtime.exs"}}
-        ],
-        overlays: [
-          {:copy, "priv", "priv"},
-          {:copy, "rel/runtime.exs", "config/runtime.exs"},
-          {:template, "rel/vm.args.eex", "releases/<%= @release.version %>/vm.args"}
-        ]
       ]
     ]
   end

@@ -15,6 +15,7 @@ defmodule SNMPSimExShellIntegrationTest do
   
   alias SNMPSimEx.ProfileLoader
   alias SNMPSimEx.Device
+  alias SNMPSimEx.TestHelpers.PortHelper
   
   describe "Shell Command Integration" do
     setup do
@@ -24,7 +25,7 @@ defmodule SNMPSimExShellIntegrationTest do
         {:walk_file, "priv/walks/cable_modem.walk"}
       )
       
-      port = find_free_port()
+      port = PortHelper.get_port()
       device_config = %{
         port: port,
         device_type: :cable_modem,
@@ -166,7 +167,7 @@ defmodule SNMPSimExShellIntegrationTest do
         {:walk_file, "priv/walks/cable_modem.walk"}
       )
       
-      port = find_free_port()
+      port = PortHelper.get_port()
       device_config = %{
         port: port,
         device_type: :cable_modem,
@@ -226,12 +227,5 @@ defmodule SNMPSimExShellIntegrationTest do
     end
   end
   
-  # Helper functions
-  
-  defp find_free_port do
-    {:ok, socket} = :gen_udp.open(0, [:binary])
-    {:ok, port} = :inet.port(socket)
-    :gen_udp.close(socket)
-    port
-  end
+  # Helper functions removed - now using PortHelper
 end

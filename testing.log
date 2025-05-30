@@ -1,5 +1,3 @@
-Compiling 31 files (.ex)
-Generated snmp_sim_ex app
 [warning] Compiling obsolete MIB "IPV6-TC"... This may not work. Please see RFC 8096 at https://tools.ietf.org/html/rfc8096 for details
 IPV6-TC.mib: 5: TEXTUAL-CONVENTION is only allowed in SNMPv2.
 IPV6-TC.mib: 8: syntax error before: 'TEXTUAL-CONVENTION'
@@ -41,215 +39,842 @@ DISMAN-EVENT-MIB.mib: 548: Corrupt table definition.
 DISMAN-EVENT-MIB.mib: Table 'mteTriggerDeltaTable' must have at least one accessible column.
 [warning] Compiling obsolete MIB "IPV6-ICMP-MIB"... This may not work. Please see RFC 8096 at https://tools.ietf.org/html/rfc8096 for details
 IPV6-ICMP-MIB.mib: 7: Could not import [{node,ipv6IfEntry}] from mib IPV6-MIB.bin. File not found. Check that the MIB to be IMPORTED is compiled and present in the import path.
-Running ExUnit with seed: 302107, max_cases: 1
+Running ExUnit with seed: 322818, max_cases: 1
 Excluding tags: [:shell_integration, :slow]
 Including tags: [:unit]
 
 
 SNMPSimEx.ConfigTest [test/snmp_sim_ex/config_test.exs]
-  * test JSON configuration handles non-existent files [L#182]  * test JSON configuration handles non-existent files (27.3ms) [L#182]
-  * test YAML configuration loads valid YAML configuration [L#212]  * test YAML configuration loads valid YAML configuration (22.0ms) [L#212]
-  * test sample configuration sample configuration is valid [L#188]  * test sample configuration sample configuration is valid (1.3ms) [L#188]
-  * test environment variable parsing loads configuration from environment variables [L#67]  * test environment variable parsing loads configuration from environment variables (2.0ms) [L#67]
-  * test JSON configuration loads valid JSON configuration [L#122]  * test JSON configuration loads valid JSON configuration (8.0ms) [L#122]
-  * test JSON configuration handles invalid JSON [L#164]  * test JSON configuration handles invalid JSON (3.8ms) [L#164]
-  * test configuration validation requires essential fields in device groups [L#50]  * test configuration validation requires essential fields in device groups (0.6ms) [L#50]
-  * test environment variable parsing handles missing environment variables with defaults [L#100]  * test environment variable parsing handles missing environment variables with defaults (0.6ms) [L#100]
+  * test environment variable parsing handles missing environment variables with defaults [L#100]  * test environment variable parsing handles missing environment variables with defaults (11.6ms) [L#100]
+  * test JSON configuration handles non-existent files [L#182]  * test JSON configuration handles non-existent files (8.2ms) [L#182]
+  * test sample configuration sample configuration is valid [L#188]  * test sample configuration sample configuration is valid (5.4ms) [L#188]
+  * test configuration validation validates device group port ranges [L#33]  * test configuration validation validates device group port ranges (3.8ms) [L#33]
+  * test configuration validation requires essential fields in device groups [L#50]  * test configuration validation requires essential fields in device groups (4.0ms) [L#50]
+  * test environment variable parsing loads configuration from environment variables [L#67]  * test environment variable parsing loads configuration from environment variables (10.6ms) [L#67]
+  * test YAML configuration loads valid YAML configuration [L#212]  * test YAML configuration loads valid YAML configuration (28.8ms) [L#212]
+  * test YAML configuration can write sample configuration to YAML file [L#245]  * test YAML configuration can write sample configuration to YAML file (10.9ms) [L#245]
+  * test configuration validation validates correct configuration [L#6]  * test configuration validation validates correct configuration (4.4ms) [L#6]
+  * test JSON configuration handles invalid JSON [L#164]  * test JSON configuration handles invalid JSON (11.4ms) [L#164]
+  * test sample configuration can write sample configuration to JSON file [L#193]  * test sample configuration can write sample configuration to JSON file (9.1ms) [L#193]
+  * test JSON configuration loads valid JSON configuration [L#122]  * test JSON configuration loads valid JSON configuration (6.1ms) [L#122]
+  * test configuration validation rejects configuration without snmp_sim_ex key [L#26]  * test configuration validation rejects configuration without snmp_sim_ex key (3.3ms) [L#26]
 
-  1) test environment variable parsing handles missing environment variables with defaults (SNMPSimEx.ConfigTest)
-     test/snmp_sim_ex/config_test.exs:100
-     Assertion with == failed
-     code:  assert config.snmp_sim_ex.device_groups == []
-     left:  [
-              %{
-                count: 10,
-                name: "env_devices",
-                behaviors: [],
-                device_type: "generic",
-                community: "public",
-                port_range: %{start: 30000, end: 30009},
-                walk_file: "priv/walks/cable_modem.walk"
-              }
-            ]
-     right: []
-     stacktrace:
-       test/snmp_sim_ex/config_test.exs:117: (test)
-
-  * test configuration validation validates device group port ranges [L#33]  * test configuration validation validates device group port ranges (2.3ms) [L#33]
-  * test configuration validation validates correct configuration [L#6]  * test configuration validation validates correct configuration (1.8ms) [L#6]
-  * test YAML configuration can write sample configuration to YAML file [L#245]  * test YAML configuration can write sample configuration to YAML file (3.5ms) [L#245]
-  * test sample configuration can write sample configuration to JSON file [L#193]  * test sample configuration can write sample configuration to JSON file (1.8ms) [L#193]
-  * test configuration validation rejects configuration without snmp_sim_ex key [L#26]  * test configuration validation rejects configuration without snmp_sim_ex key (0.5ms) [L#26]
-
-SNMPSimEx.Core.ServerTest [test/snmp_sim_ex/core/server_test.exs]
-  * test UDP Server handles invalid community strings [L#119]  * test UDP Server handles invalid community strings (excluded) [L#119]
-  * test Performance Monitoring tracks processing times [L#227]  * test Performance Monitoring tracks processing times (231.7ms) [L#227]
-  * test UDP Server updates device handler correctly [L#137]  * test UDP Server updates device handler correctly (2.4ms) [L#137]
-  * test Error Handling handles malformed packets gracefully [L#183]  * test Error Handling handles malformed packets gracefully (102.1ms) [L#183]
-  * test Error Handling handles handler errors gracefully [L#203]  * test Error Handling handles handler errors gracefully (103.0ms) [L#203]
-  * test Error Handling handles port conflicts gracefully [L#167]  * test Error Handling handles port conflicts gracefully (1.8ms) [L#167]
-  * test UDP Server manages socket resources efficiently [L#94]  * test UDP Server manages socket resources efficiently (104.3ms) [L#94]
-  * test UDP Server handles concurrent requests without blocking [L#7]  * test UDP Server handles concurrent requests without blocking (2.9ms) [L#7]
-  * test UDP Server processes 100+ requests per second [L#42]  * test UDP Server processes 100+ requests per second (4.8ms) [L#42]
-
-SNMPSimEx.ValueSimulatorPhase5Test [test/snmp_sim_ex/value_simulator_phase5_test.exs]
-  * test configurable jitter and variance variance types produce different distributions [L#188]  * test configurable jitter and variance variance types produce different distributions (4.5ms) [L#188]
-  * test realistic gauge simulation with jitter utilization gauge includes jitter [L#319]  * test realistic gauge simulation with jitter utilization gauge includes jitter (0.2ms) [L#319]
-  * test configurable jitter and variance time_correlated variance changes over time [L#230]  * test configurable jitter and variance time_correlated variance changes over time (0.2ms) [L#230]
-  * test integration with time patterns and correlations traffic counter simulation integrates all Phase 5 features [L#370]  * test integration with time patterns and correlations traffic counter simulation integrates all Phase 5 features (0.2ms) [L#370]
-  * test counter wrapping functionality apply_device_specific_counter_behavior varies by device type [L#69]  * test counter wrapping functionality apply_device_specific_counter_behavior varies by device type (0.2ms) [L#69]
-  * test configurable jitter and variance apply_configurable_jitter works with different patterns [L#121]  * test configurable jitter and variance apply_configurable_jitter works with different patterns (0.2ms) [L#121]
-  * test configurable jitter and variance different device types have different jitter characteristics [L#169]  * test configurable jitter and variance different device types have different jitter characteristics (0.2ms) [L#169]
-  * test performance characteristics value simulation executes quickly [L#445]  * test performance characteristics value simulation executes quickly (2.1ms) [L#445]
-  * test realistic gauge simulation with jitter temperature gauge maintains realistic ranges with jitter [L#351]  * test realistic gauge simulation with jitter temperature gauge maintains realistic ranges with jitter (0.4ms) [L#351]
-  * test counter wrapping functionality time_until_counter_wrap calculates correctly [L#54]  * test counter wrapping functionality time_until_counter_wrap calculates correctly (0.4ms) [L#54]
-  * test counter wrapping functionality handle_counter_discontinuity detects wraps [L#94]  * test counter wrapping functionality handle_counter_discontinuity detects wraps (0.2ms) [L#94]
-  * test counter wrapping functionality counter_approaching_wrap? detects near-wrap conditions [L#41]  * test counter wrapping functionality counter_approaching_wrap? detects near-wrap conditions (0.3ms) [L#41]
-  * test integration with time patterns and correlations signal gauge responds to environmental factors [L#423]  * test integration with time patterns and correlations signal gauge responds to environmental factors (0.3ms) [L#423]
-  * test integration with time patterns and correlations error counter includes correlation with utilization [L#402]  * test integration with time patterns and correlations error counter includes correlation with utilization (0.3ms) [L#402]
-  * test counter wrapping functionality handles 32-bit counter wrapping correctly [L#6]  * test counter wrapping functionality handles 32-bit counter wrapping correctly (0.2ms) [L#6]
-  * test realistic gauge simulation with jitter cpu gauge includes device-specific jitter [L#335]  * test realistic gauge simulation with jitter cpu gauge includes device-specific jitter (0.2ms) [L#335]
-  * test configurable jitter and variance device_specific variance reflects device characteristics [L#261]  * test configurable jitter and variance device_specific variance reflects device characteristics (0.3ms) [L#261]
-  * test counter wrapping functionality handles 64-bit counter wrapping correctly [L#23]  * test counter wrapping functionality handles 64-bit counter wrapping correctly (0.2ms) [L#23]
-  * test performance characteristics counter wrapping detection is efficient [L#468]  * test performance characteristics counter wrapping detection is efficient (1.8ms) [L#468]
+SNMPSimEx.Core.PDUEncodingTest [test/snmp_sim_ex/core/pdu_encoding_test.exs]
+  * test PDU structure encoding GETBULK request PDU encodes correctly [L#208]  * test PDU structure encoding GETBULK request PDU encodes correctly (4.3ms) [L#208]
+  * test edge cases and boundary conditions handles empty variable bindings [L#264]  * test edge cases and boundary conditions handles empty variable bindings (4.7ms) [L#264]
+  * test SNMP data type encoding timeticks values encode correctly [L#64]  * test SNMP data type encoding timeticks values encode correctly (8.0ms) [L#64]
+  * test SNMP data type encoding nil values encode as NULL [L#101]  * test SNMP data type encoding nil values encode as NULL (6.8ms) [L#101]
+  * test SNMP data type encoding unknown types encode as NULL [L#110]  * test SNMP data type encoding unknown types encode as NULL (32.1ms) [L#110]
+  * test SNMP data type encoding object identifier tuples encode correctly [L#34]  * test SNMP data type encoding object identifier tuples encode correctly (5.1ms) [L#34]
+  * test SNMP data type encoding counter32 values encode correctly [L#44]  * test SNMP data type encoding counter32 values encode correctly (4.3ms) [L#44]
+  * test SNMP data type encoding gauge32 values encode correctly [L#54]  * test SNMP data type encoding gauge32 values encode correctly (3.4ms) [L#54]
+  * test PDU structure encoding GET response PDU encodes correctly [L#148]  * test PDU structure encoding GET response PDU encodes correctly (6.7ms) [L#148]
+  * test edge cases and boundary conditions handles large integer values [L#308]  * test edge cases and boundary conditions handles large integer values (2.9ms) [L#308]
+  * test edge cases and boundary conditions handles very long OIDs [L#281]  * test edge cases and boundary conditions handles very long OIDs (0.4ms) [L#281]
+  * test PDU structure encoding GETNEXT request PDU encodes correctly [L#188]  * test PDU structure encoding GETNEXT request PDU encodes correctly (0.3ms) [L#188]
+  * test edge cases and boundary conditions handles very long string values [L#297]  * test edge cases and boundary conditions handles very long string values (0.5ms) [L#297]
+  * test SNMP data type encoding string values encode as OCTET STRING [L#14]  * test SNMP data type encoding string values encode as OCTET STRING (0.9ms) [L#14]
+  * test SNMP data type encoding SNMP exception types encode correctly [L#84]  * test SNMP data type encoding SNMP exception types encode correctly (1.0ms) [L#84]
+  * test PDU structure encoding GET request PDU encodes correctly [L#122]  * test PDU structure encoding GET request PDU encodes correctly (1.0ms) [L#122]
+  * test edge cases and boundary conditions handles special characters in community strings [L#335]  * test edge cases and boundary conditions handles special characters in community strings (0.2ms) [L#335]
+  * test error response encoding creates proper error response PDUs [L#235]  * test error response encoding creates proper error response PDUs (0.2ms) [L#235]
+  * test SNMP data type encoding counter64 values encode correctly [L#74]  * test SNMP data type encoding counter64 values encode correctly (0.2ms) [L#74]
+  * test SNMP data type encoding integer values encode as INTEGER [L#24]  * test SNMP data type encoding integer values encode as INTEGER (3.2ms) [L#24]
 
 SNMPSimEx.ProfileLoaderTest [test/snmp_sim_ex/profile_loader_test.exs]
-  * test OID Tree Operations finds next OID correctly [L#124]  * test OID Tree Operations finds next OID correctly (4.4ms) [L#124]
-  * test Profile Behaviors loads profile with behaviors specified [L#156]  * test Profile Behaviors loads profile with behaviors specified (0.6ms) [L#156]
-  * test OID Tree Operations handles end of MIB correctly [L#135]  * test OID Tree Operations handles end of MIB correctly (2.7ms) [L#135]
-  * test Unsupported Features returns error for unsupported source types [L#197]  * test Unsupported Features returns error for unsupported source types (0.1ms) [L#197]
-  * test Profile Loading loads numeric OID walk files [L#57]  * test Profile Loading loads numeric OID walk files (0.8ms) [L#57]
-  * test Profile Loading handles file read errors gracefully [L#95]  * test Profile Loading handles file read errors gracefully (0.1ms) [L#95]
-  * test OID Tree Operations maintains lexicographic order for GETNEXT [L#115]  * test OID Tree Operations maintains lexicographic order for GETNEXT (1.8ms) [L#115]
-  * test Unsupported Features returns error for compiled MIB sources (not yet implemented) [L#188]  * test Unsupported Features returns error for compiled MIB sources (not yet implemented) (1.1ms) [L#188]
-  * test Profile Loading handles missing OIDs with noSuchName [L#47]  * test Profile Loading handles missing OIDs with noSuchName (1.5ms) [L#47]
+  * test Unsupported Features returns error for compiled MIB sources (not yet implemented) [L#188]  * test Unsupported Features returns error for compiled MIB sources (not yet implemented) (1.9ms) [L#188]
   * test Profile Loading loads manual definitions correctly [L#74]  * test Profile Loading loads manual definitions correctly (0.1ms) [L#74]
-  * test Profile Loading responds to SNMP GET with walk file values [L#31]  * test Profile Loading responds to SNMP GET with walk file values (1.3ms) [L#31]
-  * test Profile Loading loads walk file into device profile [L#7]  * test Profile Loading loads walk file into device profile (1.3ms) [L#7]
-  * test Profile Behaviors includes metadata about loading [L#171]  * test Profile Behaviors includes metadata about loading (1.3ms) [L#171]
-  * test OID Tree Operations finds next OID for non-existent starting OID [L#143]  * test OID Tree Operations finds next OID for non-existent starting OID (1.6ms) [L#143]
-  * test Profile Loading starts device with walk-based profile [L#20]  * test Profile Loading starts device with walk-based profile (1.2ms) [L#20]
+  * test OID Tree Operations finds next OID correctly [L#124]  * test OID Tree Operations finds next OID correctly (2.9ms) [L#124]
+  * test OID Tree Operations handles end of MIB correctly [L#135]  * test OID Tree Operations handles end of MIB correctly (1.4ms) [L#135]
+  * test Profile Loading responds to SNMP GET with walk file values [L#31]  * test Profile Loading responds to SNMP GET with walk file values (0.9ms) [L#31]
+  * test Profile Loading handles missing OIDs with noSuchName [L#47]  * test Profile Loading handles missing OIDs with noSuchName (0.9ms) [L#47]
+  * test Profile Loading loads numeric OID walk files [L#57]  * test Profile Loading loads numeric OID walk files (0.4ms) [L#57]
+  * test Profile Behaviors loads profile with behaviors specified [L#156]  * test Profile Behaviors loads profile with behaviors specified (1.0ms) [L#156]
+  * test Profile Behaviors includes metadata about loading [L#171]  * test Profile Behaviors includes metadata about loading (0.9ms) [L#171]
+  * test Profile Loading loads walk file into device profile [L#7]  * test Profile Loading loads walk file into device profile (0.9ms) [L#7]
+  * test OID Tree Operations maintains lexicographic order for GETNEXT [L#115]  * test OID Tree Operations maintains lexicographic order for GETNEXT (1.2ms) [L#115]
+  * test OID Tree Operations finds next OID for non-existent starting OID [L#143]  * test OID Tree Operations finds next OID for non-existent starting OID (1.1ms) [L#143]
+  * test Unsupported Features returns error for unsupported source types [L#197]  * test Unsupported Features returns error for unsupported source types (0.1ms) [L#197]
+  * test Profile Loading handles file read errors gracefully [L#95]  * test Profile Loading handles file read errors gracefully (0.1ms) [L#95]
+  * test Profile Loading starts device with walk-based profile [L#20]  * test Profile Loading starts device with walk-based profile (0.9ms) [L#20]
+
+SNMPSimEx.Core.ServerTest [test/snmp_sim_ex/core/server_test.exs]
+  * test UDP Server handles invalid community strings [L#120]  * test UDP Server handles invalid community strings (excluded) [L#120]
+  * test Error Handling handles port conflicts gracefully [L#168]  * test Error Handling handles port conflicts gracefully (2.2ms) [L#168]
+  * test Performance Monitoring tracks processing times [L#228]  * test Performance Monitoring tracks processing times (211.3ms) [L#228]
+  * test UDP Server manages socket resources efficiently [L#95]  * test UDP Server manages socket resources efficiently (105.1ms) [L#95]
+  * test UDP Server updates device handler correctly [L#138]  * test UDP Server updates device handler correctly (4.6ms) [L#138]
+  * test UDP Server handles concurrent requests without blocking [L#8]  * test UDP Server handles concurrent requests without blocking (4.4ms) [L#8]
+  * test Error Handling handles handler errors gracefully [L#204]  * test Error Handling handles handler errors gracefully (102.5ms) [L#204]
+  * test Error Handling handles malformed packets gracefully [L#184]  * test Error Handling handles malformed packets gracefully (102.5ms) [L#184]
+  * test UDP Server processes 100+ requests per second [L#43]  * test UDP Server processes 100+ requests per second (5.6ms) [L#43]
+
+SNMPSimEx.OIDTreeTest [test/snmp_sim_ex/oid_tree_test.exs]
+  * test GETBULK Operations bulk_walk from middle of tree [L#196]  * test GETBULK Operations bulk_walk from middle of tree (3.8ms) [L#196]
+  * test GETBULK Operations bulk_walk beyond end of tree [L#217]  * test GETBULK Operations bulk_walk beyond end of tree (0.4ms) [L#217]
+  * test OID Tree Creation and Basic Operations overwrites existing OID value [L#55]  * test OID Tree Creation and Basic Operations overwrites existing OID value (0.3ms) [L#55]
+  * test Lexicographic Ordering and GETNEXT get_next with partial OID matches correctly [L#110]  * test Lexicographic Ordering and GETNEXT get_next with partial OID matches correctly (0.3ms) [L#110]
+  * test Lexicographic Ordering and GETNEXT get_next returns end_of_mib when no more OIDs [L#119]  * test Lexicographic Ordering and GETNEXT get_next returns end_of_mib when no more OIDs (0.3ms) [L#119]
+  * test OID Tree Creation and Basic Operations inserts multiple OIDs [L#24]  * test OID Tree Creation and Basic Operations inserts multiple OIDs (0.2ms) [L#24]
+  * test OID Tree Creation and Basic Operations inserts OID with behavior information [L#38]  * test OID Tree Creation and Basic Operations inserts OID with behavior information (0.2ms) [L#38]
+  * test OID Tree Creation and Basic Operations handles non-existent OID lookup [L#47]  * test OID Tree Creation and Basic Operations handles non-existent OID lookup (0.2ms) [L#47]
+  * test GETBULK Operations bulk_walk returns correct number of results [L#175]  * test GETBULK Operations bulk_walk returns correct number of results (0.3ms) [L#175]
+  * test Performance with Large OID Trees memory usage scales reasonably with tree size [L#302]  * test Performance with Large OID Trees memory usage scales reasonably with tree size (2.5ms) [L#302]
+  * test Performance with Large OID Trees handles large OID trees efficiently [L#226]  * test Performance with Large OID Trees handles large OID trees efficiently (1.8ms) [L#226]
+  * test GETBULK Operations bulk_walk with zero max_repetitions returns empty [L#191]  * test GETBULK Operations bulk_walk with zero max_repetitions returns empty (0.4ms) [L#191]
+  * test Performance with Large OID Trees GETNEXT traversal is efficient on large trees [L#262]  * test Performance with Large OID Trees GETNEXT traversal is efficient on large trees (5.6ms) [L#262]
+  * test OID Tree Creation and Basic Operations creates new empty tree [L#7]  * test OID Tree Creation and Basic Operations creates new empty tree (0.2ms) [L#7]
+  * test Lexicographic Ordering and GETNEXT get_next returns correct next OID [L#98]  * test Lexicographic Ordering and GETNEXT get_next returns correct next OID (0.3ms) [L#98]
+  * test Lexicographic Ordering and GETNEXT get_next with interface table traversal [L#124]  * test Lexicographic Ordering and GETNEXT get_next with interface table traversal (0.3ms) [L#124]
+  * test GETBULK Operations bulk_walk near end of tree [L#208]  * test GETBULK Operations bulk_walk near end of tree (0.2ms) [L#208]
+  * test Lexicographic Ordering and GETNEXT maintains lexicographic order for OID list [L#82]  * test Lexicographic Ordering and GETNEXT maintains lexicographic order for OID list (0.2ms) [L#82]
+  * test OID Tree Creation and Basic Operations inserts single OID with value [L#15]  * test OID Tree Creation and Basic Operations inserts single OID with value (0.1ms) [L#15]
+
+SNMPSimExPhase2IntegrationTest [test/snmp_sim_ex_phase2_integration_test.exs]
+  * test Enhanced Behavior Integration device generates realistic values with enhanced behaviors [L#85]  * test Enhanced Behavior Integration device generates realistic values with enhanced behaviors (excluded) [L#85]
+  * test Behavior Configuration System custom behavior configurations work end-to-end [L#209]  * test Behavior Configuration System custom behavior configurations work end-to-end (6.8ms) [L#209]
+  * test Performance with Enhanced Behaviors enhanced behaviors don't significantly impact performance [L#315]  * test Performance with Enhanced Behaviors enhanced behaviors don't significantly impact performance (2.8ms) [L#315]
+  * test Performance with Enhanced Behaviors multiple devices with enhanced behaviors [L#338]  * test Performance with Enhanced Behaviors multiple devices with enhanced behaviors (156.4ms) [L#338]
+  * test Enhanced Behavior Integration applies preset behaviors correctly [L#150]  * test Enhanced Behavior Integration applies preset behaviors correctly (2.9ms) [L#150]
+  * test Time-based Pattern Verification values change based on time patterns [L#180]  * test Time-based Pattern Verification values change based on time patterns (2.2ms) [L#180]
+  * test Enhanced Behavior Integration loads walk file with automatic behavior enhancement [L#26]  * test Enhanced Behavior Integration loads walk file with automatic behavior enhancement (2.6ms) [L#26]
+  * test Error Handling and Edge Cases handles invalid behavior configuration gracefully [L#288]  * test Error Handling and Edge Cases handles invalid behavior configuration gracefully (1.7ms) [L#288]
+  * test Error Handling and Edge Cases handles missing behavior gracefully [L#263]  * test Error Handling and Edge Cases handles missing behavior gracefully (1.0ms) [L#263]
+  * test Enhanced Behavior Integration loads walk file with custom behavior configuration [L#52]  * test Enhanced Behavior Integration loads walk file with custom behavior configuration (1.3ms) [L#52]
 
 SNMPSimEx.ErrorInjectionIntegrationTest [test/snmp_sim_ex/error_injection_integration_test.exs]
-  * test Error injection persistence Statistics tracking works correctly [L#222]  * test Error injection persistence Statistics tracking works correctly (0.2ms) [L#222]
-  * test Scenario validation Scenario with empty device list [L#248]  * test Scenario validation Scenario with empty device list (0.1ms) [L#248]
-  * test Test scenario integration Network outage scenario affects device [L#124]  * test Test scenario integration Network outage scenario affects device (52.1ms) [L#124]
-  * test Test scenario integration Multi-scenario test [L#169]  * test Test scenario integration Multi-scenario test (101.3ms) [L#169]
-  * test Error injection persistence Clear all errors removes all conditions [L#198]  * test Error injection persistence Clear all errors removes all conditions (11.7ms) [L#198]
-  * test Error injection integration SNMP error injection [L#106]  * test Error injection integration SNMP error injection (0.8ms) [L#106]
-  * test Test scenario integration Signal degradation scenario [L#147]  * test Test scenario integration Signal degradation scenario (52.0ms) [L#147]
-  * test Error injection integration Device failure simulation [L#84]  * test Error injection integration Device failure simulation (151.8ms) [L#84]
-  * test Error injection integration ErrorInjector can communicate with Device [L#35]  * test Error injection integration ErrorInjector can communicate with Device (1.2ms) [L#35]
-  * test Scenario validation Scenario ID generation is unique [L#259]  * test Scenario validation Scenario ID generation is unique (1.1ms) [L#259]
-  * test Error injection integration Device processes error injection messages [L#62]  * test Error injection integration Device processes error injection messages (10.8ms) [L#62]
+  * test Test scenario integration Signal degradation scenario [L#147]  * test Test scenario integration Signal degradation scenario (56.3ms) [L#147]
+  * test Error injection persistence Statistics tracking works correctly [L#222]  * test Error injection persistence Statistics tracking works correctly (0.8ms) [L#222]
+  * test Scenario validation Scenario with empty device list [L#248]  * test Scenario validation Scenario with empty device list (0.4ms) [L#248]
+  * test Error injection integration Device failure simulation [L#84]  * test Error injection integration Device failure simulation (151.7ms) [L#84]
+  * test Error injection integration SNMP error injection [L#106]  * test Error injection integration SNMP error injection (1.3ms) [L#106]
+  * test Test scenario integration Network outage scenario affects device [L#124]  * test Test scenario integration Network outage scenario affects device (71.9ms) [L#124]
+  * test Error injection integration ErrorInjector can communicate with Device [L#35]  * test Error injection integration ErrorInjector can communicate with Device (0.5ms) [L#35]
+  * test Error injection persistence Clear all errors removes all conditions [L#198]  * test Error injection persistence Clear all errors removes all conditions (10.7ms) [L#198]
+  * test Scenario validation Scenario ID generation is unique [L#259]  * test Scenario validation Scenario ID generation is unique (0.4ms) [L#259]
+  * test Test scenario integration Multi-scenario test [L#169]  * test Test scenario integration Multi-scenario test (100.8ms) [L#169]
+  * test Error injection integration Device processes error injection messages [L#62]  * test Error injection integration Device processes error injection messages (11.7ms) [L#62]
+
+SNMPSimExPhase3IntegrationTest [test/snmp_sim_ex_phase3_integration_test.exs]
+  * test Phase 3: OID Tree and GETBULK Integration GETNEXT traversal maintains correct lexicographic order [L#235]  * test Phase 3: OID Tree and GETBULK Integration GETNEXT traversal maintains correct lexicographic order (110.3ms) [L#235]
+  * test Phase 3: OID Tree and GETBULK Integration GETBULK with non-repeaters works correctly [L#109]  * test Phase 3: OID Tree and GETBULK Integration GETBULK with non-repeaters works correctly (105.5ms) [L#109]
+  * test Phase 3: OID Tree and GETBULK Integration large GETBULK requests are handled efficiently [L#149]  * test Phase 3: OID Tree and GETBULK Integration large GETBULK requests are handled efficiently (105.9ms) [L#149]
+  * test Phase 3: OID Tree and GETBULK Integration GETBULK respects UDP packet size limits [L#190]  * test Phase 3: OID Tree and GETBULK Integration GETBULK respects UDP packet size limits (105.8ms) [L#190]
+  * test Phase 3: OID Tree and GETBULK Integration device with OID tree responds to GETNEXT requests correctly [L#25]  * test Phase 3: OID Tree and GETBULK Integration device with OID tree responds to GETNEXT requests correctly (107.1ms) [L#25]
+  * test Performance and Scalability OID tree operations scale to 1000+ OIDs [L#325]  * test Performance and Scalability OID tree operations scale to 1000+ OIDs (103.2ms) [L#325]
+  * test Phase 3: OID Tree and GETBULK Integration device handles concurrent GETBULK requests [L#283]  * test Phase 3: OID Tree and GETBULK Integration device handles concurrent GETBULK requests (107.8ms) [L#283]
+  * test Phase 3: OID Tree and GETBULK Integration device supports GETBULK operations for interface tables [L#70]  * test Phase 3: OID Tree and GETBULK Integration device supports GETBULK operations for interface tables (104.8ms) [L#70]
+
+SNMPSimEx.TestScenariosTest [test/snmp_sim_ex/test_scenarios_test.exs]
+  * test cascading failure scenarios calculates cascade duration correctly with small device count [L#212]  * test cascading failure scenarios calculates cascade duration correctly with small device count (skipped) [L#212]
+  * test multi-scenario tests stagger scenario start times [L#313]  * test multi-scenario tests stagger scenario start times (skipped) [L#313]
+  * test environmental scenarios creates power scenario with severe severity [L#240]  * test environmental scenarios creates power scenario with severe severity (skipped) [L#240]
+  * test signal degradation scenarios creates progressive signal degradation [L#117]  * test signal degradation scenarios creates progressive signal degradation (skipped) [L#117]
+  * test high load scenarios creates cascade high load scenario [L#153]  * test high load scenarios creates cascade high load scenario (skipped) [L#153]
+  * test device flapping scenarios creates regular flapping pattern [L#164]  * test device flapping scenarios creates regular flapping pattern (skipped) [L#164]
+  * test scenario ID generation generates unique scenario IDs [L#331]  * test scenario ID generation generates unique scenario IDs (skipped) [L#331]
+  * test network outage scenarios creates sporadic outage scenario [L#79]  * test network outage scenarios creates sporadic outage scenario (skipped) [L#79]
+  * test signal degradation scenarios creates steady signal degradation [L#92]  * test signal degradation scenarios creates steady signal degradation (skipped) [L#92]
+  * test signal degradation scenarios creates fluctuating signal degradation [L#106]  * test signal degradation scenarios creates fluctuating signal degradation (skipped) [L#106]
+  * test device flapping scenarios creates degrading flapping pattern [L#186]  * test device flapping scenarios creates degrading flapping pattern (skipped) [L#186]
+  * test multi-scenario tests creates multiple concurrent scenarios [L#277]  * test multi-scenario tests creates multiple concurrent scenarios (skipped) [L#277]
+  * test environmental scenarios creates temperature scenario [L#252]  * test environmental scenarios creates temperature scenario (skipped) [L#252]
+  * test scenario validation validates percentage parameters [L#359]  * test scenario validation validates percentage parameters (skipped) [L#359]
+  * test cascading failure scenarios creates cascading failure scenario [L#198]  * test cascading failure scenarios creates cascading failure scenario (skipped) [L#198]
+  * test scenario validation handles zero duration scenarios [L#370]  * test scenario validation handles zero duration scenarios (skipped) [L#370]
+  * test environmental scenarios creates interference scenario [L#264]  * test environmental scenarios creates interference scenario (skipped) [L#264]
+  * test network outage scenarios creates network outage scenario with immediate recovery [L#43]  * test network outage scenarios creates network outage scenario with immediate recovery (skipped) [L#43]
+  * test high load scenarios creates bursty high load scenario [L#142]  * test high load scenarios creates bursty high load scenario (skipped) [L#142]
+  * test scenario validation handles empty device list gracefully [L#350]  * test scenario validation handles empty device list gracefully (skipped) [L#350]
+  * test device flapping scenarios creates irregular flapping pattern [L#177]  * test device flapping scenarios creates irregular flapping pattern (skipped) [L#177]
+  * test multi-scenario tests handles empty scenario list [L#308]  * test multi-scenario tests handles empty scenario list (skipped) [L#308]
+  * test environmental scenarios creates weather scenario with mild severity [L#227]  * test environmental scenarios creates weather scenario with mild severity (skipped) [L#227]
+  * test high load scenarios creates steady high load scenario [L#129]  * test high load scenarios creates steady high load scenario (skipped) [L#129]
+  * test network outage scenarios creates gradual recovery scenario [L#67]  * test network outage scenarios creates gradual recovery scenario (skipped) [L#67]
+
+SNMPSimEx.Core.PDUTest [test/snmp_sim_ex/core/pdu_test.exs]
+  * test SNMP PDU Processing handles oversized requests with tooBig error [L#98]  * test SNMP PDU Processing handles oversized requests with tooBig error (2.7ms) [L#98]
+  * test Data Type Encoding encodes INTEGER values correctly [L#161]  * test Data Type Encoding encodes INTEGER values correctly (0.3ms) [L#161]
+  * test Data Type Encoding encodes Counter32 values correctly [L#178]  * test Data Type Encoding encodes Counter32 values correctly (0.2ms) [L#178]
+  * test SNMP PDU Processing handles malformed PDU gracefully [L#52]  * test SNMP PDU Processing handles malformed PDU gracefully (0.2ms) [L#52]
+  * test SNMP PDU Processing validates community strings correctly [L#60]  * test SNMP PDU Processing validates community strings correctly (0.3ms) [L#60]
+  * test SNMP PDU Processing encodes responses with proper data types [L#78]  * test SNMP PDU Processing encodes responses with proper data types (0.2ms) [L#78]
+  * test GETBULK Support decodes GETBULK requests correctly [L#214]  * test GETBULK Support decodes GETBULK requests correctly (0.2ms) [L#214]
+  * test SNMP PDU Processing decodes SNMPv1 GET request with multiple OIDs [L#7]  * test SNMP PDU Processing decodes SNMPv1 GET request with multiple OIDs (0.3ms) [L#7]
+  * test Error Handling handles encoding failures gracefully [L#144]  * test Error Handling handles encoding failures gracefully (0.2ms) [L#144]
+  * test Data Type Encoding encodes STRING values correctly [L#195]  * test Data Type Encoding encodes STRING values correctly (0.2ms) [L#195]
+  * test Error Handling creates proper error responses [L#123]  * test Error Handling creates proper error responses (0.2ms) [L#123]
+  * test SNMP PDU Processing decodes SNMPv2c GETNEXT request [L#33]  * test SNMP PDU Processing decodes SNMPv2c GETNEXT request (0.2ms) [L#33]
+
+SNMPSimEx.MIB.BehaviorAnalyzerTest [test/snmp_sim_ex/mib/behavior_analyzer_test.exs]
+  * test Object Behavior Analysis identifies system uptime with proper increment rate [L#86]  * test Object Behavior Analysis identifies system uptime with proper increment rate (0.3ms) [L#86]
+  * test MIB Behavior Analysis analyzes complete MIB object set [L#140]  * test MIB Behavior Analysis analyzes complete MIB object set (0.3ms) [L#140]
+  * test Object Name Extraction extracts object names from common OIDs [L#172]  * test Object Name Extraction extracts object names from common OIDs (0.3ms) [L#172]
+  * test Object Behavior Analysis identifies error counters with appropriate rates [L#38]  * test Object Behavior Analysis identifies error counters with appropriate rates (0.2ms) [L#38]
+  * test Object Behavior Analysis identifies SNR gauges with inverse utilization pattern [L#54]  * test Object Behavior Analysis identifies SNR gauges with inverse utilization pattern (0.2ms) [L#54]
+  * test Object Behavior Analysis identifies power level gauges with environmental correlation [L#70]  * test Object Behavior Analysis identifies power level gauges with environmental correlation (0.2ms) [L#70]
+  * test Object Behavior Analysis identifies traffic counters by name [L#7]  * test Object Behavior Analysis identifies traffic counters by name (0.2ms) [L#7]
+  * test Walk File Enhancement handles unknown OIDs gracefully [L#126]  * test Walk File Enhancement handles unknown OIDs gracefully (0.2ms) [L#126]
+  * test Walk File Enhancement enhances walk file data with intelligent behaviors [L#103]  * test Walk File Enhancement enhances walk file data with intelligent behaviors (0.2ms) [L#103]
+  * test Object Behavior Analysis identifies packet counters and correlates with octets [L#23]  * test Object Behavior Analysis identifies packet counters and correlates with octets (0.3ms) [L#23]
+
+SNMPSimEx.TimePatternsTest [test/snmp_sim_ex/time_patterns_test.exs]
+  * test Seasonal Variations applies power consumption patterns [L#180]  * test Seasonal Variations applies power consumption patterns (3.2ms) [L#180]
+  * test Interface Traffic Rates returns appropriate rates for different interface types [L#218]  * test Interface Traffic Rates returns appropriate rates for different interface types (3.5ms) [L#218]
+  * test Weekly Pattern Variations returns reduced pattern for Saturday [L#57]  * test Weekly Pattern Variations returns reduced pattern for Saturday (0.4ms) [L#57]
+  * test Temperature Patterns returns seasonal temperature variations [L#94]  * test Temperature Patterns returns seasonal temperature variations (0.3ms) [L#94]
+  * test Temperature Patterns returns daily temperature variations [L#110]  * test Temperature Patterns returns daily temperature variations (0.2ms) [L#110]
+  * test Daily Utilization Patterns returns peak utilization during evening hours [L#25]  * test Daily Utilization Patterns returns peak utilization during evening hours (0.2ms) [L#25]
+  * test Daily Utilization Patterns handles smooth transitions between time periods [L#34]  * test Daily Utilization Patterns handles smooth transitions between time periods (0.2ms) [L#34]
+  * test Weekly Pattern Variations returns full pattern for weekdays [L#48]  * test Weekly Pattern Variations returns full pattern for weekdays (0.3ms) [L#48]
+  * test Weather Impact Simulation varies weather probability by season [L#145]  * test Weather Impact Simulation varies weather probability by season (0.2ms) [L#145]
+  * test Edge Cases and Robustness handles leap year dates correctly [L#270]  * test Edge Cases and Robustness handles leap year dates correctly (0.2ms) [L#270]
+  * test Interface Traffic Rates applies time-based factors to traffic rates [L#244]  * test Interface Traffic Rates applies time-based factors to traffic rates (0.1ms) [L#244]
+  * test Seasonal Variations applies equipment stress patterns [L#163]  * test Seasonal Variations applies equipment stress patterns (0.1ms) [L#163]
+  * test Edge Cases and Robustness handles boundary times correctly [L#257]  * test Edge Cases and Robustness handles boundary times correctly (0.2ms) [L#257]
+  * test Daily Utilization Patterns returns low utilization during early morning hours [L#7]  * test Daily Utilization Patterns returns low utilization during early morning hours (0.2ms) [L#7]
+  * test Weekly Pattern Variations varies by day of week for weekdays [L#75]  * test Weekly Pattern Variations varies by day of week for weekdays (0.2ms) [L#75]
+  * test Weather Impact Simulation returns weather impact factors [L#129]  * test Weather Impact Simulation returns weather impact factors (0.2ms) [L#129]
+  * test Edge Cases and Robustness produces consistent results for same input [L#280]  * test Edge Cases and Robustness produces consistent results for same input (0.1ms) [L#280]
+  * test Seasonal Variations applies generic seasonal patterns [L#197]  * test Seasonal Variations applies generic seasonal patterns (0.2ms) [L#197]
+  * test Weekly Pattern Variations returns lowest pattern for Sunday [L#66]  * test Weekly Pattern Variations returns lowest pattern for Sunday (0.1ms) [L#66]
+  * test Daily Utilization Patterns returns high utilization during business hours [L#16]  * test Daily Utilization Patterns returns high utilization during business hours (0.2ms) [L#16]
 
 SNMPSimEx.ErrorInjectorTest [test/snmp_sim_ex/error_injector_test.exs]
-  * test device failure simulation simulates different failure types [L#246]  * test device failure simulation simulates different failure types (excluded) [L#246]
-  * test SNMP error injection targets specific OIDs [L#200]  * test SNMP error injection targets specific OIDs (0.9ms) [L#200]
-  * test device failure simulation simulates power failure [L#271]  * test device failure simulation simulates power failure (0.9ms) [L#271]
-  * test malformed response injection injects different corruption types [L#221]  * test malformed response injection injects different corruption types (0.6ms) [L#221]
-  * test timeout injection supports burst timeout patterns [L#116]  * test timeout injection supports burst timeout patterns (0.4ms) [L#116]
-  * test packet loss injection supports burst packet loss patterns [L#156]  * test packet loss injection supports burst packet loss patterns (0.4ms) [L#156]
-  * test SNMP error injection injects different SNMP error types [L#178]  * test SNMP error injection injects different SNMP error types (0.4ms) [L#178]
-  * test error condition removal removes specific error types [L#309]  * test error condition removal removes specific error types (0.4ms) [L#309]
-  * test timeout injection injects timeout errors with configured probability [L#97]  * test timeout injection injects timeout errors with configured probability (0.4ms) [L#97]
-  * test packet loss injection injects packet loss with configured rate [L#138]  * test packet loss injection injects packet loss with configured rate (0.4ms) [L#138]
-  * test ErrorInjector startup and basic operations clears all error conditions [L#75]  * test ErrorInjector startup and basic operations clears all error conditions (0.4ms) [L#75]
-  * test ErrorInjector startup and basic operations starts and stops successfully [L#36]  * test ErrorInjector startup and basic operations starts and stops successfully (0.3ms) [L#36]
-  * test device failure simulation simulates network disconnect [L#289]  * test device failure simulation simulates network disconnect (0.4ms) [L#289]
-  * test ErrorInjector startup and basic operations tracks injection statistics [L#55]  * test ErrorInjector startup and basic operations tracks injection statistics (0.3ms) [L#55]
+  * test device failure simulation simulates different failure types [L#247]  * test device failure simulation simulates different failure types (excluded) [L#247]
+  * test error condition removal removes specific error types [L#310]  * test error condition removal removes specific error types (0.5ms) [L#310]
+  * test packet loss injection injects packet loss with configured rate [L#139]  * test packet loss injection injects packet loss with configured rate (0.3ms) [L#139]
+  * test SNMP error injection targets specific OIDs [L#201]  * test SNMP error injection targets specific OIDs (0.2ms) [L#201]
+  * test malformed response injection injects different corruption types [L#222]  * test malformed response injection injects different corruption types (0.3ms) [L#222]
+  * test ErrorInjector startup and basic operations clears all error conditions [L#76]  * test ErrorInjector startup and basic operations clears all error conditions (0.2ms) [L#76]
+  * test timeout injection injects timeout errors with configured probability [L#98]  * test timeout injection injects timeout errors with configured probability (0.2ms) [L#98]
+  * test timeout injection supports burst timeout patterns [L#117]  * test timeout injection supports burst timeout patterns (0.2ms) [L#117]
+  * test device failure simulation simulates power failure [L#272]  * test device failure simulation simulates power failure (0.2ms) [L#272]
+  * test device failure simulation simulates network disconnect [L#290]  * test device failure simulation simulates network disconnect (0.2ms) [L#290]
+  * test ErrorInjector startup and basic operations starts and stops successfully [L#37]  * test ErrorInjector startup and basic operations starts and stops successfully (0.2ms) [L#37]
+  * test SNMP error injection injects different SNMP error types [L#179]  * test SNMP error injection injects different SNMP error types (0.2ms) [L#179]
+  * test packet loss injection supports burst packet loss patterns [L#157]  * test packet loss injection supports burst packet loss patterns (0.1ms) [L#157]
+  * test ErrorInjector startup and basic operations tracks injection statistics [L#56]  * test ErrorInjector startup and basic operations tracks injection statistics (0.1ms) [L#56]
+
+SNMPSimExPhase4IntegrationTest [test/snmp_sim_ex_phase4_integration_test.exs]
+  * test Phase 4: Performance and Scale Testing memory usage remains reasonable [L#404]  * test Phase 4: Performance and Scale Testing memory usage remains reasonable (excluded) [L#404]
+  * test Phase 4: Performance and Scale Testing handles medium scale device population [L#355]  * test Phase 4: Performance and Scale Testing handles medium scale device population (excluded) [L#355]
+  * test Phase 4: End-to-End Integration device cleanup and idle management [L#258]  * test Phase 4: End-to-End Integration device cleanup and idle management (715.7ms) [L#258]
+  * test Phase 4: Error Scenarios and Recovery recovers from device process failures [L#433]  * test Phase 4: Error Scenarios and Recovery recovers from device process failures (303.1ms) [L#433]
+  * test Phase 4: End-to-End Integration multi-device startup scales properly [L#117]  * test Phase 4: End-to-End Integration multi-device startup scales properly (10.7ms) [L#117]
+  * test Phase 4: End-to-End Integration device characteristics affect behavior [L#174]  * test Phase 4: End-to-End Integration device characteristics affect behavior (0.6ms) [L#174]
+  * test Phase 4: End-to-End Integration concurrent device access patterns [L#213]  * test Phase 4: End-to-End Integration concurrent device access patterns (9.0ms) [L#213]
+  * test Phase 4: End-to-End Integration complete lazy device pool lifecycle [L#29]  * test Phase 4: End-to-End Integration complete lazy device pool lifecycle (0.7ms) [L#29]
+  * test Phase 4: Error Scenarios and Recovery handles rapid device creation and destruction [L#485]  * test Phase 4: Error Scenarios and Recovery handles rapid device creation and destruction (103.6ms) [L#485]
+  * test Phase 4: End-to-End Integration predefined device mix startup patterns [L#309]  * test Phase 4: End-to-End Integration predefined device mix startup patterns (16.9ms) [L#309]
+  * test Phase 4: End-to-End Integration device distribution patterns work correctly [L#85]  * test Phase 4: End-to-End Integration device distribution patterns work correctly (3.7ms) [L#85]
+
+SNMPSimEx.ValueSimulatorTest [test/snmp_sim_ex/value_simulator_test.exs]
+  * test Edge Cases handles unknown behavior types gracefully [L#243]  * test Edge Cases handles unknown behavior types gracefully (0.3ms) [L#243]
+  * test Error Counter Simulation generates low error rates under normal conditions [L#104]  * test Error Counter Simulation generates low error rates under normal conditions (0.2ms) [L#104]
+  * test Status Enumeration Simulation maintains status based on device health [L#163]  * test Status Enumeration Simulation maintains status based on device health (0.2ms) [L#163]
+  * test Status Enumeration Simulation changes status based on poor device health [L#177]  * test Status Enumeration Simulation changes status based on poor device health (0.2ms) [L#177]
+  * test Gauge Simulation generates utilization gauge with daily patterns [L#43]  * test Gauge Simulation generates utilization gauge with daily patterns (0.1ms) [L#43]
+  * test Gauge Simulation simulates SNR gauge with inverse utilization correlation [L#63]  * test Gauge Simulation simulates SNR gauge with inverse utilization correlation (0.1ms) [L#63]
+  * test Gauge Simulation simulates power gauge with environmental factors [L#83]  * test Gauge Simulation simulates power gauge with environmental factors (0.2ms) [L#83]
+  * test Static Value Handling handles different static data types correctly [L#203]  * test Static Value Handling handles different static data types correctly (0.2ms) [L#203]
+  * test Temperature Simulation simulates realistic temperature with load correlation [L#222]  * test Temperature Simulation simulates realistic temperature with load correlation (0.1ms) [L#222]
+  * test Traffic Counter Simulation generates realistic traffic counter increments [L#7]  * test Traffic Counter Simulation generates realistic traffic counter increments (0.2ms) [L#7]
+  * test System Counter Simulation simulates sysUpTime correctly [L#145]  * test System Counter Simulation simulates sysUpTime correctly (0.1ms) [L#145]
+  * test Static Value Handling returns static values unchanged [L#193]  * test Static Value Handling returns static values unchanged (0.1ms) [L#193]
+  * test Edge Cases handles missing device state fields gracefully [L#254]  * test Edge Cases handles missing device state fields gracefully (0.1ms) [L#254]
+  * test Error Counter Simulation increases error rates under poor conditions [L#124]  * test Error Counter Simulation increases error rates under poor conditions (0.1ms) [L#124]
+  * test Traffic Counter Simulation applies counter wrapping for 32-bit counters [L#28]  * test Traffic Counter Simulation applies counter wrapping for 32-bit counters (0.1ms) [L#28]
+
+SNMPSimExStabilityTest [test/snmp_sim_ex_stability_test.exs]
+  * test endurance test for 4 hours [L#199]  * test endurance test for 4 hours (excluded) [L#199]
+  * test stress test with 100 concurrent devices [L#233]  * test stress test with 100 concurrent devices (excluded) [L#233]
+  * test system recovery after various failure scenarios [L#280]  * test system recovery after various failure scenarios (excluded) [L#280]
+  * test memory stability over 30 minutes [L#97]  * test memory stability over 30 minutes (excluded) [L#97]
+  * test sustained load handling for 60 minutes [L#148]  * test sustained load handling for 60 minutes (excluded) [L#148]
+
+SNMPSimEx.SNMPRegressionTest [test/snmp_sim_ex/snmp_regression_test.exs]
+  * test Regression: Wrong Type NULL issue error conditions don't return NULL values [L#242]  * test Regression: Wrong Type NULL issue error conditions don't return NULL values (101.5ms) [L#242]
+  * test Regression: Wrong Type NULL issue PDU encoding preserves all SNMP data types correctly [L#114]  * test Regression: Wrong Type NULL issue PDU encoding preserves all SNMP data types correctly (105.8ms) [L#114]
+  * test Regression: Wrong Type NULL issue interface table OIDs return proper types (not NULL) [L#177]  * test Regression: Wrong Type NULL issue interface table OIDs return proper types (not NULL) (101.9ms) [L#177]
+  * test Regression: Wrong Type NULL issue device type-specific descriptions are correct [L#206]  * test Regression: Wrong Type NULL issue device type-specific descriptions are correct (260.7ms) [L#206]
+  * test Regression: Wrong Type NULL issue system OIDs return proper SNMP types (not NULL) [L#40]  * test Regression: Wrong Type NULL issue system OIDs return proper SNMP types (not NULL) (101.8ms) [L#40]
+  * test Regression: PDU encoding edge cases malformed values fallback to NULL correctly [L#319]  * test Regression: PDU encoding edge cases malformed values fallback to NULL correctly (4.9ms) [L#319]
+  * test Regression: PDU encoding edge cases all SNMP data types encode without becoming NULL [L#282]  * test Regression: PDU encoding edge cases all SNMP data types encode without becoming NULL (0.4ms) [L#282]
+  * test Regression: Wrong Type NULL issue SNMP walk simulation returns no NULL values [L#78]  * test Regression: Wrong Type NULL issue SNMP walk simulation returns no NULL values (102.4ms) [L#78]
+
+SNMPSimEx.SNMPOperationsTest [test/snmp_sim_ex/snmp_operations_test.exs]
+  * test End-to-end SNMP PDU processing GET request PDU processing returns proper response [L#201]  * test End-to-end SNMP PDU processing GET request PDU processing returns proper response (102.4ms) [L#201]
+  * test Device SNMP operations GETNEXT operations return proper next OID and value [L#96]  * test Device SNMP operations GETNEXT operations return proper next OID and value (101.7ms) [L#96]
+  * test Device SNMP operations interface table OIDs return proper SNMP types [L#119]  * test Device SNMP operations interface table OIDs return proper SNMP types (102.2ms) [L#119]
+  * test Device SNMP operations non-existent OIDs return proper SNMP error types [L#155]  * test Device SNMP operations non-existent OIDs return proper SNMP error types (102.7ms) [L#155]
+  * test Device SNMP operations GET operation returns proper SNMP data types [L#42]  * test Device SNMP operations GET operation returns proper SNMP data types (102.8ms) [L#42]
+  * test End-to-end SNMP PDU processing GETNEXT request PDU processing works correctly [L#256]  * test End-to-end SNMP PDU processing GETNEXT request PDU processing works correctly (102.3ms) [L#256]
+  * test Device SNMP operations simulated SNMP walk returns sequential OIDs with proper types [L#69]  * test Device SNMP operations simulated SNMP walk returns sequential OIDs with proper types (102.2ms) [L#69]
+
+SNMPSimExErlangSnmpIntegrationTest [test/snmp_sim_ex_erlang_snmp_integration_test.exs]
+  * test Protocol Compliance and Edge Cases Erlang SNMP validates SNMP packet structure [L#434]snmpm:snmpm:mk_target_name(snmpUDPDomain, {{127,0,0,1},56393}, [{community,
+                                                                 "public"},
+                                                                {engine_id,
+                                                                 "test_engine"},
+                                                                {version,v2},
+                                                                {sec_model,
+                                                                 v2c},
+                                                                {sec_name,
+                                                                 "public"},
+                                                                {sec_level,
+                                                                 noAuthNoPriv}]) -> "127.0.0.1:56393-v2".
+
+  * test Protocol Compliance and Edge Cases Erlang SNMP validates SNMP packet structure (205.8ms) [L#434]
+  * test Integration with Erlang SNMP Manager Erlang SNMP can walk large interface tables efficiently [L#183]snmpm:snmpm:mk_target_name(snmpUDPDomain, {{127,0,0,1},60480}, [{community,
+                                                                 "public"},
+                                                                {engine_id,
+                                                                 "test_engine"},
+                                                                {version,v2},
+                                                                {sec_model,
+                                                                 v2c},
+                                                                {sec_name,
+                                                                 "public"},
+                                                                {sec_level,
+                                                                 noAuthNoPriv}]) -> "127.0.0.1:60480-v2".
+
+  * test Integration with Erlang SNMP Manager Erlang SNMP can walk large interface tables efficiently (205.8ms) [L#183]
+  * test Integration with Erlang SNMP Manager Erlang SNMP concurrent requests work properly [L#260]snmpm:snmpm:mk_target_name(snmpUDPDomain, {{127,0,0,1},49363}, [{community,
+                                                                 "public"},
+                                                                {engine_id,
+                                                                 "test_engine"},
+                                                                {version,v2},
+                                                                {sec_model,
+                                                                 v2c},
+                                                                {sec_name,
+                                                                 "public"},
+                                                                {sec_level,
+                                                                 noAuthNoPriv}]) -> "127.0.0.1:49363-v2".
+
+  * test Integration with Erlang SNMP Manager Erlang SNMP concurrent requests work properly (206.3ms) [L#260]
+  * test Integration with Erlang SNMP Manager Erlang SNMP handles counter values correctly [L#281]snmpm:snmpm:mk_target_name(snmpUDPDomain, {{127,0,0,1},62990}, [{community,
+                                                                 "public"},
+                                                                {engine_id,
+                                                                 "test_engine"},
+                                                                {version,v2},
+                                                                {sec_model,
+                                                                 v2c},
+                                                                {sec_name,
+                                                                 "public"},
+                                                                {sec_level,
+                                                                 noAuthNoPriv}]) -> "127.0.0.1:62990-v2".
+
+  * test Integration with Erlang SNMP Manager Erlang SNMP handles counter values correctly (205.5ms) [L#281]
+  * test Integration with Erlang SNMP Manager Erlang SNMP manager can perform GETBULK operations [L#104]snmpm:snmpm:mk_target_name(snmpUDPDomain, {{127,0,0,1},61431}, [{community,
+                                                                 "public"},
+                                                                {engine_id,
+                                                                 "test_engine"},
+                                                                {version,v2},
+                                                                {sec_model,
+                                                                 v2c},
+                                                                {sec_name,
+                                                                 "public"},
+                                                                {sec_level,
+                                                                 noAuthNoPriv}]) -> "127.0.0.1:61431-v2".
+
+  * test Integration with Erlang SNMP Manager Erlang SNMP manager can perform GETBULK operations (205.5ms) [L#104]
+  * test Integration with Erlang SNMP Manager Erlang SNMP GETBULK with non-repeaters [L#126]snmpm:snmpm:mk_target_name(snmpUDPDomain, {{127,0,0,1},61217}, [{community,
+                                                                 "public"},
+                                                                {engine_id,
+                                                                 "test_engine"},
+                                                                {version,v2},
+                                                                {sec_model,
+                                                                 v2c},
+                                                                {sec_name,
+                                                                 "public"},
+                                                                {sec_level,
+                                                                 noAuthNoPriv}]) -> "127.0.0.1:61217-v2".
+
+  * test Integration with Erlang SNMP Manager Erlang SNMP GETBULK with non-repeaters (206.7ms) [L#126]
+  * test Integration with Erlang SNMP Manager Erlang SNMP handles lexicographic ordering correctly [L#151]snmpm:snmpm:mk_target_name(snmpUDPDomain, {{127,0,0,1},62577}, [{community,
+                                                                 "public"},
+                                                                {engine_id,
+                                                                 "test_engine"},
+                                                                {version,v2},
+                                                                {sec_model,
+                                                                 v2c},
+                                                                {sec_name,
+                                                                 "public"},
+                                                                {sec_level,
+                                                                 noAuthNoPriv}]) -> "127.0.0.1:62577-v2".
+
+  * test Integration with Erlang SNMP Manager Erlang SNMP handles lexicographic ordering correctly (206.5ms) [L#151]
+  * test Integration with Erlang SNMP Manager Erlang SNMP handles SNMPv1 vs v2c correctly [L#335]snmpm:snmpm:mk_target_name(snmpUDPDomain, {{127,0,0,1},62645}, [{community,
+                                                                 "public"},
+                                                                {engine_id,
+                                                                 "test_engine"},
+                                                                {version,v2},
+                                                                {sec_model,
+                                                                 v2c},
+                                                                {sec_name,
+                                                                 "public"},
+                                                                {sec_level,
+                                                                 noAuthNoPriv}]) -> "127.0.0.1:62645-v2".
+
+snmpm:snmpm:mk_target_name(snmpUDPDomain, {{127,0,0,1},62645}, [{community,
+                                                                 "public"},
+                                                                {engine_id,
+                                                                 "test_engine"},
+                                                                {version,v1},
+                                                                {sec_model,v1},
+                                                                {sec_name,
+                                                                 "public"},
+                                                                {sec_level,
+                                                                 noAuthNoPriv}]) -> "127.0.0.1:62645-v1".
+
+snmpm:snmpm:mk_target_name(snmpUDPDomain, {{127,0,0,1},62645}, [{community,
+                                                                 "public"},
+                                                                {engine_id,
+                                                                 "test_engine"},
+                                                                {version,v2},
+                                                                {sec_model,
+                                                                 v2c},
+                                                                {sec_name,
+                                                                 "public"},
+                                                                {sec_level,
+                                                                 noAuthNoPriv}]) -> "127.0.0.1:62645-v2".
+
+  * test Integration with Erlang SNMP Manager Erlang SNMP handles SNMPv1 vs v2c correctly (206.6ms) [L#335]
+  * test Integration with Erlang SNMP Manager Erlang SNMP timeout handling works [L#365]snmpm:snmpm:mk_target_name(snmpUDPDomain, {{127,0,0,1},51881}, [{community,
+                                                                 "public"},
+                                                                {engine_id,
+                                                                 "test_engine"},
+                                                                {version,v2},
+                                                                {sec_model,
+                                                                 v2c},
+                                                                {sec_name,
+                                                                 "public"},
+                                                                {sec_level,
+                                                                 noAuthNoPriv}]) -> "127.0.0.1:51881-v2".
+
+  * test Integration with Erlang SNMP Manager Erlang SNMP timeout handling works (205.3ms) [L#365]
+  * test Integration with Erlang SNMP Manager Erlang SNMP manager can perform GET operations [L#69]snmpm:snmpm:mk_target_name(snmpUDPDomain, {{127,0,0,1},59221}, [{community,
+                                                                 "public"},
+                                                                {engine_id,
+                                                                 "test_engine"},
+                                                                {version,v2},
+                                                                {sec_model,
+                                                                 v2c},
+                                                                {sec_name,
+                                                                 "public"},
+                                                                {sec_level,
+                                                                 noAuthNoPriv}]) -> "127.0.0.1:59221-v2".
+
+  * test Integration with Erlang SNMP Manager Erlang SNMP manager can perform GET operations (206.4ms) [L#69]
+  * test Integration with Erlang SNMP Manager Erlang SNMP handles invalid community strings [L#226]snmpm:snmpm:mk_target_name(snmpUDPDomain, {{127,0,0,1},54815}, [{community,
+                                                                 "public"},
+                                                                {engine_id,
+                                                                 "test_engine"},
+                                                                {version,v2},
+                                                                {sec_model,
+                                                                 v2c},
+                                                                {sec_name,
+                                                                 "public"},
+                                                                {sec_level,
+                                                                 noAuthNoPriv}]) -> "127.0.0.1:54815-v2".
+
+snmpm:snmpm:mk_target_name(snmpUDPDomain, {{127,0,0,1},54815}, [{community,
+                                                                 "invalid"},
+                                                                {engine_id,
+                                                                 "test_engine"},
+                                                                {version,v2},
+                                                                {sec_model,
+                                                                 v2c},
+                                                                {sec_name,
+                                                                 "invalid"},
+                                                                {sec_level,
+                                                                 noAuthNoPriv}]) -> "127.0.0.1:54815-v2".
+
+  * test Integration with Erlang SNMP Manager Erlang SNMP handles invalid community strings (205.9ms) [L#226]
+  * test Integration with Erlang SNMP Manager Erlang SNMP can retrieve string values correctly [L#301]snmpm:snmpm:mk_target_name(snmpUDPDomain, {{127,0,0,1},55307}, [{community,
+                                                                 "public"},
+                                                                {engine_id,
+                                                                 "test_engine"},
+                                                                {version,v2},
+                                                                {sec_model,
+                                                                 v2c},
+                                                                {sec_name,
+                                                                 "public"},
+                                                                {sec_level,
+                                                                 noAuthNoPriv}]) -> "127.0.0.1:55307-v2".
+
+  * test Integration with Erlang SNMP Manager Erlang SNMP can retrieve string values correctly (206.1ms) [L#301]
+  * test Protocol Compliance and Edge Cases Erlang SNMP validates BER encoding [L#453]snmpm:snmpm:mk_target_name(snmpUDPDomain, {{127,0,0,1},50408}, [{community,
+                                                                 "public"},
+                                                                {engine_id,
+                                                                 "test_engine"},
+                                                                {version,v2},
+                                                                {sec_model,
+                                                                 v2c},
+                                                                {sec_name,
+                                                                 "public"},
+                                                                {sec_level,
+                                                                 noAuthNoPriv}]) -> "127.0.0.1:50408-v2".
+
+  * test Protocol Compliance and Edge Cases Erlang SNMP validates BER encoding (206.8ms) [L#453]
+  * test Integration with Erlang SNMP Manager Erlang SNMP handles end of MIB correctly [L#205]snmpm:snmpm:mk_target_name(snmpUDPDomain, {{127,0,0,1},61457}, [{community,
+                                                                 "public"},
+                                                                {engine_id,
+                                                                 "test_engine"},
+                                                                {version,v2},
+                                                                {sec_model,
+                                                                 v2c},
+                                                                {sec_name,
+                                                                 "public"},
+                                                                {sec_level,
+                                                                 noAuthNoPriv}]) -> "127.0.0.1:61457-v2".
+
+  * test Integration with Erlang SNMP Manager Erlang SNMP handles end of MIB correctly (206.5ms) [L#205]
+  * test Integration with Erlang SNMP Manager Erlang SNMP manager can perform GETNEXT operations [L#85]snmpm:snmpm:mk_target_name(snmpUDPDomain, {{127,0,0,1},61150}, [{community,
+                                                                 "public"},
+                                                                {engine_id,
+                                                                 "test_engine"},
+                                                                {version,v2},
+                                                                {sec_model,
+                                                                 v2c},
+                                                                {sec_name,
+                                                                 "public"},
+                                                                {sec_level,
+                                                                 noAuthNoPriv}]) -> "127.0.0.1:61150-v2".
+
+  * test Integration with Erlang SNMP Manager Erlang SNMP manager can perform GETNEXT operations (206.4ms) [L#85]
 
 SNMPSimEx.MultiDeviceStartupTest [test/snmp_sim_ex/multi_device_startup_test.exs]
-  * test predefined device mixes starts test mixes for development [L#160]  * test predefined device mixes starts test mixes for development (0.00ms) [L#160]
+  * test predefined device mixes starts enterprise network mix [L#159]  * test predefined device mixes starts enterprise network mix (excluded) [L#159]
+  * test predefined device mixes starts cable network mix [L#141]  * test predefined device mixes starts cable network mix (excluded) [L#141]
+  * test device population shutdown shuts down entire device population [L#293]  * test device population shutdown shuts down entire device population (2.5ms) [L#293]
+  * test error handling and recovery validates port assignment conflicts [L#339]  * test error handling and recovery validates port assignment conflicts (2.6ms) [L#339]
+  * test device population startup handles timeout scenarios gracefully [L#119]  * test device population startup handles timeout scenarios gracefully (0.7ms) [L#119]
+  * test predefined device mixes starts test mixes for development [L#179]  * test predefined device mixes starts test mixes for development (14.7ms) [L#179]
+  * test pre-warming functionality pre-warms devices for immediate availability [L#202]  * test pre-warming functionality pre-warms devices for immediate availability (1.7ms) [L#202]
+  * test device population startup validates device specs with invalid types [L#64]  * test device population startup validates device specs with invalid types (0.4ms) [L#64]
+  * test device population startup detects insufficient ports [L#77]  * test device population startup detects insufficient ports (0.3ms) [L#77]
+  * test device population startup respects parallel worker limits [L#93]  * test device population startup respects parallel worker limits (1.1ms) [L#93]
+  * test startup status and monitoring tracks startup progress with callback [L#245]  * test startup status and monitoring tracks startup progress with callback (101.5ms) [L#245]
+  * test startup with progress reporting starts with console progress reporting [L#369]  * test startup with progress reporting starts with console progress reporting (1.8ms) [L#369]
+  * test startup status and monitoring console progress callback works [L#274]  * test startup status and monitoring console progress callback works (0.5ms) [L#274]
+  * test concurrent startup operations handles concurrent startup requests [L#385]  * test concurrent startup operations handles concurrent startup requests (0.7ms) [L#385]
+  * test device population startup starts small device population successfully [L#30]  * test device population startup starts small device population successfully (0.8ms) [L#30]
+  * test startup status and monitoring provides startup status information [L#222]  * test startup status and monitoring provides startup status information (0.6ms) [L#222]
+  * test error handling and recovery handles partial failures gracefully [L#319]  * test error handling and recovery handles partial failures gracefully (0.5ms) [L#319]
+  * test device population startup handles empty device specs [L#53]  * test device population startup handles empty device specs (0.3ms) [L#53]
 
-  2) test predefined device mixes starts test mixes for development (SNMPSimEx.MultiDeviceStartupTest)
-     test/snmp_sim_ex/multi_device_startup_test.exs:160
-     ** (EXIT from #PID<0.1900.0>) an exception was raised:
-         ** (KeyError) key :status not found
-             (snmp_sim_ex 0.1.0) lib/snmp_sim_ex/multi_device_startup.ex:256: SNMPSimEx.MultiDeviceStartup.start_single_device/1
-             (elixir 1.18.3) lib/task/supervised.ex:101: Task.Supervised.invoke_mfa/2
-             (elixir 1.18.3) lib/task/supervised.ex:36: Task.Supervised.reply/4
+SNMPSimEx.WalkParserTest [test/snmp_sim_ex/walk_parser_test.exs]
+  * test Data Type Parsing handles OID values correctly [L#167]  * test Data Type Parsing handles OID values correctly (0.3ms) [L#167]
+  * test Walk File Parsing resolves basic MIB names to numeric OIDs [L#77]  * test Walk File Parsing resolves basic MIB names to numeric OIDs (0.3ms) [L#77]
+  * test File Reading reads actual walk file successfully [L#115]  * test File Reading reads actual walk file successfully (1.1ms) [L#115]
+  * test File Reading reads numeric OID walk file successfully [L#126]  * test File Reading reads numeric OID walk file successfully (0.7ms) [L#126]
+  * test Walk File Parsing handles mixed walk file formats in same file [L#23]  * test Walk File Parsing handles mixed walk file formats in same file (2.7ms) [L#23]
+  * test Walk File Parsing extracts data types correctly (Counter32, STRING, INTEGER) [L#47]  * test Walk File Parsing extracts data types correctly (Counter32, STRING, INTEGER) (0.2ms) [L#47]
+  * test Walk File Parsing cleans quoted strings and hex values [L#63]  * test Walk File Parsing cleans quoted strings and hex values (0.2ms) [L#63]
+  * test Data Type Parsing parses integer values correctly [L#145]  * test Data Type Parsing parses integer values correctly (0.2ms) [L#145]
+  * test Data Type Parsing parses IP addresses correctly [L#159]  * test Data Type Parsing parses IP addresses correctly (0.2ms) [L#159]
+  * test Walk File Parsing parses named MIB format walk files (IF-MIB::ifInOctets.2) [L#7]  * test Walk File Parsing parses named MIB format walk files (IF-MIB::ifInOctets.2) (0.2ms) [L#7]
+  * test Walk File Parsing handles timeticks format correctly [L#105]  * test Walk File Parsing handles timeticks format correctly (0.2ms) [L#105]
+  * test File Reading handles non-existent file gracefully [L#137]  * test File Reading handles non-existent file gracefully (0.2ms) [L#137]
+  * test Walk File Parsing skips comments and empty lines [L#91]  * test Walk File Parsing skips comments and empty lines (0.2ms) [L#91]
+  * test Walk File Parsing parses numeric OID format walk files (.1.3.6.1.2.1.2.2.1.10.2) [L#15]  * test Walk File Parsing parses numeric OID format walk files (.1.3.6.1.2.1.2.2.1.10.2) (0.2ms) [L#15]
 
-  * test startup status and monitoring tracks startup progress with callback [L#224]  * test startup status and monitoring tracks startup progress with callback (0.00ms) [L#224]
+SNMPSimExErlangSnmpIntegrationSimpleTest [test/snmp_sim_ex_erlang_snmp_integration_simple_test.exs]
+  * test Erlang SNMP Manager Integration Erlang SNMP manager can perform GETBULK operations [L#109]snmpm:snmpm:mk_target_name(snmpUDPDomain, {{127,0,0,1},60312}, [{community,
+                                                                 "public"},
+                                                                {engine_id,
+                                                                 "test_engine"},
+                                                                {version,v2},
+                                                                {sec_model,
+                                                                 v2c},
+                                                                {sec_name,
+                                                                 "public"},
+                                                                {sec_level,
+                                                                 noAuthNoPriv}]) -> "127.0.0.1:60312-v2".
 
-  3) test startup status and monitoring tracks startup progress with callback (SNMPSimEx.MultiDeviceStartupTest)
-     test/snmp_sim_ex/multi_device_startup_test.exs:224
-     ** (EXIT from #PID<0.1954.0>) an exception was raised:
-         ** (KeyError) key :status not found
-             (snmp_sim_ex 0.1.0) lib/snmp_sim_ex/multi_device_startup.ex:256: SNMPSimEx.MultiDeviceStartup.start_single_device/1
-             (elixir 1.18.3) lib/task/supervised.ex:101: Task.Supervised.invoke_mfa/2
-             (elixir 1.18.3) lib/task/supervised.ex:36: Task.Supervised.reply/4
+  * test Erlang SNMP Manager Integration Erlang SNMP manager can perform GETBULK operations (204.8ms) [L#109]
+  * test Erlang SNMP Manager Integration Erlang SNMP timeout handling works [L#131]snmpm:snmpm:mk_target_name(snmpUDPDomain, {{127,0,0,1},53860}, [{community,
+                                                                 "public"},
+                                                                {engine_id,
+                                                                 "test_engine"},
+                                                                {version,v2},
+                                                                {sec_model,
+                                                                 v2c},
+                                                                {sec_name,
+                                                                 "public"},
+                                                                {sec_level,
+                                                                 noAuthNoPriv}]) -> "127.0.0.1:53860-v2".
 
-  * test pre-warming functionality pre-warms devices for immediate availability [L#181]  * test pre-warming functionality pre-warms devices for immediate availability (0.00ms) [L#181]
+  * test Erlang SNMP Manager Integration Erlang SNMP timeout handling works (206.1ms) [L#131]
+  * test Erlang SNMP Manager Integration Erlang SNMP handles end of MIB correctly [L#148]snmpm:snmpm:mk_target_name(snmpUDPDomain, {{127,0,0,1},57799}, [{community,
+                                                                 "public"},
+                                                                {engine_id,
+                                                                 "test_engine"},
+                                                                {version,v2},
+                                                                {sec_model,
+                                                                 v2c},
+                                                                {sec_name,
+                                                                 "public"},
+                                                                {sec_level,
+                                                                 noAuthNoPriv}]) -> "127.0.0.1:57799-v2".
 
-  4) test pre-warming functionality pre-warms devices for immediate availability (SNMPSimEx.MultiDeviceStartupTest)
-     test/snmp_sim_ex/multi_device_startup_test.exs:181
-     ** (EXIT from #PID<0.1974.0>) an exception was raised:
-         ** (KeyError) key :status not found
-             (snmp_sim_ex 0.1.0) lib/snmp_sim_ex/multi_device_startup.ex:256: SNMPSimEx.MultiDeviceStartup.start_single_device/1
-             (elixir 1.18.3) lib/task/supervised.ex:101: Task.Supervised.invoke_mfa/2
-             (elixir 1.18.3) lib/task/supervised.ex:36: Task.Supervised.reply/4
+  * test Erlang SNMP Manager Integration Erlang SNMP handles end of MIB correctly (206.5ms) [L#148]
+  * test Erlang SNMP Manager Integration Erlang SNMP manager can perform GET operations [L#73]snmpm:snmpm:mk_target_name(snmpUDPDomain, {{127,0,0,1},59501}, [{community,
+                                                                 "public"},
+                                                                {engine_id,
+                                                                 "test_engine"},
+                                                                {version,v2},
+                                                                {sec_model,
+                                                                 v2c},
+                                                                {sec_name,
+                                                                 "public"},
+                                                                {sec_level,
+                                                                 noAuthNoPriv}]) -> "127.0.0.1:59501-v2".
 
-  * test error handling and recovery handles partial failures gracefully [L#298]  * test error handling and recovery handles partial failures gracefully (0.00ms) [L#298]
+  * test Erlang SNMP Manager Integration Erlang SNMP manager can perform GET operations (206.6ms) [L#73]
+  * test Erlang SNMP Manager Integration Erlang SNMP manager can perform GETNEXT operations [L#90]snmpm:snmpm:mk_target_name(snmpUDPDomain, {{127,0,0,1},54698}, [{community,
+                                                                 "public"},
+                                                                {engine_id,
+                                                                 "test_engine"},
+                                                                {version,v2},
+                                                                {sec_model,
+                                                                 v2c},
+                                                                {sec_name,
+                                                                 "public"},
+                                                                {sec_level,
+                                                                 noAuthNoPriv}]) -> "127.0.0.1:54698-v2".
 
-  5) test error handling and recovery handles partial failures gracefully (SNMPSimEx.MultiDeviceStartupTest)
-     test/snmp_sim_ex/multi_device_startup_test.exs:298
-     ** (EXIT from #PID<0.1992.0>) an exception was raised:
-         ** (KeyError) key :status not found
-             (snmp_sim_ex 0.1.0) lib/snmp_sim_ex/multi_device_startup.ex:256: SNMPSimEx.MultiDeviceStartup.start_single_device/1
-             (elixir 1.18.3) lib/task/supervised.ex:101: Task.Supervised.invoke_mfa/2
-             (elixir 1.18.3) lib/task/supervised.ex:36: Task.Supervised.reply/4
+  * test Erlang SNMP Manager Integration Erlang SNMP manager can perform GETNEXT operations (205.4ms) [L#90]
 
-  * test device population startup respects parallel worker limits [L#82]  * test device population startup respects parallel worker limits (0.00ms) [L#82]
+SNMPSimEx.SNMPProtocolTest [test/snmp_sim_ex/snmp_protocol_test.exs]
+  * test SNMP Device protocol compliance interface table OIDs return proper data types [L#208]  * test SNMP Device protocol compliance interface table OIDs return proper data types (102.5ms) [L#208]
+  * test SNMP Device protocol compliance GET request returns proper SNMP data types [L#113]  * test SNMP Device protocol compliance GET request returns proper SNMP data types (102.7ms) [L#113]
+  * test SNMP Device protocol compliance GET request for non-existent OID returns proper error [L#165]  * test SNMP Device protocol compliance GET request for non-existent OID returns proper error (102.4ms) [L#165]
+  * test SNMP Device protocol compliance simulates SNMP walk operation correctly [L#173]  * test SNMP Device protocol compliance simulates SNMP walk operation correctly (102.3ms) [L#173]
+  * test PDU encoding/decoding encodes and decodes all SNMP data types correctly [L#24]  * test PDU encoding/decoding encodes and decodes all SNMP data types correctly (1.1ms) [L#24]
+  * test SNMP Server integration server handles malformed SNMP packets gracefully [L#259]  * test SNMP Server integration server handles malformed SNMP packets gracefully (44.8ms) [L#259]
+  * test PDU encoding/decoding handles malformed PDU data gracefully [L#69]  * test PDU encoding/decoding handles malformed PDU data gracefully (0.6ms) [L#69]
 
-  6) test device population startup respects parallel worker limits (SNMPSimEx.MultiDeviceStartupTest)
-     test/snmp_sim_ex/multi_device_startup_test.exs:82
-     ** (EXIT from #PID<0.2007.0>) an exception was raised:
-         ** (KeyError) key :status not found
-             (snmp_sim_ex 0.1.0) lib/snmp_sim_ex/multi_device_startup.ex:256: SNMPSimEx.MultiDeviceStartup.start_single_device/1
-             (elixir 1.18.3) lib/task/supervised.ex:101: Task.Supervised.invoke_mfa/2
-             (elixir 1.18.3) lib/task/supervised.ex:36: Task.Supervised.reply/4
+SNMPSimEx.BehaviorConfigTest [test/snmp_sim_ex/behavior_config_test.exs]
+  * test Multiple Behavior Application applies multiple behaviors in sequence [L#278]  * test Multiple Behavior Application applies multiple behaviors in sequence (0.6ms) [L#278]
+  * test Behavior Application applies daily patterns to appropriate OIDs [L#88]  * test Behavior Application applies daily patterns to appropriate OIDs (0.5ms) [L#88]
+  * test Custom Behavior Creation creates custom behavior configuration [L#175]  * test Custom Behavior Creation creates custom behavior configuration (0.5ms) [L#175]
+  * test Custom Behavior Creation validates behavior specifications [L#195]  * test Custom Behavior Creation validates behavior specifications (0.3ms) [L#195]
+  * test Behavior Presets high traffic simulation preset has multipliers [L#42]  * test Behavior Presets high traffic simulation preset has multipliers (0.2ms) [L#42]
+  * test Behavior Presets returns error for unknown preset [L#54]  * test Behavior Presets returns error for unknown preset (0.2ms) [L#54]
+  * test Behavior Application applies realistic counters to walk file profile [L#61]  * test Behavior Application applies realistic counters to walk file profile (0.3ms) [L#61]
+  * test Available Behaviors Listing lists all available behavior categories [L#226]  * test Available Behaviors Listing lists all available behavior categories (0.2ms) [L#226]
+  * test Realistic Error Behaviors applies error behaviors to error counter OIDs [L#243]  * test Realistic Error Behaviors applies error behaviors to error counter OIDs (0.2ms) [L#243]
+  * test Behavior Presets cable modem realistic preset contains appropriate behaviors [L#7]  * test Behavior Presets cable modem realistic preset contains appropriate behaviors (0.2ms) [L#7]
+  * test Behavior Application applies gauge behaviors with range constraints [L#144]  * test Behavior Application applies gauge behaviors with range constraints (0.2ms) [L#144]
+  * test Custom Behavior Creation normalizes behavior specifications [L#210]  * test Custom Behavior Creation normalizes behavior specifications (0.2ms) [L#210]
+  * test Behavior Application applies increment counters with specific OID patterns [L#111]  * test Behavior Application applies increment counters with specific OID patterns (0.2ms) [L#111]
+  * test Behavior Presets CMTS realistic preset has appropriate high-capacity settings [L#30]  * test Behavior Presets CMTS realistic preset has appropriate high-capacity settings (0.2ms) [L#30]
 
-  * test predefined device mixes starts cable network mix [L#129]  * test predefined device mixes starts cable network mix (0.00ms) [L#129]
+SNMPSimEx.Phase5IntegrationTest [test/snmp_sim_ex_phase5_integration_test.exs]
+  * test Phase 5 Realistic Value Simulation Integration correlation engine integration with device state [L#254]  * test Phase 5 Realistic Value Simulation Integration correlation engine integration with device state (4.0ms) [L#254]
+  * test Phase 5 Realistic Value Simulation Integration seasonal and weather patterns integration [L#415]  * test Phase 5 Realistic Value Simulation Integration seasonal and weather patterns integration (0.3ms) [L#415]
+  * test Phase 5 Realistic Value Simulation Integration jitter patterns produce expected characteristics [L#448]  * test Phase 5 Realistic Value Simulation Integration jitter patterns produce expected characteristics (0.3ms) [L#448]
+  * test Phase 5 Realistic Value Simulation Integration signal quality simulation with environmental correlations [L#104]  * test Phase 5 Realistic Value Simulation Integration signal quality simulation with environmental correlations (0.2ms) [L#104]
+  * test Phase 5 Realistic Value Simulation Integration error counter correlation with utilization and signal quality [L#145]  * test Phase 5 Realistic Value Simulation Integration error counter correlation with utilization and signal quality (0.2ms) [L#145]
+  * test Phase 5 Realistic Value Simulation Integration time patterns integration across daily cycle [L#203]  * test Phase 5 Realistic Value Simulation Integration time patterns integration across daily cycle (0.3ms) [L#203]
+  * test Phase 5 Integration with Existing Components correlation engine works with multiple simultaneous correlations [L#561]  * test Phase 5 Integration with Existing Components correlation engine works with multiple simultaneous correlations (0.2ms) [L#561]
+  * test Phase 5 Realistic Value Simulation Integration complete traffic counter simulation with all Phase 5 features [L#16]  * test Phase 5 Realistic Value Simulation Integration complete traffic counter simulation with all Phase 5 features (0.2ms) [L#16]
+  * test Phase 5 Realistic Value Simulation Integration performance with realistic device simulation [L#363]Phase 5 simulation performance: 2.24ms for 1000 simulations
+Average per simulation: 0.002ms
+  * test Phase 5 Realistic Value Simulation Integration performance with realistic device simulation (2.7ms) [L#363]
+  * test Phase 5 Integration with Existing Components value simulation works with OID tree and profiles [L#516]  * test Phase 5 Integration with Existing Components value simulation works with OID tree and profiles (0.2ms) [L#516]
+  * test Phase 5 Realistic Value Simulation Integration counter wrapping behavior across device types [L#326]  * test Phase 5 Realistic Value Simulation Integration counter wrapping behavior across device types (0.2ms) [L#326]
+  * test Phase 5 Realistic Value Simulation Integration gauge simulation integrates time patterns and correlations [L#66]  * test Phase 5 Realistic Value Simulation Integration gauge simulation integrates time patterns and correlations (0.2ms) [L#66]
 
-  7) test predefined device mixes starts cable network mix (SNMPSimEx.MultiDeviceStartupTest)
-     test/snmp_sim_ex/multi_device_startup_test.exs:129
-     ** (EXIT from #PID<0.2019.0>) an exception was raised:
-         ** (KeyError) key :status not found
-             (snmp_sim_ex 0.1.0) lib/snmp_sim_ex/multi_device_startup.ex:256: SNMPSimEx.MultiDeviceStartup.start_single_device/1
-             (elixir 1.18.3) lib/task/supervised.ex:101: Task.Supervised.invoke_mfa/2
-             (elixir 1.18.3) lib/task/supervised.ex:36: Task.Supervised.reply/4
+SNMPSimEx.ValueSimulatorPhase5Test [test/snmp_sim_ex/value_simulator_phase5_test.exs]
+  * test realistic gauge simulation with jitter temperature gauge maintains realistic ranges with jitter [L#351]  * test realistic gauge simulation with jitter temperature gauge maintains realistic ranges with jitter (0.2ms) [L#351]
+  * test integration with time patterns and correlations error counter includes correlation with utilization [L#402]  * test integration with time patterns and correlations error counter includes correlation with utilization (0.4ms) [L#402]
+  * test counter wrapping functionality handle_counter_discontinuity detects wraps [L#94]  * test counter wrapping functionality handle_counter_discontinuity detects wraps (0.2ms) [L#94]
+  * test configurable jitter and variance variance types produce different distributions [L#188]  * test configurable jitter and variance variance types produce different distributions (0.6ms) [L#188]
+  * test configurable jitter and variance time_correlated variance changes over time [L#230]  * test configurable jitter and variance time_correlated variance changes over time (0.2ms) [L#230]
+  * test counter wrapping functionality counter_approaching_wrap? detects near-wrap conditions [L#41]  * test counter wrapping functionality counter_approaching_wrap? detects near-wrap conditions (0.2ms) [L#41]
+  * test counter wrapping functionality time_until_counter_wrap calculates correctly [L#54]  * test counter wrapping functionality time_until_counter_wrap calculates correctly (0.2ms) [L#54]
+  * test counter wrapping functionality apply_device_specific_counter_behavior varies by device type [L#69]  * test counter wrapping functionality apply_device_specific_counter_behavior varies by device type (0.2ms) [L#69]
+  * test realistic gauge simulation with jitter utilization gauge includes jitter [L#319]  * test realistic gauge simulation with jitter utilization gauge includes jitter (0.2ms) [L#319]
+  * test performance characteristics counter wrapping detection is efficient [L#468]  * test performance characteristics counter wrapping detection is efficient (2.3ms) [L#468]
+  * test integration with time patterns and correlations signal gauge responds to environmental factors [L#423]  * test integration with time patterns and correlations signal gauge responds to environmental factors (0.2ms) [L#423]
+  * test realistic gauge simulation with jitter cpu gauge includes device-specific jitter [L#335]  * test realistic gauge simulation with jitter cpu gauge includes device-specific jitter (0.1ms) [L#335]
+  * test performance characteristics value simulation executes quickly [L#445]  * test performance characteristics value simulation executes quickly (1.8ms) [L#445]
+  * test counter wrapping functionality handles 32-bit counter wrapping correctly [L#6]  * test counter wrapping functionality handles 32-bit counter wrapping correctly (0.2ms) [L#6]
+  * test configurable jitter and variance different device types have different jitter characteristics [L#169]  * test configurable jitter and variance different device types have different jitter characteristics (0.1ms) [L#169]
+  * test configurable jitter and variance device_specific variance reflects device characteristics [L#261]  * test configurable jitter and variance device_specific variance reflects device characteristics (0.3ms) [L#261]
+  * test integration with time patterns and correlations traffic counter simulation integrates all Phase 5 features [L#370]  * test integration with time patterns and correlations traffic counter simulation integrates all Phase 5 features (0.2ms) [L#370]
+  * test configurable jitter and variance apply_configurable_jitter works with different patterns [L#121]  * test configurable jitter and variance apply_configurable_jitter works with different patterns (0.2ms) [L#121]
+  * test counter wrapping functionality handles 64-bit counter wrapping correctly [L#23]  * test counter wrapping functionality handles 64-bit counter wrapping correctly (0.2ms) [L#23]
 
-  * test predefined device mixes starts enterprise network mix [L#145]  * test predefined device mixes starts enterprise network mix (0.00ms) [L#145]
+SNMPSimEx.DeviceDistributionTest [test/snmp_sim_ex/device_distribution_test.exs]
+  * test density statistics handles single device type [L#209]  * test density statistics handles single device type (0.2ms) [L#209]
+  * test device ID generation generates serial-based device IDs [L#292]  * test device ID generation generates serial-based device IDs (0.2ms) [L#292]
+  * test device characteristics provides different characteristics for different device types [L#239]  * test device characteristics provides different characteristics for different device types (0.2ms) [L#239]
+  * test device mix patterns provides valid enterprise network mix [L#85]  * test device mix patterns provides valid enterprise network mix (0.2ms) [L#85]
+  * test port assignment building handles empty device mix [L#133]  * test port assignment building handles empty device mix (0.2ms) [L#133]
+  * test port assignment building raises error when not enough ports [L#141]  * test port assignment building raises error when not enough ports (1.9ms) [L#141]
+  * test port assignment validation validates non-overlapping port assignments [L#302]  * test port assignment validation validates non-overlapping port assignments (0.1ms) [L#302]
+  * test device type determination determines device type from port [L#38]  * test device type determination determines device type from port (0.1ms) [L#38]
+  * test device type determination handles edge cases in port ranges [L#58]  * test device type determination handles edge cases in port ranges (0.1ms) [L#58]
+  * test device mix patterns provides valid cable network mix [L#72]  * test device mix patterns provides valid cable network mix (0.1ms) [L#72]
+  * test density statistics calculates density statistics correctly [L#170]  * test density statistics calculates density statistics correctly (1.3ms) [L#170]
+  * test device ID generation generates MAC-based device IDs [L#276]  * test device ID generation generates MAC-based device IDs (0.2ms) [L#276]
+  * test device characteristics handles unknown device types gracefully [L#257]  * test device characteristics handles unknown device types gracefully (0.1ms) [L#257]
+  * test port assignment validation detects invalid ranges [L#321]  * test port assignment validation detects invalid ranges (0.1ms) [L#321]
+  * test density statistics identifies largest and smallest groups [L#194]  * test density statistics identifies largest and smallest groups (0.1ms) [L#194]
+  * test port assignment validation validates reasonable distribution sizes [L#330]  * test port assignment validation validates reasonable distribution sizes (0.1ms) [L#330]
+  * test device ID generation generates default device IDs [L#268]  * test device ID generation generates default device IDs (0.1ms) [L#268]
+  * test default port assignments returns valid default port assignments [L#7]  * test default port assignments returns valid default port assignments (0.1ms) [L#7]
+  * test port assignment validation validates edge cases [L#342]  * test port assignment validation validates edge cases (0.1ms) [L#342]
+  * test port assignment building builds assignments from device mix [L#112]  * test port assignment building builds assignments from device mix (0.1ms) [L#112]
+  * test port assignment validation detects overlapping port assignments [L#311]  * test port assignment validation detects overlapping port assignments (0.1ms) [L#311]
+  * test port assignment building assigns largest device types first [L#152]  * test port assignment building assigns largest device types first (0.1ms) [L#152]
+  * test device ID generation generates hostname-based device IDs [L#284]  * test device ID generation generates hostname-based device IDs (0.1ms) [L#284]
+  * test device characteristics provides characteristics for known device types [L#224]  * test device characteristics provides characteristics for known device types (0.1ms) [L#224]
+  * test device mix patterns provides test mixes with reasonable scales [L#97]  * test device mix patterns provides test mixes with reasonable scales (0.1ms) [L#97]
+  * test default port assignments default assignments cover expected port counts [L#24]  * test default port assignments default assignments cover expected port counts (0.1ms) [L#24]
 
-  8) test predefined device mixes starts enterprise network mix (SNMPSimEx.MultiDeviceStartupTest)
-     test/snmp_sim_ex/multi_device_startup_test.exs:145
-     ** (EXIT from #PID<0.2106.0>) an exception was raised:
-         ** (KeyError) key :status not found
-             (snmp_sim_ex 0.1.0) lib/snmp_sim_ex/multi_device_startup.ex:256: SNMPSimEx.MultiDeviceStartup.start_single_device/1
-             (elixir 1.18.3) lib/task/supervised.ex:101: Task.Supervised.invoke_mfa/2
-             (elixir 1.18.3) lib/task/supervised.ex:36: Task.Supervised.reply/4
+SNMPSimExShellIntegrationTest [test/snmp_sim_ex_shell_integration_test.exs]
+  * test Shell Command Integration snmpbulkwalk command attempts to connect to our simulator [L#101]  * test Shell Command Integration snmpbulkwalk command attempts to connect to our simulator (excluded) [L#101]
+  * test Shell Command Integration net-snmp tools can contact our simulator [L#135]  * test Shell Command Integration net-snmp tools can contact our simulator (excluded) [L#135]
+  * test Performance with Shell Tools UDP server responds to connection attempts [L#190]  * test Performance with Shell Tools UDP server responds to connection attempts (excluded) [L#190]
+  * test Shell Command Integration snmpget command works with our simulator [L#49]  * test Shell Command Integration snmpget command works with our simulator (excluded) [L#49]
+  * test Shell Command Integration snmpwalk command attempts to connect to our simulator [L#74]  * test Shell Command Integration snmpwalk command attempts to connect to our simulator (excluded) [L#74]
 
-  * test concurrent startup operations handles concurrent startup requests [L#364]  * test concurrent startup operations handles concurrent startup requests (0.00ms) [L#364]
+SNMPSimExTest [test/snmp_sim_ex_test.exs]
+  * test Main Module API handles errors gracefully [L#85]  * test Main Module API handles errors gracefully (0.3ms) [L#85]
+  * test Module Documentation has proper module documentation [L#105]  * test Module Documentation has proper module documentation (0.2ms) [L#105]
+  * test Main Module API starts device with profile successfully [L#28]  * test Main Module API starts device with profile successfully (0.2ms) [L#28]
+  * test Main Module API start_device_population creates multiple devices [L#55]  * test Main Module API start_device_population creates multiple devices (0.3ms) [L#55]
 
-  9) test concurrent startup operations handles concurrent startup requests (SNMPSimEx.MultiDeviceStartupTest)
-     test/snmp_sim_ex/multi_device_startup_test.exs:364
-     ** (EXIT from #PID<0.2197.0>) an exception was raised:
-         ** (KeyError) key :reason not found
-             (snmp_sim_ex 0.1.0) lib/snmp_sim_ex/multi_device_startup.ex:258: SNMPSimEx.MultiDeviceStartup.start_single_device/1
-             (elixir 1.18.3) lib/task/supervised.ex:101: Task.Supervised.invoke_mfa/2
-             (elixir 1.18.3) lib/task/supervised.ex:36: Task.Supervised.reply/4
+SNMPSimEx.SNMPWalkRootTest [test/snmp_sim_ex/snmp_walk_root_test.exs]
+  * test End-to-end PDU GETNEXT from root OIDs PDU GETNEXT walk simulation from various roots [L#189]  * test End-to-end PDU GETNEXT from root OIDs PDU GETNEXT walk simulation from various roots (0.2ms) [L#189]
+  * test Device fallback GETNEXT from root OIDs GETNEXT walk progression works correctly [L#88]  * test Device fallback GETNEXT from root OIDs GETNEXT walk progression works correctly (0.2ms) [L#88]
+  * test SharedProfiles GETNEXT from root OIDs integration test with loaded profile [L#117]  * test SharedProfiles GETNEXT from root OIDs integration test with loaded profile (2.1ms) [L#117]
+  * test End-to-end PDU GETNEXT from root OIDs PDU GETNEXT request from mib-2 root works [L#158]  * test End-to-end PDU GETNEXT from root OIDs PDU GETNEXT request from mib-2 root works (0.2ms) [L#158]
+  * test Device fallback GETNEXT from root OIDs handles GETNEXT from mib-2 root (1.3.6.1.2.1) [L#30]  * test Device fallback GETNEXT from root OIDs handles GETNEXT from mib-2 root (1.3.6.1.2.1) (0.2ms) [L#30]
+  * test Edge cases and error handling handles malformed OIDs gracefully [L#242]  * test Edge cases and error handling handles malformed OIDs gracefully (0.2ms) [L#242]
+  * test Edge cases and error handling non-existent root returns end of MIB [L#221]  * test Edge cases and error handling non-existent root returns end of MIB (0.2ms) [L#221]
+  * test Device fallback GETNEXT from root OIDs handles GETNEXT from various root OIDs [L#60]  * test Device fallback GETNEXT from root OIDs handles GETNEXT from various root OIDs (0.2ms) [L#60]
 
-  * test device population shutdown shuts down entire device population [L#272]  * test device population shutdown shuts down entire device population (0.00ms) [L#272]
+SNMPSimExSnmpExIntegrationTest [test/snmp_sim_ex_snmp_ex_integration_test.exs]
+  * test Integration with snmp_ex Library snmp_ex handles invalid community strings [L#323]  * test Integration with snmp_ex Library snmp_ex handles invalid community strings (excluded) [L#323]
+  * test Integration with snmp_ex Library snmp_ex can walk large interface tables efficiently [L#284]  * test Integration with snmp_ex Library snmp_ex can walk large interface tables efficiently (235.0ms) [L#284]
+  * test Integration with snmp_ex Library snmp_ex concurrent requests work properly [L#341]  * test Integration with snmp_ex Library snmp_ex concurrent requests work properly (204.2ms) [L#341]
+  * test Integration with snmp_ex Library snmp_ex handles counter values correctly [L#361]  * test Integration with snmp_ex Library snmp_ex handles counter values correctly (205.6ms) [L#361]
+  * test Integration with snmp_ex Library snmp_ex can perform GETBULK operations [L#214]  * test Integration with snmp_ex Library snmp_ex can perform GETBULK operations (206.5ms) [L#214]
+  * test Integration with snmp_ex Library snmp_ex GETBULK with non-repeaters [L#231]  * test Integration with snmp_ex Library snmp_ex GETBULK with non-repeaters (208.3ms) [L#231]
+  * test Integration with snmp_ex Library snmp_ex handles lexicographic ordering correctly [L#252]  * test Integration with snmp_ex Library snmp_ex handles lexicographic ordering correctly (206.2ms) [L#252]
+  * test Protocol Compliance and Edge Cases snmp_ex handles SNMPv1 vs v2c correctly [L#452]  * test Protocol Compliance and Edge Cases snmp_ex handles SNMPv1 vs v2c correctly (206.5ms) [L#452]
+  * test Protocol Compliance and Edge Cases snmp_ex timeout handling works [L#470]  * test Protocol Compliance and Edge Cases snmp_ex timeout handling works (206.9ms) [L#470]
+  * test Integration with snmp_ex Library snmp_ex can perform GET operations [L#189]  * test Integration with snmp_ex Library snmp_ex can perform GET operations (204.9ms) [L#189]
+  * test Integration with snmp_ex Library snmp_ex can retrieve string values correctly [L#377]  * test Integration with snmp_ex Library snmp_ex can retrieve string values correctly (205.5ms) [L#377]
+  * test Integration with snmp_ex Library snmp_ex handles end of MIB correctly [L#302]  * test Integration with snmp_ex Library snmp_ex handles end of MIB correctly (205.7ms) [L#302]
+  * test Integration with snmp_ex Library snmp_ex can perform GETNEXT operations [L#202]  * test Integration with snmp_ex Library snmp_ex can perform GETNEXT operations (206.8ms) [L#202]
 
- 10) test device population shutdown shuts down entire device population (SNMPSimEx.MultiDeviceStartupTest)
-     test/snmp_sim_ex/multi_device_startup_test.exs:272
-     ** (EXIT from #PID<0.2222.0>) an exception was raised:
-         ** (KeyError) key :status not found
-             (snmp_sim_ex 0.1.0) lib/snmp_sim_ex/multi_device_startup.ex:256: SNMPSimEx.MultiDeviceStartup.start_single_device/1
-             (elixir 1.18.3) lib/task/supervised.ex:101: Task.Supervised.invoke_mfa/2
-             (elixir 1.18.3) lib/task/supervised.ex:36: Task.Supervised.reply/4
+SNMPSimEx.LazyDevicePoolTest [test/snmp_sim_ex/lazy_device_pool_test.exs]
+  * test device lifecycle management updates last access time to prevent cleanup [L#189]  * test device lifecycle management updates last access time to prevent cleanup (excluded) [L#189]
+  * test device lifecycle management cleans up idle devices after timeout [L#165]  * test device lifecycle management cleans up idle devices after timeout (excluded) [L#165]
+  * test statistics tracking tracks device creation statistics [L#276]  * test statistics tracking tracks device creation statistics (1.8ms) [L#276]
+  * test concurrent access handles concurrent device creation safely [L#306]  * test concurrent access handles concurrent device creation safely (0.7ms) [L#306]
+  * test device creation handles unknown port ranges [L#114]  * test device creation handles unknown port ranges (0.3ms) [L#114]
+  * test device shutdown shuts down specific device [L#213]  * test device shutdown shuts down specific device (0.6ms) [L#213]
+  * test device creation creates different devices for different ports [L#70]  * test device creation creates different devices for different ports (0.7ms) [L#70]
+  * test device creation determines device type based on port range [L#84]  * test device creation determines device type based on port range (0.9ms) [L#84]
+  * test device creation respects max device limit [L#97]  * test device creation respects max device limit (0.6ms) [L#97]
+  * test device shutdown shuts down all devices [L#234]  * test device shutdown shuts down all devices (0.8ms) [L#234]
+  * test concurrent access handles concurrent access to different ports [L#334]  * test concurrent access handles concurrent access to different ports (2.2ms) [L#334]
+  * test port assignment configuration configures custom port assignments [L#260]  * test port assignment configuration configures custom port assignments (0.5ms) [L#260]
+  * test device creation creates device on first access [L#34]  * test device creation creates device on first access (0.4ms) [L#34]
+  * test device shutdown handles shutdown of non-existent device [L#228]  * test device shutdown handles shutdown of non-existent device (0.3ms) [L#228]
+  * test statistics tracking tracks peak device count [L#291]  * test statistics tracking tracks peak device count (0.6ms) [L#291]
+  * test device lifecycle management recreates device if it dies [L#123]  * test device lifecycle management recreates device if it dies (201.2ms) [L#123]
+  * test device creation reuses existing device on subsequent access [L#52]  * test device creation reuses existing device on subsequent access (0.2ms) [L#52]
 
---max-failures reached, aborting test suite
-Finished in 1.4 seconds (0.4s async, 1.0s sync)
-90 tests, 10 failures, 2 excluded
+SNMPSimExProductionValidationTest [test/snmp_sim_ex_production_validation_test.exs]
+  * test deployment and operational procedures work correctly [L#333]  * test deployment and operational procedures work correctly (excluded) [L#333]
+  * test maintains 99.9% uptime under realistic conditions [L#186]  * test maintains 99.9% uptime under realistic conditions (excluded) [L#186]
+  * test meets security requirements and handles attack scenarios [L#252]  * test meets security requirements and handles attack scenarios (excluded) [L#252]
+  * test monitoring and alerting systems function correctly [L#291]  * test monitoring and alerting systems function correctly (excluded) [L#291]
+  * test meets minimum device capacity requirement (10000 devices) [L#64]  * test meets minimum device capacity requirement (10000 devices) (excluded) [L#64]
+  * test integrates correctly with external systems [L#374]  * test integrates correctly with external systems (excluded) [L#374]
+  * test meets performance requirements under sustained load [L#121]  * test meets performance requirements under sustained load (excluded) [L#121]
+
+SNMPSimEx.BulkOperationsTest [test/snmp_sim_ex/bulk_operations_test.exs]
+  * test Interface Table Processing handles table requests for non-existent table [L#238]  * test Interface Table Processing handles table requests for non-existent table (1.9ms) [L#238]
+  * test Edge Cases and Error Handling handles empty variable bindings list [L#255]  * test Edge Cases and Error Handling handles empty variable bindings list (0.4ms) [L#255]
+  * test GETBULK Request Handling validates non-repeaters parameter [L#100]  * test GETBULK Request Handling validates non-repeaters parameter (0.2ms) [L#100]
+  * test Response Size Management optimize_bulk_response fits results within size limit [L#139]  * test Response Size Management optimize_bulk_response fits results within size limit (0.2ms) [L#139]
+  * test Response Size Management optimize_bulk_response handles oversized single result [L#159]  * test Response Size Management optimize_bulk_response handles oversized single result (0.1ms) [L#159]
+  * test GETBULK Request Handling handles GETBULK with multiple repeating variables [L#62]  * test GETBULK Request Handling handles GETBULK with multiple repeating variables (0.3ms) [L#62]
+  * test GETBULK Request Handling handles GETBULK at end of tree [L#82]  * test GETBULK Request Handling handles GETBULK at end of tree (0.2ms) [L#82]
+  * test GETBULK Request Handling handles GETBULK beyond end of tree [L#92]  * test GETBULK Request Handling handles GETBULK beyond end of tree (0.2ms) [L#92]
+  * test Interface Table Processing processes interface table efficiently [L#216]  * test Interface Table Processing processes interface table efficiently (0.4ms) [L#216]
+  * test Edge Cases and Error Handling estimates size for various SNMP data types [L#293]  * test Edge Cases and Error Handling estimates size for various SNMP data types (0.1ms) [L#293]
+  * test Edge Cases and Error Handling handles zero max-repetitions [L#263]  * test Edge Cases and Error Handling handles zero max-repetitions (0.1ms) [L#263]
+  * test Interface Table Processing handles table requests with more repetitions than available [L#226]  * test Interface Table Processing handles table requests with more repetitions than available (0.4ms) [L#226]
+  * test Edge Cases and Error Handling handles max non-repeaters equal to varbinds length [L#272]  * test Edge Cases and Error Handling handles max non-repeaters equal to varbinds length (0.3ms) [L#272]
+  * test GETBULK Request Handling handles basic GETBULK with no non-repeaters [L#26]  * test GETBULK Request Handling handles basic GETBULK with no non-repeaters (0.3ms) [L#26]
+  * test Response Size Management estimates response size for various data types [L#124]  * test Response Size Management estimates response size for various data types (0.1ms) [L#124]
+  * test Response Size Management optimize_bulk_response with reasonable size limit [L#169]  * test Response Size Management optimize_bulk_response with reasonable size limit (0.1ms) [L#169]
+  * test Edge Cases and Error Handling handles empty OID tree [L#246]  * test Edge Cases and Error Handling handles empty OID tree (0.1ms) [L#246]
+  * test GETBULK Request Handling validates max-repetitions parameter [L#113]  * test GETBULK Request Handling validates max-repetitions parameter (0.1ms) [L#113]
+  * test GETBULK Request Handling handles GETBULK with non-repeaters [L#43]  * test GETBULK Request Handling handles GETBULK with non-repeaters (0.2ms) [L#43]
+
+SNMPSimExIntegrationTest [test/snmp_sim_ex_integration_test.exs]
+  * test Error Handling and Edge Cases handles invalid community strings [L#389]  * test Error Handling and Edge Cases handles invalid community strings (excluded) [L#389]
+  * test End-to-End Device Simulation device reboot functionality works [L#207]  * test End-to-End Device Simulation device reboot functionality works (155.1ms) [L#207]
+  * test Error Handling and Edge Cases handles port conflicts gracefully [L#416]  * test Error Handling and Edge Cases handles port conflicts gracefully (2.7ms) [L#416]
+  * test End-to-End Device Simulation responds with proper error for non-existent OIDs [L#112]  * test End-to-End Device Simulation responds with proper error for non-existent OIDs (103.8ms) [L#112]
+  * test End-to-End Device Simulation handles multiple devices simultaneously [L#142]  * test End-to-End Device Simulation handles multiple devices simultaneously (2.8ms) [L#142]
+  * test End-to-End Device Simulation device info and statistics work correctly [L#176]  * test End-to-End Device Simulation device info and statistics work correctly (103.1ms) [L#176]
+  * test End-to-End Device Simulation loads profile and starts device successfully [L#45]  * test End-to-End Device Simulation loads profile and starts device successfully (103.2ms) [L#45]
+  * test Performance and Reliability device memory usage remains stable [L#310]  * test Performance and Reliability device memory usage remains stable (477.3ms) [L#310]
+  * test Error Handling and Edge Cases device population handles mixed success/failure [L#473]  * test Error Handling and Edge Cases device population handles mixed success/failure (3.0ms) [L#473]
+  * test Performance and Reliability handles multiple concurrent requests per device [L#272]  * test Performance and Reliability handles multiple concurrent requests per device (109.2ms) [L#272]
+  * test End-to-End Device Simulation handles GETNEXT operations correctly [L#81]  * test End-to-End Device Simulation handles GETNEXT operations correctly (108.0ms) [L#81]
+
+SNMPSimEx.CorrelationEngineTest [test/snmp_sim_ex/correlation_engine_test.exs]
+  * test calculate_utilization_error_correlation/2 increases error rates with higher utilization [L#250]  * test calculate_utilization_error_correlation/2 increases error rates with higher utilization (0.5ms) [L#250]
+  * test calculate_power_consumption_correlation/2 calculates power based on device metrics [L#361]  * test calculate_power_consumption_correlation/2 calculates power based on device metrics (0.4ms) [L#361]
+  * test calculate_utilization_error_correlation/2 caps error rates at reasonable maximum [L#292]  * test calculate_utilization_error_correlation/2 caps error rates at reasonable maximum (0.3ms) [L#292]
+  * test get_device_correlations/1 returns switch correlations [L#127]  * test get_device_correlations/1 returns switch correlations (0.3ms) [L#127]
+  * test get_device_correlations/1 returns server correlations [L#169]  * test get_device_correlations/1 returns server correlations (0.3ms) [L#169]
+  * test get_device_correlations/1 returns generic correlations for unknown device types [L#183]  * test get_device_correlations/1 returns generic correlations for unknown device types (0.2ms) [L#183]
+  * test calculate_power_consumption_correlation/2 varies power consumption by device type [L#381]  * test calculate_power_consumption_correlation/2 varies power consumption by device type (0.4ms) [L#381]
+  * test apply_correlations/5 processes multiple correlations for single primary metric [L#60]  * test apply_correlations/5 processes multiple correlations for single primary metric (0.3ms) [L#60]
+  * test get_device_correlations/1 returns cable modem correlations [L#97]  * test get_device_correlations/1 returns cable modem correlations (0.2ms) [L#97]
+  * test get_device_correlations/1 returns MTA correlations [L#112]  * test get_device_correlations/1 returns MTA correlations (0.3ms) [L#112]
+  * test calculate_signal_throughput_correlation/3 reduces throughput for poor signal quality [L#216]  * test calculate_signal_throughput_correlation/3 reduces throughput for poor signal quality (0.4ms) [L#216]
+  * test integration and performance signal throughput calculations handle edge cases [L#531]  * test integration and performance signal throughput calculations handle edge cases (0.3ms) [L#531]
+  * test calculate_temperature_performance_correlation/2 handles different equipment types appropriately [L#329]  * test calculate_temperature_performance_correlation/2 handles different equipment types appropriately (0.2ms) [L#329]
+  * test calculate_temperature_performance_correlation/2 calculates impact for cable modem at optimal temperature [L#304]  * test calculate_temperature_performance_correlation/2 calculates impact for cable modem at optimal temperature (0.3ms) [L#304]
+  * test calculate_power_consumption_correlation/2 includes cooling power for high temperatures [L#436]  * test calculate_power_consumption_correlation/2 includes cooling power for high temperatures (0.2ms) [L#436]
+  * test calculate_signal_throughput_correlation/3 handles marginal signal conditions [L#232]  * test calculate_signal_throughput_correlation/3 handles marginal signal conditions (0.2ms) [L#232]
+  * test integration and performance correlations work together without conflicts [L#465]  * test integration and performance correlations work together without conflicts (0.6ms) [L#465]
+  * test calculate_temperature_performance_correlation/2 reduces performance at high temperatures [L#317]  * test calculate_temperature_performance_correlation/2 reduces performance at high temperatures (0.2ms) [L#317]
+  * test apply_correlations/5 applies correlations between related metrics [L#6]  * test apply_correlations/5 applies correlations between related metrics (0.2ms) [L#6]
+  * test integration and performance correlation calculations are efficient [L#507]  * test integration and performance correlation calculations are efficient (0.5ms) [L#507]
+  * test get_device_correlations/1 returns CMTS correlations [L#155]  * test get_device_correlations/1 returns CMTS correlations (0.2ms) [L#155]
+  * test calculate_power_consumption_correlation/2 increases power with CPU and network activity [L#409]  * test calculate_power_consumption_correlation/2 increases power with CPU and network activity (0.2ms) [L#409]
+  * test calculate_signal_throughput_correlation/3 calculates throughput based on excellent signal quality [L#200]  * test calculate_signal_throughput_correlation/3 calculates throughput based on excellent signal quality (0.5ms) [L#200]
+  * test calculate_temperature_performance_correlation/2 handles extreme temperatures [L#347]  * test calculate_temperature_performance_correlation/2 handles extreme temperatures (0.8ms) [L#347]
+  * test calculate_utilization_error_correlation/2 applies different base error rates by interface type [L#267]  * test calculate_utilization_error_correlation/2 applies different base error rates by interface type (0.2ms) [L#267]
+  * test get_device_correlations/1 returns router correlations [L#141]  * test get_device_correlations/1 returns router correlations (0.1ms) [L#141]
+  * test apply_correlations/5 handles missing secondary metrics gracefully [L#36]  * test apply_correlations/5 handles missing secondary metrics gracefully (0.2ms) [L#36]
+
+SNMPSimEx.Performance.PerformanceTest [test/snmp_sim_ex/performance/performance_test.exs]
+  * test Resource Management Tests automatically cleans up idle devices [L#299]  * test Resource Management Tests automatically cleans up idle devices (excluded) [L#299]
+  * test Large Scale Performance Tests maintains memory usage under 1GB for 10K devices [L#157]  * test Large Scale Performance Tests maintains memory usage under 1GB for 10K devices (excluded) [L#157]
+  * test Large Scale Performance Tests achieves sub-5ms response times for cached lookups [L#206]  * test Large Scale Performance Tests achieves sub-5ms response times for cached lookups (excluded) [L#206]
+  * test Large Scale Performance Tests handles 10K+ concurrent devices [L#77]  * test Large Scale Performance Tests handles 10K+ concurrent devices (excluded) [L#77]
+  * test Scaling and Efficiency Tests maintains stable performance over 24+ hour simulation [L#401]  * test Scaling and Efficiency Tests maintains stable performance over 24+ hour simulation (excluded) [L#401]
+  * test Scaling and Efficiency Tests scales performance linearly with device count [L#368]  * test Scaling and Efficiency Tests scales performance linearly with device count (excluded) [L#368]
+  * test Large Scale Performance Tests sustains 100K+ requests/second throughput [L#129]  * test Large Scale Performance Tests sustains 100K+ requests/second throughput (excluded) [L#129]
+  * test Resource Management Tests enforces device and memory limits correctly [L#278]  * test Resource Management Tests enforces device and memory limits correctly (4.9ms) [L#278]
+
+Finished in 13.9 seconds (0.5s async, 13.3s sync)
+481 tests, 0 failures, 35 excluded, 25 skipped

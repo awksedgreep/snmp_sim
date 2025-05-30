@@ -2,8 +2,14 @@ defmodule SNMPSimEx.MultiDeviceStartupTest do
   use ExUnit.Case, async: false
   
   alias SNMPSimEx.{MultiDeviceStartup, LazyDevicePool, DeviceDistribution}
+  alias SNMPSimEx.TestHelpers.PortHelper
   
-  setup do
+  # Helper function to get unique port range for each test using PortHelper
+  defp get_port_range(_test_name, size \\ 20) do
+    PortHelper.get_port_range(size)
+  end
+  
+  setup %{test: test_name} do
     # Ensure clean state for each test
     if Process.whereis(LazyDevicePool) do
       LazyDevicePool.shutdown_all_devices()
@@ -15,11 +21,13 @@ defmodule SNMPSimEx.MultiDeviceStartupTest do
     default_assignments = DeviceDistribution.default_port_assignments()
     LazyDevicePool.configure_port_assignments(default_assignments)
     
-    :ok
+    # Provide unique port range for this test
+    port_range = get_port_range(test_name)
+    %{port_range: port_range}
   end
   
   describe "device population startup" do
-    test "starts small device population successfully" do
+    test "starts small device population successfully", %{port_range: port_range} do
       device_specs = [
         {:cable_modem, 3},
         {:switch, 2}
@@ -27,7 +35,7 @@ defmodule SNMPSimEx.MultiDeviceStartupTest do
       
       result = MultiDeviceStartup.start_device_population(
         device_specs,
-        port_range: 30_000..30_010,
+        port_range: port_range,
         parallel_workers: 2
       )
       
@@ -42,44 +50,47 @@ defmodule SNMPSimEx.MultiDeviceStartupTest do
       assert pool_stats.devices_created >= 5
     end
     
-    test "handles empty device specs" do
+    test "handles empty device specs", %{port_range: port_range} do
       device_specs = []
       
       result = MultiDeviceStartup.start_device_population(
         device_specs,
-        port_range: 30_000..30_010
+        port_range: port_range
       )
       
       assert {:error, :no_devices_specified} = result
     end
     
-    test "validates device specs with invalid types" do
+    test "validates device specs with invalid types", %{port_range: port_range} do
       device_specs = [
         {:invalid_device_type, 5}
       ]
       
       result = MultiDeviceStartup.start_device_population(
         device_specs,
-        port_range: 30_000..30_010
+        port_range: port_range
       )
       
       assert {:error, :invalid_device_types} = result
     end
     
-    test "detects insufficient ports" do
+    test "detects insufficient ports", %{port_range: _port_range} do
       device_specs = [
         {:cable_modem, 100}  # Too many for small range
       ]
       
+      # Use a small port range to test insufficient ports scenario
+      small_range = 30_000..30_010  # Only 11 ports
+      
       result = MultiDeviceStartup.start_device_population(
         device_specs,
-        port_range: 30_000..30_010  # Only 11 ports
+        port_range: small_range
       )
       
       assert {:error, {:insufficient_ports, 100, 11}} = result
     end
     
-    test "respects parallel worker limits" do
+    test "respects parallel worker limits", %{port_range: port_range} do
       device_specs = [
         {:cable_modem, 5}
       ]
@@ -87,7 +98,7 @@ defmodule SNMPSimEx.MultiDeviceStartupTest do
       # Should work with different worker counts
       result = MultiDeviceStartup.start_device_population(
         device_specs,
-        port_range: 30_000..30_020,
+        port_range: port_range,
         parallel_workers: 1
       )
       
@@ -98,14 +109,14 @@ defmodule SNMPSimEx.MultiDeviceStartupTest do
       
       result = MultiDeviceStartup.start_device_population(
         device_specs,
-        port_range: 30_100..30_120,
+        port_range: port_range,
         parallel_workers: 10
       )
       
       assert {:ok, _} = result
     end
     
-    test "handles timeout scenarios gracefully" do
+    test "handles timeout scenarios gracefully", %{port_range: port_range} do
       device_specs = [
         {:cable_modem, 2}
       ]
@@ -113,7 +124,7 @@ defmodule SNMPSimEx.MultiDeviceStartupTest do
       # Very short timeout - might cause some failures but shouldn't crash
       result = MultiDeviceStartup.start_device_population(
         device_specs,
-        port_range: 30_200..30_210,
+        port_range: port_range,
         timeout_ms: 1  # Very short timeout
       )
       
@@ -127,11 +138,11 @@ defmodule SNMPSimEx.MultiDeviceStartupTest do
   
   describe "predefined device mixes" do
     @tag :slow
-    test "starts cable network mix" do
+    test "starts cable network mix", %{port_range: port_range} do
       # Use small_test mix instead to avoid file descriptor limits
       result = MultiDeviceStartup.start_device_mix(
         :small_test,
-        port_range: 30_000..30_100
+        port_range: port_range
       )
       
       assert {:ok, startup_result} = result
@@ -145,11 +156,14 @@ defmodule SNMPSimEx.MultiDeviceStartupTest do
     end
     
     @tag :slow  
-    test "starts enterprise network mix" do
+    test "starts enterprise network mix", %{test: test_name} do
       # Use medium_test mix instead to avoid file descriptor limits
+      # medium_test requires 140 devices, so use a larger port range
+      large_port_range = get_port_range(test_name, 150)
+      
       result = MultiDeviceStartup.start_device_mix(
         :medium_test,
-        port_range: 30_000..30_200
+        port_range: large_port_range
       )
       
       assert {:ok, startup_result} = result
@@ -162,18 +176,20 @@ defmodule SNMPSimEx.MultiDeviceStartupTest do
       assert Map.has_key?(assignments, :server)
     end
     
-    test "starts test mixes for development" do
+    test "starts test mixes for development", %{port_range: port_range} do
       result = MultiDeviceStartup.start_device_mix(
         :small_test,
-        port_range: 30_000..30_100
+        port_range: port_range
       )
       
       assert {:ok, startup_result} = result
       assert startup_result.total_devices < 20  # Should be small
       
+      # Use a larger port range for medium test (140 devices)
+      large_range = get_port_range("medium_test", 150)
       result = MultiDeviceStartup.start_device_mix(
         :medium_test,
-        port_range: 31_000..31_200
+        port_range: large_range
       )
       
       assert {:ok, startup_result} = result
@@ -183,14 +199,14 @@ defmodule SNMPSimEx.MultiDeviceStartupTest do
   end
   
   describe "pre-warming functionality" do
-    test "pre-warms devices for immediate availability" do
+    test "pre-warms devices for immediate availability", %{port_range: port_range} do
       device_specs = [
         {:cable_modem, 3}
       ]
       
       result = MultiDeviceStartup.pre_warm_devices(
         device_specs,
-        port_range: 30_000..30_010
+        port_range: port_range
       )
       
       assert {:ok, startup_result} = result
@@ -203,7 +219,7 @@ defmodule SNMPSimEx.MultiDeviceStartupTest do
   end
   
   describe "startup status and monitoring" do
-    test "provides startup status information" do
+    test "provides startup status information", %{port_range: port_range} do
       # Start some devices first
       device_specs = [
         {:cable_modem, 2}
@@ -211,7 +227,7 @@ defmodule SNMPSimEx.MultiDeviceStartupTest do
       
       {:ok, _} = MultiDeviceStartup.start_device_population(
         device_specs,
-        port_range: 30_000..30_010
+        port_range: port_range
       )
       
       status = MultiDeviceStartup.get_startup_status()
@@ -226,7 +242,7 @@ defmodule SNMPSimEx.MultiDeviceStartupTest do
       assert status.devices_created >= 2
     end
     
-    test "tracks startup progress with callback" do
+    test "tracks startup progress with callback", %{port_range: port_range} do
       # Create a simple progress tracker
       test_pid = self()
       progress_callback = fn progress ->
@@ -241,7 +257,7 @@ defmodule SNMPSimEx.MultiDeviceStartupTest do
       task = Task.async(fn ->
         MultiDeviceStartup.start_device_population(
           device_specs,
-          port_range: 30_000..30_010,
+          port_range: port_range,
           progress_callback: progress_callback
         )
       end)
@@ -255,7 +271,7 @@ defmodule SNMPSimEx.MultiDeviceStartupTest do
       flush_messages()
     end
     
-    test "console progress callback works" do
+    test "console progress callback works", %{port_range: port_range} do
       callback = MultiDeviceStartup.console_progress_callback()
       assert is_function(callback, 1)
       
@@ -274,7 +290,7 @@ defmodule SNMPSimEx.MultiDeviceStartupTest do
   end
   
   describe "device population shutdown" do
-    test "shuts down entire device population" do
+    test "shuts down entire device population", %{port_range: port_range} do
       # Start some devices
       device_specs = [
         {:cable_modem, 3},
@@ -283,7 +299,7 @@ defmodule SNMPSimEx.MultiDeviceStartupTest do
       
       {:ok, _} = MultiDeviceStartup.start_device_population(
         device_specs,
-        port_range: 30_000..30_010
+        port_range: port_range
       )
       
       # Verify devices exist
@@ -300,7 +316,7 @@ defmodule SNMPSimEx.MultiDeviceStartupTest do
   end
   
   describe "error handling and recovery" do
-    test "handles partial failures gracefully" do
+    test "handles partial failures gracefully", %{port_range: port_range} do
       # This test would need mock failures, simplified for now
       device_specs = [
         {:cable_modem, 2}
@@ -308,7 +324,7 @@ defmodule SNMPSimEx.MultiDeviceStartupTest do
       
       result = MultiDeviceStartup.start_device_population(
         device_specs,
-        port_range: 30_000..30_010
+        port_range: port_range
       )
       
       # Should succeed or fail gracefully
@@ -320,7 +336,7 @@ defmodule SNMPSimEx.MultiDeviceStartupTest do
       end
     end
     
-    test "validates port assignment conflicts" do
+    test "validates port assignment conflicts", %{port_range: port_range} do
       # Create overlapping port assignments manually
       overlapping_assignments = %{
         cable_modem: 30_000..30_050,
@@ -338,7 +354,7 @@ defmodule SNMPSimEx.MultiDeviceStartupTest do
       
       result = MultiDeviceStartup.start_device_population(
         device_specs,
-        port_range: 30_000..30_100
+        port_range: port_range
       )
       
       # Should handle the conflict gracefully
@@ -350,14 +366,14 @@ defmodule SNMPSimEx.MultiDeviceStartupTest do
   end
   
   describe "startup with progress reporting" do
-    test "starts with console progress reporting" do
+    test "starts with console progress reporting", %{port_range: port_range} do
       device_specs = [
         {:cable_modem, 5}
       ]
       
       result = MultiDeviceStartup.start_with_progress(
         device_specs,
-        port_range: 30_000..30_020
+        port_range: port_range
       )
       
       assert {:ok, startup_result} = result
@@ -366,7 +382,7 @@ defmodule SNMPSimEx.MultiDeviceStartupTest do
   end
   
   describe "concurrent startup operations" do
-    test "handles concurrent startup requests" do
+    test "handles concurrent startup requests", %{port_range: port_range} do
       # Start multiple startup operations concurrently
       tasks = for i <- 1..3 do
         Task.async(fn ->
@@ -376,7 +392,7 @@ defmodule SNMPSimEx.MultiDeviceStartupTest do
           
           MultiDeviceStartup.start_device_population(
             device_specs,
-            port_range: (30_000 + i * 100)..(30_000 + i * 100 + 50)
+            port_range: port_range
           )
         end)
       end

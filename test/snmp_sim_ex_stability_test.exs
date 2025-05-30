@@ -16,9 +16,10 @@ defmodule SNMPSimExStabilityTest do
   """
   
   use ExUnit.Case, async: false
+  require Logger
   alias SNMPSimEx.{Device, LazyDevicePool, Core.Server}
   alias SNMPSimEx.MIB.SharedProfiles
-  alias SNMPSimEx.TestHelpers.StabilityTestHelper
+  alias SNMPSimEx.TestHelpers.{StabilityTestHelper, PortHelper}
   @moduletag :slow
   
   setup do
@@ -378,9 +379,12 @@ defmodule SNMPSimExStabilityTest do
   end
   
   defp create_test_devices(count) do
+    # Use PortAllocator service for guaranteed unique ports
+    {:ok, {base_port, _end_port}} = get_stability_port_range(count)
+    
     1..count
     |> Enum.map(fn i ->
-      port = 30000 + i
+      port = base_port + i - 1  # Adjust for 0-based indexing
       {:ok, device} = Device.start_link(%{
         community: "public",
         device_type: :cable_modem,
@@ -392,11 +396,14 @@ defmodule SNMPSimExStabilityTest do
   end
   
   defp create_devices_in_batches(total_count, batch_size) do
+    # Use PortAllocator service for guaranteed unique ports
+    {:ok, {base_port, _end_port}} = get_stability_port_range(total_count)
+    
     1..total_count
     |> Enum.chunk_every(batch_size)
     |> Enum.reduce([], fn batch, acc ->
       devices = Enum.map(batch, fn i ->
-        port = 30000 + i
+        port = base_port + i - 1  # Adjust for 0-based indexing
         case Device.start_link(%{
           community: "public",
           device_type: :cable_modem,
@@ -520,5 +527,13 @@ defmodule SNMPSimExStabilityTest do
       bytes >= 1024 -> "#{Float.round(bytes / 1024, 2)} KB"
       true -> "#{bytes} bytes"
     end
+  end
+  
+  # Helper function to get allocated port range using PortHelper
+  defp get_stability_port_range(device_count) do
+    port_range = PortHelper.get_port_range(device_count)
+    start_port = port_range.first
+    end_port = port_range.last
+    {:ok, {start_port, end_port}}
   end
 end

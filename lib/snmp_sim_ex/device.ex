@@ -218,17 +218,12 @@ defmodule SNMPSimEx.Device do
 
   @impl true
   def handle_call({:get_oid, oid}, _from, state) do
-    # Simple OID value retrieval for testing
-    # Return a mock value based on the OID
-    value = case oid do
-      "1.3.6.1.2.1.1.1.0" -> "SNMPSimEx Device #{state.device_id}"  # sysDescr
-      "1.3.6.1.2.1.1.3.0" -> calculate_uptime(state)  # sysUpTime
-      _ -> Map.get(state.gauges, oid, Map.get(state.counters, oid, "No Such Instance"))
-    end
+    # Use the same logic as SNMP GET requests for consistency
+    result = get_oid_value(oid, state)
     
     # Update last access time
     new_state = %{state | last_access: System.monotonic_time(:millisecond)}
-    {:reply, {:ok, value}, new_state}
+    {:reply, result, new_state}
   end
 
   @impl true
@@ -607,25 +602,34 @@ defmodule SNMPSimEx.Device do
 
   defp process_getnext_request(variable_bindings, state) do
     Enum.map(variable_bindings, fn {oid, _value} ->
-      case SharedProfiles.get_next_oid(state.device_type, oid) do
-        {:ok, next_oid} ->
-          # Get the value for the next OID
-          device_state = build_device_state(state)
-          case SharedProfiles.get_oid_value(state.device_type, next_oid, device_state) do
-            {:ok, value} -> {next_oid, value}
-            {:error, _} -> 
-              # If we can't get the value, try our fallback
-              get_fallback_next_oid(oid, state)
-          end
-        :end_of_mib ->
-          {oid, {:end_of_mib_view, nil}}
-        {:error, :end_of_mib} ->
-          {oid, {:end_of_mib_view, nil}}
-        {:error, :device_type_not_found} ->
-          # Fallback: try to get next from current OID pattern
+      try do
+        case SharedProfiles.get_next_oid(state.device_type, oid) do
+          {:ok, next_oid} ->
+            # Get the value for the next OID
+            device_state = build_device_state(state)
+            case SharedProfiles.get_oid_value(state.device_type, next_oid, device_state) do
+              {:ok, value} -> {next_oid, value}
+              {:error, _} -> 
+                # If we can't get the value, try our fallback
+                get_fallback_next_oid(oid, state)
+            end
+          :end_of_mib ->
+            {oid, {:end_of_mib_view, nil}}
+          {:error, :end_of_mib} ->
+            {oid, {:end_of_mib_view, nil}}
+          {:error, :device_type_not_found} ->
+            # Fallback: try to get next from current OID pattern
+            get_fallback_next_oid(oid, state)
+          {:error, _reason} ->
+            {oid, {:end_of_mib_view, nil}}
+        end
+      catch
+        :exit, {:noproc, _} ->
+          # SharedProfiles not available, use fallback directly
           get_fallback_next_oid(oid, state)
-        {:error, _reason} ->
-          {oid, {:end_of_mib_view, nil}}
+        :exit, _reason ->
+          # SharedProfiles unavailable, use fallback
+          get_fallback_next_oid(oid, state)
       end
     end)
   end
@@ -642,11 +646,16 @@ defmodule SNMPSimEx.Device do
         
         # Get non-repeater results (one result per variable)
         non_rep_results = Enum.map(non_rep_vars, fn {oid, _value} ->
-          case SharedProfiles.get_next_oid(state.device_type, oid) do
-            {:ok, next_oid, value} -> {next_oid, value}
-            {:error, :end_of_mib} -> {oid, {:end_of_mib_view, nil}}
-            {:error, :device_type_not_found} -> get_fallback_next_oid(oid, state)
-            {:error, _reason} -> {oid, {:end_of_mib_view, nil}}
+          try do
+            case SharedProfiles.get_next_oid(state.device_type, oid) do
+              {:ok, next_oid, value} -> {next_oid, value}
+              {:error, :end_of_mib} -> {oid, {:end_of_mib_view, nil}}
+              {:error, :device_type_not_found} -> get_fallback_next_oid(oid, state)
+              {:error, _reason} -> {oid, {:end_of_mib_view, nil}}
+            end
+          catch
+            :exit, {:noproc, _} -> get_fallback_next_oid(oid, state)
+            :exit, _reason -> get_fallback_next_oid(oid, state)
           end
         end)
         
@@ -655,10 +664,15 @@ defmodule SNMPSimEx.Device do
           [] -> []
           [first_repeat | _] ->
             start_oid = elem(first_repeat, 0)
-            case SharedProfiles.get_bulk_oids(state.device_type, start_oid, max_repetitions) do
-              {:ok, bulk_oids} -> bulk_oids
-              {:error, :device_type_not_found} -> get_fallback_bulk_oids(start_oid, max_repetitions, state)
-              {:error, _reason} -> []
+            try do
+              case SharedProfiles.get_bulk_oids(state.device_type, start_oid, max_repetitions) do
+                {:ok, bulk_oids} -> bulk_oids
+                {:error, :device_type_not_found} -> get_fallback_bulk_oids(start_oid, max_repetitions, state)
+                {:error, _reason} -> []
+              end
+            catch
+              :exit, {:noproc, _} -> get_fallback_bulk_oids(start_oid, max_repetitions, state)
+              :exit, _reason -> get_fallback_bulk_oids(start_oid, max_repetitions, state)
             end
         end
         
@@ -677,18 +691,27 @@ defmodule SNMPSimEx.Device do
         # sysUpTime - always dynamic
         get_dynamic_oid_value(oid, new_state)
       _ ->
-        # Try to get value from SharedProfiles first
-        device_state = build_device_state(new_state)
-        case SharedProfiles.get_oid_value(state.device_type, oid, device_state) do
-          {:ok, value} -> {:ok, value}
-          {:error, :no_such_object} -> 
-            # Fallback to device-specific dynamic OIDs
+        # Try to get value from SharedProfiles first (if available)
+        try do
+          device_state = build_device_state(new_state)
+          case SharedProfiles.get_oid_value(state.device_type, oid, device_state) do
+            {:ok, value} -> {:ok, value}
+            {:error, :no_such_object} -> 
+              # Fallback to device-specific dynamic OIDs
+              get_dynamic_oid_value(oid, new_state)
+            {:error, :no_such_name} -> 
+              # OID not found in SharedProfiles, fallback to dynamic OIDs
+              get_dynamic_oid_value(oid, new_state)
+            {:error, :device_type_not_found} ->
+              # Device type not loaded in SharedProfiles, fallback to dynamic OIDs
+              get_dynamic_oid_value(oid, new_state)
+          end
+        catch
+          :exit, {:noproc, _} ->
+            # SharedProfiles not available, use fallback directly
             get_dynamic_oid_value(oid, new_state)
-          {:error, :no_such_name} -> 
-            # OID not found in SharedProfiles, fallback to dynamic OIDs
-            get_dynamic_oid_value(oid, new_state)
-          {:error, :device_type_not_found} ->
-            # Device type not loaded in SharedProfiles, fallback to dynamic OIDs
+          :exit, reason ->
+            Logger.debug("SharedProfiles unavailable (#{inspect(reason)}), using fallback for OID #{oid}")
             get_dynamic_oid_value(oid, new_state)
         end
     end
@@ -701,17 +724,24 @@ defmodule SNMPSimEx.Device do
   end
 
   defp get_dynamic_oid_value(oid, state) do
+    # Normalize OID to string format
+    oid_string = case oid do
+      {:object_identifier, oid_str} -> oid_str
+      oid_str when is_binary(oid_str) -> oid_str
+      _ -> oid
+    end
+    
     # Check if this OID matches any counter or gauge patterns
     cond do
-      Map.has_key?(state.counters, oid) ->
-        {:ok, {:counter32, Map.get(state.counters, oid, 0)}}
+      Map.has_key?(state.counters, oid_string) ->
+        {:ok, {:counter32, Map.get(state.counters, oid_string, 0)}}
         
-      Map.has_key?(state.gauges, oid) ->
-        {:ok, {:gauge32, Map.get(state.gauges, oid, 0)}}
+      Map.has_key?(state.gauges, oid_string) ->
+        {:ok, {:gauge32, Map.get(state.gauges, oid_string, 0)}}
         
       # Fallback to basic system OIDs if not found in SharedProfiles
-      oid == "1.3.6.1.2.1.1.1.0" ->
-        # sysDescr - system description
+      oid_string == "1.3.6.1.2.1.1.1.0" ->
+        # sysDescr - system description (OCTET STRING)
         device_type_str = case state.device_type do
           :cable_modem -> "Motorola SB6141 DOCSIS 3.0 Cable Modem"
           :cmts -> "Cisco CMTS Cable Modem Termination System"
@@ -720,30 +750,34 @@ defmodule SNMPSimEx.Device do
         end
         {:ok, device_type_str}
         
-      oid == "1.3.6.1.2.1.1.2.0" ->
-        # sysObjectID - object identifier
-        {:ok, "1.3.6.1.4.1.4491.2.4.1"}
+      oid_string == "1.3.6.1.2.1.1.2.0" ->
+        # sysObjectID - object identifier (OBJECT IDENTIFIER)
+        {:ok, {:object_identifier, "1.3.6.1.4.1.4491.2.4.1"}}
         
-      oid == "1.3.6.1.2.1.1.4.0" ->
-        # sysContact - contact info
+      oid_string == "1.3.6.1.2.1.1.4.0" ->
+        # sysContact - contact info (OCTET STRING)
         {:ok, "admin@example.com"}
         
-      oid == "1.3.6.1.2.1.1.5.0" ->
-        # sysName - system name
+      oid_string == "1.3.6.1.2.1.1.5.0" ->
+        # sysName - system name (OCTET STRING)
         device_name = state.device_id || "device_#{state.port}"
         {:ok, device_name}
         
-      oid == "1.3.6.1.2.1.1.6.0" ->
-        # sysLocation - location
+      oid_string == "1.3.6.1.2.1.1.6.0" ->
+        # sysLocation - location (OCTET STRING)
         {:ok, "Customer Premises"}
         
-      oid == "1.3.6.1.2.1.1.7.0" ->
-        # sysServices - services
+      oid_string == "1.3.6.1.2.1.1.7.0" ->
+        # sysServices - services (INTEGER)
+        {:ok, 2}
+        
+      oid_string == "1.3.6.1.2.1.2.1.0" ->
+        # ifNumber - number of network interfaces (INTEGER)
         {:ok, 2}
         
       # Interface table OIDs (1.3.6.1.2.1.2.2.1.x.y where x is column, y is interface index)
-      String.starts_with?(oid, "1.3.6.1.2.1.2.2.1.") ->
-        handle_interface_oid(oid, state)
+      String.starts_with?(oid_string, "1.3.6.1.2.1.2.2.1.") ->
+        handle_interface_oid(oid_string, state)
         
       true ->
         {:error, :no_such_name}
@@ -756,11 +790,11 @@ defmodule SNMPSimEx.Device do
       ["1", "3", "6", "1", "2", "1", "2", "2", "1", column, interface_index] ->
         case {column, interface_index} do
           {"1", "1"} ->
-            # ifIndex.1 - interface index
+            # ifIndex.1 - interface index (INTEGER)
             {:ok, 1}
             
           {"2", "1"} ->
-            # ifDescr.1 - interface description
+            # ifDescr.1 - interface description (OCTET STRING)
             interface_desc = case state.device_type do
               :cable_modem -> "Ethernet Interface"
               :cmts -> "Cable Interface 1/0/0"
@@ -770,27 +804,27 @@ defmodule SNMPSimEx.Device do
             {:ok, interface_desc}
             
           {"3", "1"} ->
-            # ifType.1 - interface type (6 = ethernetCsmacd)
+            # ifType.1 - interface type (INTEGER - 6 = ethernetCsmacd)
             {:ok, 6}
             
           {"4", "1"} ->
-            # ifMtu.1 - MTU
+            # ifMtu.1 - MTU (INTEGER)
             {:ok, 1500}
             
           {"5", "1"} ->
-            # ifSpeed.1 - interface speed (100 Mbps)
-            {:ok, 100000000}
+            # ifSpeed.1 - interface speed (GAUGE32 - 100 Mbps)
+            {:ok, {:gauge32, 100000000}}
             
           {"6", "1"} ->
-            # ifPhysAddress.1 - MAC address (as hex string)
+            # ifPhysAddress.1 - MAC address (OCTET STRING)
             {:ok, "00:11:22:33:44:55"}
             
           {"7", "1"} ->
-            # ifAdminStatus.1 - admin status (1 = up)
+            # ifAdminStatus.1 - admin status (INTEGER - 1 = up)
             {:ok, 1}
             
           {"8", "1"} ->
-            # ifOperStatus.1 - operational status (1 = up)
+            # ifOperStatus.1 - operational status (INTEGER - 1 = up)
             {:ok, 1}
             
           {"9", "1"} ->
@@ -943,24 +977,58 @@ defmodule SNMPSimEx.Device do
   
 
   defp get_fallback_next_oid(oid, state) do
-    # Simple fallback for common OID patterns
+    # Get next OID with device-specific values when possible
     case oid do
-      "1.3.6.1.2.1.1.1.0" -> {"1.3.6.1.2.1.1.2.0", {:object_identifier, "1.3.6.1.4.1.99999"}}
-      "1.3.6.1.2.1.1.2.0" -> {"1.3.6.1.2.1.1.3.0", {:timeticks, calculate_uptime_ticks(state)}}
-      "1.3.6.1.2.1.1.3.0" -> {"1.3.6.1.2.1.1.4.0", {:string, "Fallback Contact"}}
-      "1.3.6.1.2.1.1.4.0" -> {"1.3.6.1.2.1.1.5.0", {:string, "Fallback System Name"}}
-      "1.3.6.1.2.1.1.5.0" -> {"1.3.6.1.2.1.1.6.0", {:string, "Fallback Location"}}
-      "1.3.6.1.2.1.1.6.0" -> {"1.3.6.1.2.1.1.7.0", {:integer, 72}}
-      "1.3.6.1.2.1.1.7.0" -> {"1.3.6.1.2.1.2.1.0", {:integer, 2}}
-      "1.3.6.1.2.1.2.1.0" -> {"1.3.6.1.2.1.2.2.1.1.1", {:integer, 1}}
-      "1.3.6.1.2.1.2.2.1.1" -> {"1.3.6.1.2.1.2.2.1.1.1", {:integer, 1}}
-      "1.3.6.1.2.1.2.2.1.1.1" -> {"1.3.6.1.2.1.2.2.1.1.2", {:integer, 2}}
-      "1.3.6.1.2.1.2.2.1.1.2" -> {"1.3.6.1.2.1.2.2.1.1.3", {:integer, 3}}
-      "1.3.6.1.2.1.2.2.1.1.3" -> {"1.3.6.1.2.1.2.2.1.2.1", {:string, "eth0"}}
-      "1.3.6.1.2.1.2.2.1.2.1" -> {"1.3.6.1.2.1.2.2.1.2.2", {:string, "eth1"}}
-      "1.3.6.1.2.1.2.2.1.2.2" -> {"1.3.6.1.2.1.2.2.1.2.3", {:string, "eth2"}}
-      "1.3.6.1.2.1.1" -> {"1.3.6.1.2.1.1.1.0", {:string, "Default System Description"}}
-      _ -> {oid, {:end_of_mib_view, nil}}
+      "1.3.6.1.2.1.1.1.0" -> 
+        {"1.3.6.1.2.1.1.2.0", {:object_identifier, "1.3.6.1.4.1.4491.2.4.1"}}
+      "1.3.6.1.2.1.1.2.0" -> 
+        {"1.3.6.1.2.1.1.3.0", {:timeticks, calculate_uptime_ticks(state)}}
+      "1.3.6.1.2.1.1.3.0" -> 
+        {"1.3.6.1.2.1.1.4.0", "admin@example.com"}
+      "1.3.6.1.2.1.1.4.0" -> 
+        device_name = state.device_id || "device_#{state.port}"
+        {"1.3.6.1.2.1.1.5.0", device_name}
+      "1.3.6.1.2.1.1.5.0" -> 
+        {"1.3.6.1.2.1.1.6.0", "Customer Premises"}
+      "1.3.6.1.2.1.1.6.0" -> 
+        {"1.3.6.1.2.1.1.7.0", 2}
+      "1.3.6.1.2.1.1.7.0" -> 
+        {"1.3.6.1.2.1.2.1.0", 2}
+      "1.3.6.1.2.1.2.1.0" -> 
+        {"1.3.6.1.2.1.2.2.1.1.1", 1}
+      "1.3.6.1.2.1.2.2.1.1" -> 
+        {"1.3.6.1.2.1.2.2.1.1.1", 1}
+      "1.3.6.1.2.1.2.2.1.1.1" -> 
+        {"1.3.6.1.2.1.2.2.1.1.2", 2}
+      "1.3.6.1.2.1.2.2.1.1.2" -> 
+        {"1.3.6.1.2.1.2.2.1.2.1", get_interface_description(state)}
+      "1.3.6.1.2.1.2.2.1.2.1" -> 
+        {"1.3.6.1.2.1.2.2.1.3.1", 6}
+      "1.3.6.1.2.1.2.2.1.3.1" -> 
+        {"1.3.6.1.2.1.2.2.1.4.1", 1500}
+      "1.3.6.1.2.1.2.2.1.4.1" -> 
+        {"1.3.6.1.2.1.2.2.1.5.1", {:gauge32, 100000000}}
+      # Handle various starting points for SNMP walk - all redirect to first system OID
+      oid when oid in ["1.3.6.1.2.1", "1.3.6.1.2.1.1", "1.3.6.1", "1.3.6", "1.3", "1"] ->
+        # Starting from various root points - go to first system OID
+        device_type_str = case state.device_type do
+          :cable_modem -> "Motorola SB6141 DOCSIS 3.0 Cable Modem"
+          :cmts -> "Cisco CMTS Cable Modem Termination System"
+          :router -> "Cisco Router"
+          _ -> "SNMP Simulator Device"
+        end
+        {"1.3.6.1.2.1.1.1.0", device_type_str}
+      _ -> 
+        {oid, {:end_of_mib_view, nil}}
+    end
+  end
+  
+  defp get_interface_description(state) do
+    case state.device_type do
+      :cable_modem -> "Ethernet Interface"
+      :cmts -> "Cable Interface 1/0/0"
+      :router -> "GigabitEthernet0/0"
+      _ -> "Interface 1"
     end
   end
 
@@ -970,7 +1038,7 @@ defmodule SNMPSimEx.Device do
       "1.3.6.1.2.1.2.2.1.1" ->
         # Generate interface indices
         for i <- 1..min(max_repetitions, 3) do
-          {"1.3.6.1.2.1.2.2.1.1.#{i}", {:integer, i}}
+          {"1.3.6.1.2.1.2.2.1.1.#{i}", i}
         end
       "1.3.6.1.2.1.2.2.1.10" ->
         # Generate interface octet counters  

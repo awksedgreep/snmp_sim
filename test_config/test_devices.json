@@ -1,0 +1,59 @@
+{
+  "snmp_sim_ex": {
+    "global_settings": {
+      "max_devices": 50,
+      "max_memory_mb": 256,
+      "enable_telemetry": true,
+      "enable_performance_monitoring": true,
+      "host": "0.0.0.0",
+      "community": "public",
+      "worker_pool_size": 4,
+      "socket_count": 2
+    },
+    "device_groups": [
+      {
+        "name": "test_cable_modems",
+        "device_type": "cable_modem",
+        "count": 5,
+        "port_range": {
+          "start": 30000,
+          "end": 30004
+        },
+        "community": "public",
+        "walk_file": "priv/walks/cable_modem.walk",
+        "behaviors": ["realistic_counters", "time_patterns"]
+      },
+      {
+        "name": "test_switches",
+        "device_type": "switch", 
+        "count": 3,
+        "port_range": {
+          "start": 31000,
+          "end": 31002
+        },
+        "community": "public",
+        "walk_file": "priv/walks/cable_modem.walk",
+        "behaviors": ["realistic_counters"]
+      },
+      {
+        "name": "test_routers",
+        "device_type": "router",
+        "count": 2,
+        "port_range": {
+          "start": 32000,
+          "end": 32001
+        },
+        "community": "public",
+        "walk_file": "priv/walks/cable_modem.walk",
+        "behaviors": ["realistic_counters", "correlations"]
+      }
+    ],
+    "monitoring": {
+      "health_check": {
+        "enabled": true,
+        "port": 4000,
+        "path": "/health"
+      }
+    }
+  }
+}

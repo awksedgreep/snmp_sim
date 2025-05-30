@@ -6,6 +6,7 @@ defmodule SNMPSimExIntegrationTest do
   alias SNMPSimEx.Device
   alias SNMPSimEx.Core.PDU
   alias SNMPSimEx.MIB.SharedProfiles
+  alias SNMPSimEx.TestHelpers.PortHelper
 
   describe "End-to-End Device Simulation" do
     setup do
@@ -497,15 +498,11 @@ defmodule SNMPSimExIntegrationTest do
   # Helper functions
 
   defp find_free_port do
-    {:ok, socket} = :gen_udp.open(0, [:binary])
-    {:ok, port} = :inet.port(socket)
-    :gen_udp.close(socket)
-    port
+    PortHelper.get_port()
   end
 
   defp find_free_port_range(count) do
-    start_port = find_free_port()
-    start_port..(start_port + count - 1)
+    PortHelper.get_port_range(count)
   end
 
   defp send_snmp_get(port, oid, community \\ "public") do

@@ -2,6 +2,7 @@ defmodule SNMPSimEx.Core.ServerTest do
   use ExUnit.Case, async: false  # UDP servers need unique ports
   
   alias SNMPSimEx.Core.{Server, PDU}
+  alias SNMPSimEx.TestHelpers.PortHelper
 
   describe "UDP Server" do
     test "handles concurrent requests without blocking" do
@@ -268,11 +269,7 @@ defmodule SNMPSimEx.Core.ServerTest do
   # Helper functions
   
   defp find_free_port do
-    # Find a free port for testing
-    {:ok, socket} = :gen_udp.open(0, [:binary])
-    {:ok, port} = :inet.port(socket)
-    :gen_udp.close(socket)
-    port
+    PortHelper.get_port()
   end
 
   defp send_test_snmp_request(port, request_id, community \\ "public") do

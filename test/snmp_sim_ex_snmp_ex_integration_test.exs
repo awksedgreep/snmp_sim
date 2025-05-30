@@ -10,6 +10,7 @@ defmodule SNMPSimExSnmpExIntegrationTest do
   alias SNMPSimEx.ProfileLoader
   alias SNMPSimEx.Device
   alias SNMPSimEx.MIB.SharedProfiles
+  alias SNMPSimEx.TestHelpers.PortHelper
 
   # Helper module to provide backward compatibility with old SNMP API
   defmodule SNMPCompat do
@@ -148,7 +149,7 @@ defmodule SNMPSimExSnmpExIntegrationTest do
         {:walk_file, "priv/walks/cable_modem.walk"}
       )
 
-      port = find_free_port()
+      port = PortHelper.get_port()
 
       device_config = %{
         port: port,
@@ -412,7 +413,7 @@ defmodule SNMPSimExSnmpExIntegrationTest do
         {:walk_file, "priv/walks/cable_modem.walk"}
       )
 
-      port = find_free_port()
+      port = PortHelper.get_port()
 
       device_config = %{
         port: port,
@@ -489,13 +490,6 @@ defmodule SNMPSimExSnmpExIntegrationTest do
   end
 
   # Helper functions
-
-  defp find_free_port do
-    {:ok, socket} = :gen_udp.open(0, [:binary])
-    {:ok, port} = :inet.port(socket)
-    :gen_udp.close(socket)
-    port
-  end
 
   defp compare_oids(oid1, oid2) do
     parts1 = String.split(oid1, ".") |> Enum.map(&String.to_integer/1)

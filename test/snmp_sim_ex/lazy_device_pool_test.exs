@@ -2,8 +2,14 @@ defmodule SNMPSimEx.LazyDevicePoolTest do
   use ExUnit.Case, async: false
   
   alias SNMPSimEx.{LazyDevicePool, Device}
+  alias SNMPSimEx.TestHelpers.PortHelper
   
-  setup do
+  # Helper function to get unique port for each test using PortHelper
+  defp get_test_port(_test_name, offset \\ 0) do
+    PortHelper.get_port() + offset
+  end
+  
+  setup %{test: test_name} do
     # Start a fresh LazyDevicePool for each test
     {:ok, pool_pid} = LazyDevicePool.start_link([
       idle_timeout_ms: 1000,  # Short timeout for testing
@@ -19,12 +25,14 @@ defmodule SNMPSimEx.LazyDevicePoolTest do
       end
     end)
     
-    {:ok, pool_pid: pool_pid}
+    # Provide unique port for this test
+    test_port = get_test_port(test_name)
+    {:ok, pool_pid: pool_pid, test_port: test_port}
   end
   
   describe "device creation" do
-    test "creates device on first access" do
-      port = 30_001
+    test "creates device on first access", %{test_port: test_port} do
+      port = test_port
       
       # Device shouldn't exist initially
       stats = LazyDevicePool.get_stats()
@@ -41,8 +49,8 @@ defmodule SNMPSimEx.LazyDevicePoolTest do
       assert stats.devices_created == 1
     end
     
-    test "reuses existing device on subsequent access" do
-      port = 30_002
+    test "reuses existing device on subsequent access", %{test_port: test_port} do
+      port = test_port
       
       # Create device first time
       assert {:ok, device_pid1} = LazyDevicePool.get_or_create_device(port)
@@ -59,9 +67,9 @@ defmodule SNMPSimEx.LazyDevicePoolTest do
       assert stats.devices_created == 1
     end
     
-    test "creates different devices for different ports" do
-      port1 = 30_003
-      port2 = 30_004
+    test "creates different devices for different ports", %{test_port: test_port} do
+      port1 = test_port
+      port2 = test_port + 1
       
       assert {:ok, device_pid1} = LazyDevicePool.get_or_create_device(port1)
       assert {:ok, device_pid2} = LazyDevicePool.get_or_create_device(port2)
@@ -73,7 +81,7 @@ defmodule SNMPSimEx.LazyDevicePoolTest do
       assert stats.devices_created == 2
     end
     
-    test "determines device type based on port range" do
+    test "determines device type based on port range", %{test_port: test_port} do
       # Cable modem port (30,000-37,999)
       cable_modem_port = 30_005
       assert {:ok, cable_modem_pid} = LazyDevicePool.get_or_create_device(cable_modem_port)
@@ -86,7 +94,7 @@ defmodule SNMPSimEx.LazyDevicePoolTest do
       assert cable_modem_pid != switch_pid
     end
     
-    test "respects max device limit" do
+    test "respects max device limit", %{test_port: test_port} do
       # Stop the existing pool and start a new one with limited devices
       existing_pool = Process.whereis(LazyDevicePool)
       if existing_pool && Process.alive?(existing_pool) do
@@ -96,14 +104,14 @@ defmodule SNMPSimEx.LazyDevicePoolTest do
       {:ok, _} = LazyDevicePool.start_link(max_devices: 2)
       
       # Create devices up to limit
-      assert {:ok, _} = LazyDevicePool.get_or_create_device(30_010)
-      assert {:ok, _} = LazyDevicePool.get_or_create_device(30_011)
+      assert {:ok, _} = LazyDevicePool.get_or_create_device(test_port)
+      assert {:ok, _} = LazyDevicePool.get_or_create_device(test_port + 1)
       
       # Should fail to create beyond limit
-      assert {:error, :max_devices_reached} = LazyDevicePool.get_or_create_device(30_012)
+      assert {:error, :max_devices_reached} = LazyDevicePool.get_or_create_device(test_port + 2)
     end
     
-    test "handles unknown port ranges" do
+    test "handles unknown port ranges", %{test_port: _test_port} do
       # Port outside any known range
       unknown_port = 99_999
       
@@ -112,11 +120,11 @@ defmodule SNMPSimEx.LazyDevicePoolTest do
   end
   
   describe "device lifecycle management" do
-    test "recreates device if it dies" do
+    test "recreates device if it dies", %{test_port: test_port} do
       # Trap exits to prevent test from crashing when device dies
       Process.flag(:trap_exit, true)
       
-      port = 30_020
+      port = test_port
       
       # Create device
       assert {:ok, device_pid1} = LazyDevicePool.get_or_create_device(port)
@@ -154,8 +162,8 @@ defmodule SNMPSimEx.LazyDevicePoolTest do
     end
     
     @tag :slow
-    test "cleans up idle devices after timeout" do
-      port = 30_021
+    test "cleans up idle devices after timeout", %{test_port: test_port} do
+      port = test_port
       
       # Create device
       assert {:ok, device_pid} = LazyDevicePool.get_or_create_device(port)
@@ -178,8 +186,8 @@ defmodule SNMPSimEx.LazyDevicePoolTest do
     end
     
     @tag :slow
-    test "updates last access time to prevent cleanup" do
-      port = 30_022
+    test "updates last access time to prevent cleanup", %{test_port: test_port} do
+      port = test_port
       
       # Create device
       assert {:ok, device_pid} = LazyDevicePool.get_or_create_device(port)
@@ -202,8 +210,8 @@ defmodule SNMPSimEx.LazyDevicePoolTest do
   end
   
   describe "device shutdown" do
-    test "shuts down specific device" do
-      port = 30_030
+    test "shuts down specific device", %{test_port: test_port} do
+      port = test_port
       
       # Create device
       assert {:ok, device_pid} = LazyDevicePool.get_or_create_device(port)
@@ -217,15 +225,15 @@ defmodule SNMPSimEx.LazyDevicePoolTest do
       assert stats.active_count == 0
     end
     
-    test "handles shutdown of non-existent device" do
-      port = 30_031
+    test "handles shutdown of non-existent device", %{test_port: test_port} do
+      port = test_port
       
       assert {:error, :not_found} = LazyDevicePool.shutdown_device(port)
     end
     
-    test "shuts down all devices" do
+    test "shuts down all devices", %{test_port: test_port} do
       # Create multiple devices
-      ports = [30_040, 30_041, 30_042]
+      ports = [test_port, test_port + 1, test_port + 2]
       device_pids = Enum.map(ports, fn port ->
         {:ok, pid} = LazyDevicePool.get_or_create_device(port)
         pid
@@ -249,24 +257,24 @@ defmodule SNMPSimEx.LazyDevicePoolTest do
   end
   
   describe "port assignment configuration" do
-    test "configures custom port assignments" do
+    test "configures custom port assignments", %{test_port: test_port} do
       custom_assignments = %{
-        test_device: 25_000..25_099
+        test_device: test_port..(test_port + 99)
       }
       
       assert :ok = LazyDevicePool.configure_port_assignments(custom_assignments)
       
       # Should be able to create device in custom range
-      assert {:ok, _} = LazyDevicePool.get_or_create_device(25_050)
+      assert {:ok, _} = LazyDevicePool.get_or_create_device(test_port + 50)
       
       # Should fail outside custom range
-      assert {:error, :unknown_port_range} = LazyDevicePool.get_or_create_device(30_000)
+      assert {:error, :unknown_port_range} = LazyDevicePool.get_or_create_device(test_port + 200)
     end
   end
   
   describe "statistics tracking" do
-    test "tracks device creation statistics" do
-      ports = [30_100, 30_101, 30_102]
+    test "tracks device creation statistics", %{test_port: test_port} do
+      ports = [test_port, test_port + 1, test_port + 2]
       
       # Create devices
       Enum.each(ports, fn port ->
@@ -280,13 +288,13 @@ defmodule SNMPSimEx.LazyDevicePoolTest do
       assert stats.devices_cleaned_up == 0
     end
     
-    test "tracks peak device count" do
+    test "tracks peak device count", %{test_port: test_port} do
       # Create devices
-      {:ok, _} = LazyDevicePool.get_or_create_device(30_110)
-      {:ok, _} = LazyDevicePool.get_or_create_device(30_111)
+      {:ok, _} = LazyDevicePool.get_or_create_device(test_port)
+      {:ok, _} = LazyDevicePool.get_or_create_device(test_port + 1)
       
       # Remove one
-      LazyDevicePool.shutdown_device(30_110)
+      LazyDevicePool.shutdown_device(test_port)
       
       stats = LazyDevicePool.get_stats()
       assert stats.active_count == 1
@@ -295,8 +303,8 @@ defmodule SNMPSimEx.LazyDevicePoolTest do
   end
   
   describe "concurrent access" do
-    test "handles concurrent device creation safely" do
-      port = 30_200
+    test "handles concurrent device creation safely", %{test_port: test_port} do
+      port = test_port
       
       # Create multiple tasks trying to create same device
       tasks = for _i <- 1..10 do
@@ -323,8 +331,8 @@ defmodule SNMPSimEx.LazyDevicePoolTest do
       assert stats.devices_created == 1
     end
     
-    test "handles concurrent access to different ports" do
-      ports = 30_300..30_310 |> Enum.to_list()
+    test "handles concurrent access to different ports", %{test_port: test_port} do
+      ports = test_port..(test_port + 10) |> Enum.to_list()
       
       # Create tasks for different ports
       tasks = Enum.map(ports, fn port ->

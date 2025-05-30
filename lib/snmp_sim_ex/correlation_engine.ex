@@ -269,6 +269,30 @@ defmodule SNMPSimEx.CorrelationEngine do
   
   # Private helper functions
   
+  defp normalize_primary_value(primary_value, primary_oid) do
+    # Normalize different metric types to 0-100 scale for correlation calculations
+    case primary_oid do
+      :temperature ->
+        # Temperature: normalize 0-100°C to 0-100 scale
+        min(100, max(0, primary_value))
+      :interface_utilization ->
+        # Utilization: convert 0.0-1.0 to 0-100 if needed, otherwise use as-is
+        if primary_value <= 1.0, do: primary_value * 100, else: min(100, primary_value)
+      :signal_quality ->
+        # Signal quality: already 0-100 scale
+        min(100, max(0, primary_value))
+      :cpu_usage ->
+        # CPU usage: already 0-100 scale
+        min(100, max(0, primary_value))
+      :error_rate ->
+        # Error rate: convert 0.0-1.0 to 0-100 scale
+        if primary_value <= 1.0, do: primary_value * 100, else: min(100, primary_value)
+      _ ->
+        # Default: handle both decimal (0.0-1.0) and percentage (0-100) formats
+        if primary_value <= 1.0, do: primary_value * 100, else: primary_value
+    end
+  end
+  
   defp apply_single_correlation(primary_oid, primary_value, correlation, device_state, current_time) do
     {primary_metric, secondary_metric, correlation_type, strength} = correlation
     
@@ -292,8 +316,8 @@ defmodule SNMPSimEx.CorrelationEngine do
   
   defp calculate_correlated_value(primary_value, current_secondary, correlation_type, strength, 
                                   primary_oid, secondary_oid, current_time) do
-    # Normalize primary value to handle both decimal (0.0-1.0) and percentage (0-100) formats
-    normalized_primary = if primary_value <= 1.0, do: primary_value * 100, else: primary_value
+    # Normalize primary value based on the metric type and expected range
+    normalized_primary = normalize_primary_value(primary_value, primary_oid)
     
     # Base correlation calculation
     base_correlation = case correlation_type do
@@ -338,12 +362,16 @@ defmodule SNMPSimEx.CorrelationEngine do
         base_value * (1 + strength * :math.log(normalized_primary))
     end
     
-    # Apply time-based factors
-    time_factor = TimePatterns.get_daily_utilization_pattern(current_time)
-    time_adjusted = base_correlation * time_factor
+    # Apply time-based factors only for utilization-related correlations
+    time_adjusted = if should_apply_time_factor?(primary_oid, secondary_oid) do
+      time_factor = TimePatterns.get_daily_utilization_pattern(current_time)
+      base_correlation * time_factor
+    else
+      base_correlation
+    end
     
-    # Add realistic noise
-    noise_factor = 0.05  # 5% noise
+    # Add realistic noise (reduced for more predictable correlations)
+    noise_factor = 0.02  # 2% noise
     noise = 1.0 + ((:rand.uniform() - 0.5) * 2 * noise_factor)
     
     final_value = time_adjusted * noise
@@ -372,6 +400,14 @@ defmodule SNMPSimEx.CorrelationEngine do
       :power_consumption -> 50.0    # 50W base power
       _ -> 50.0                     # Default base value
     end
+  end
+  
+  defp should_apply_time_factor?(primary_oid, secondary_oid) do
+    # Only apply time factors to utilization-related correlations
+    # Physical correlations (temperature, signal quality) should not be affected by time patterns
+    utilization_related_metrics = [:interface_utilization, :cpu_usage, :throughput, :network_utilization]
+    
+    primary_oid in utilization_related_metrics or secondary_oid in utilization_related_metrics
   end
   
   defp apply_value_bounds(value, metric_oid) do

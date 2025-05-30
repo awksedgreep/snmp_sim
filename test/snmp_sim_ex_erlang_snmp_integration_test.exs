@@ -495,13 +495,43 @@ defmodule SNMPSimExErlangSnmpIntegrationTest do
       nil ->
         # Not running, try to start it
         case :snmpm.start() do
-          :ok -> :ok
-          {:error, {:already_started, _}} -> :ok
+          :ok -> 
+            # Apply logging configuration immediately after starting
+            configure_snmp_logging()
+            :ok
+          {:error, {:already_started, _}} -> 
+            configure_snmp_logging()
+            :ok
           error -> raise "Failed to start SNMP manager: #{inspect(error)}"
         end
       _pid ->
-        # Already running
+        # Already running, ensure logging is configured
+        configure_snmp_logging()
         :ok
+    end
+  end
+  
+  # Configure SNMP logging to silence verbose output
+  defp configure_snmp_logging do
+    try do
+      :snmpm.set_log_type(:none)
+      :snmpm.set_verbosity(:silence)
+      :snmpm.set_verbosity(:net_if, :silence)
+      :snmpm.set_verbosity(:note_store, :silence)
+      :snmpm.set_verbosity(:server, :silence)
+      :snmpm.set_verbosity(:config, :silence)
+      
+      # Try to disable debugging at a lower level
+      :dbg.stop_clear()  # Clear any debug tracing
+      
+      # Try to set debug level to 0 for SNMP modules
+      try do
+        :snmp.set_debug(:false)
+      catch
+        _, _ -> :ok
+      end
+    catch
+      _, _ -> :ok  # Ignore errors
     end
   end
   

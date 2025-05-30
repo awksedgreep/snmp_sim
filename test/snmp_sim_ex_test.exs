@@ -4,6 +4,7 @@ defmodule SNMPSimExTest do
 
   alias SNMPSimEx.ProfileLoader
   alias SNMPSimEx.LazyDevicePool
+  alias SNMPSimEx.TestHelpers.PortHelper
   
   setup do
     # Start LazyDevicePool if not already started
@@ -37,10 +38,8 @@ defmodule SNMPSimExTest do
         {:manual, manual_profile}
       )
       
-      # Find a free port for testing
-      {:ok, socket} = :gen_udp.open(0, [:binary])
-      {:ok, port} = :inet.port(socket)
-      :gen_udp.close(socket)
+      # Get a port for testing
+      port = PortHelper.get_port()
       
       # Start device
       {:ok, device_pid} = SNMPSimEx.start_device(profile, port: port)
@@ -59,12 +58,8 @@ defmodule SNMPSimExTest do
         {:test_device2, {:manual, %{"1.3.6.1.2.1.1.1.0" => "Device 2"}}, count: 1}
       ]
       
-      # Find a range of free ports
-      {:ok, socket} = :gen_udp.open(0, [:binary])
-      {:ok, start_port} = :inet.port(socket)
-      :gen_udp.close(socket)
-      
-      port_range = start_port..(start_port + 2)
+      # Get a range of ports for testing
+      port_range = PortHelper.get_port_range(3)
       
       {:ok, devices} = SNMPSimEx.start_device_population(
         device_configs,
@@ -92,7 +87,7 @@ defmodule SNMPSimExTest do
       # This is actually a limitation that should be addressed in a future version
       result = SNMPSimEx.start_device_population([
         {:bad_device, {:walk_file, "non_existent_file.walk"}, count: 1}
-      ], port_range: 9001..9001, pre_warm: true)
+      ], port_range: PortHelper.get_port_range(1), pre_warm: true)
       
       # For now, expect success since implementation creates mock devices
       assert {:ok, devices} = result

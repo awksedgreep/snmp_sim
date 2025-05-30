@@ -315,7 +315,7 @@ defmodule SNMPSimEx.Config do
   end
   
   defp start_resource_manager(settings) do
-    if settings[:max_devices] or settings[:max_memory_mb] do
+    if settings[:max_devices] != nil or settings[:max_memory_mb] != nil do
       resource_config = [
         max_devices: settings[:max_devices] || 1000,
         max_memory_mb: settings[:max_memory_mb] || 512
@@ -366,12 +366,12 @@ defmodule SNMPSimEx.Config do
     devices = for i <- 0..(count - 1) do
       port = start_port + i
       
-      device_config = [
-        community: group[:community] || "public",
-        host: group[:host] || "127.0.0.1",
+      device_config = %{
         port: port,
-        walk_file: group[:walk_file]
-      ]
+        device_type: String.to_atom(group[:device_type] || "cable_modem"),
+        device_id: "#{group[:name]}_#{port}",
+        community: group[:community] || "public"
+      }
       
       case Device.start_link(device_config) do
         {:ok, device} ->

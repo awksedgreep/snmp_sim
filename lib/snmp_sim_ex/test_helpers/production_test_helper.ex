@@ -3,7 +3,9 @@ defmodule SNMPSimEx.TestHelpers.ProductionTestHelper do
   Specialized testing utilities for production validation and testing.
   """
   
+  require Logger
   alias SNMPSimEx.{Device, LazyDevicePool}
+  alias SNMPSimEx.TestHelpers.PortAllocator
   
   @doc """
   Creates devices efficiently in batches for large-scale testing.
@@ -13,7 +15,8 @@ defmodule SNMPSimEx.TestHelpers.ProductionTestHelper do
     delay_between_batches = Keyword.get(opts, :delay_between_batches, 50)
     community = Keyword.get(opts, :community, "public")
     host = Keyword.get(opts, :host, "127.0.0.1")
-    port_start = Keyword.get(opts, :port_start, 30000)
+    # Use PortAllocator service for guaranteed unique ports
+    port_start = Keyword.get(opts, :port_start, get_allocated_port_start(:production, device_count))
     walk_file = Keyword.get(opts, :walk_file, "priv/walks/cable_modem.walk")
     
     1..device_count
@@ -455,6 +458,16 @@ defmodule SNMPSimEx.TestHelpers.ProductionTestHelper do
         _type, _error -> :failure
       end
       
+      # Log security event for each attempt (both successful and failed)
+      log_security_event(%{
+        type: :community_bruteforce_attempt,
+        timestamp: System.system_time(:millisecond),
+        community: community,
+        result: result,
+        source_ip: "127.0.0.1",
+        target_port: 30001
+      })
+      
       new_successes = if result == :success, do: successes + 1, else: successes
       
       Process.sleep(10)  # Brief delay between attempts
@@ -554,11 +567,72 @@ defmodule SNMPSimEx.TestHelpers.ProductionTestHelper do
   defp monitor_uptime(duration_ms), do: []
   defp monitor_recovery_times(duration_ms), do: []
   defp monitor_data_consistency(duration_ms), do: []
-  defp monitor_security_events(duration_ms), do: []
+  defp monitor_security_events(duration_ms) do
+    # Start a process to collect security events during the test
+    events_collector = spawn(fn -> collect_events_loop([], System.monotonic_time(:millisecond) + duration_ms) end)
+    
+    # Register the collector so bruteforce tests can send events to it
+    Process.register(events_collector, :security_events_collector)
+    
+    # Wait for collection to complete
+    ref = Process.monitor(events_collector)
+    receive do
+      {:DOWN, ^ref, :process, _pid, :normal} ->
+        # Process completed normally, get the events
+        send(events_collector, {:get_events, self()})
+        receive do
+          {:events, events} -> events
+        after 1000 -> []
+        end
+      {:DOWN, ^ref, :process, _pid, _reason} ->
+        # Process died, return empty events
+        []
+    after duration_ms + 1000 ->
+      # Timeout, kill the collector and return empty events
+      Process.exit(events_collector, :kill)
+      []
+    end
+  end
+  
+  # Helper process to collect security events
+  defp collect_events_loop(events, end_time) do
+    current_time = System.monotonic_time(:millisecond)
+    
+    if current_time >= end_time do
+      # Time's up, wait for final request
+      receive do
+        {:get_events, caller} -> 
+          send(caller, {:events, Enum.reverse(events)})
+      after 1000 -> :ok
+      end
+    else
+      # Continue collecting events
+      receive do
+        {:security_event, event} ->
+          collect_events_loop([event | events], end_time)
+        {:get_events, caller} ->
+          send(caller, {:events, Enum.reverse(events)})
+      after 100 ->
+        collect_events_loop(events, end_time)
+      end
+    end
+  end
   
   defp check_system_stability, do: true
   defp check_no_unauthorized_access, do: true
   defp check_resource_limits_enforced, do: true
+  
+  # Helper function to log security events to the collector process
+  defp log_security_event(event) do
+    try do
+      case Process.whereis(:security_events_collector) do
+        nil -> :ok  # No collector running
+        pid -> send(pid, {:security_event, event})
+      end
+    catch
+      _type, _error -> :ok  # Ignore errors in logging
+    end
+  end
   
   defp simulate_network_blip(duration_ms), do: Process.sleep(duration_ms)
   defp simulate_temporary_overload(duration_ms), do: Process.sleep(duration_ms)
@@ -582,10 +656,10 @@ defmodule SNMPSimEx.TestHelpers.ProductionTestHelper do
   
   defp get_threshold_for_metric(metric) do
     case metric do
-      :memory_usage -> 2048
-      :response_time -> 100
-      :error_rate -> 5.0
-      :device_count -> 9000
+      :memory_usage -> 2048      # @max_memory_usage_mb
+      :response_time -> 100      # @max_response_time_ms
+      :error_rate -> 1.0         # @max_error_rate_percent
+      :device_count -> 9000      # @min_device_capacity * 0.9
     end
   end
   
@@ -615,5 +689,27 @@ defmodule SNMPSimEx.TestHelpers.ProductionTestHelper do
   
   defp run_k8s_integration_test(options) do
     %{integration_successful: true, data_flow_correct: true, protocols_compatible: true}
+  end
+  
+  # Helper function to get allocated port range from PortAllocator service
+  defp get_allocated_port_start(test_type, device_count) do
+    # Ensure PortAllocator is running
+    case GenServer.whereis(PortAllocator) do
+      nil -> 
+        {:ok, _pid} = PortAllocator.start_link()
+      _pid -> 
+        :ok
+    end
+    
+    # Allocate port range through the service
+    case PortAllocator.allocate_port_range(test_type, device_count) do
+      {:ok, {start_port, _end_port}} ->
+        Logger.debug("#{test_type} test allocated ports #{start_port} to #{start_port + device_count - 1}")
+        start_port
+      {:error, reason} ->
+        Logger.error("Failed to allocate ports for #{test_type} test: #{inspect(reason)}")
+        # Fallback to a random high port if allocation fails
+        50_000 + :rand.uniform(10_000)
+    end
   end
 end

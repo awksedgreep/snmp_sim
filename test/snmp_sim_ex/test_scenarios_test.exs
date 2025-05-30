@@ -6,6 +6,7 @@ defmodule SNMPSimEx.TestScenariosTest do
   alias SNMPSimEx.{TestScenarios}
   alias SNMPSimEx.Device
   alias SNMPSimEx.MIB.SharedProfiles
+  alias SNMPSimEx.TestHelpers.PortHelper
 
   setup do
     # Start shared profiles for testing only if not already started
@@ -17,7 +18,7 @@ defmodule SNMPSimEx.TestScenariosTest do
     # Create test devices
     devices = Enum.map(1..3, fn i ->
       device_config = %{
-        port: 9100 + i,
+        port: PortHelper.get_port(),
         device_type: :cable_modem,
         device_id: "test_device_#{i}",
         community: "public"

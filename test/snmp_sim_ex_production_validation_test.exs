@@ -17,7 +17,7 @@ defmodule SNMPSimExProductionValidationTest do
   
   use ExUnit.Case, async: false
   alias SNMPSimEx.{Device, LazyDevicePool, Core.Server}
-  alias SNMPSimEx.TestHelpers.{ProductionTestHelper, PerformanceHelper}
+  alias SNMPSimEx.TestHelpers.{ProductionTestHelper, PerformanceHelper, PortHelper}
   
   @moduletag :production_validation
   @moduletag timeout: 300_000  # 5 minutes default timeout
@@ -53,6 +53,9 @@ defmodule SNMPSimExProductionValidationTest do
   
   setup do
     ProductionTestHelper.reset_system_state()
+    
+    # PortHelper automatically handles port allocation
+    
     :ok
   end
   

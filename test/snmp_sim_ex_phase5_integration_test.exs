@@ -2,8 +2,15 @@ defmodule SNMPSimEx.Phase5IntegrationTest do
   use ExUnit.Case, async: false
   
   alias SNMPSimEx.{ValueSimulator, TimePatterns, CorrelationEngine}
+  alias SNMPSimEx.TestHelpers.PortHelper
 
   @moduletag :integration
+  
+  setup do
+    # PortHelper automatically handles port allocation
+    
+    :ok
+  end
 
   describe "Phase 5 Realistic Value Simulation Integration" do
     test "complete traffic counter simulation with all Phase 5 features" do
@@ -268,34 +275,40 @@ defmodule SNMPSimEx.Phase5IntegrationTest do
         current_time
       )
       
-      # Simulate temperature increase
-      updated_state2 = CorrelationEngine.apply_correlations(
+      # Test temperature correlation in isolation
+      temp_test_state = %{
+        signal_quality: 85.0,
+        temperature: 35.0
+      }
+      
+      # Simulate temperature increase in isolation
+      updated_temp_state = CorrelationEngine.apply_correlations(
         :temperature,
         45.0,  # Increase temperature
-        updated_state1,
+        temp_test_state,
         correlations,
         current_time
       )
       
       # Verify correlations have been applied
-      assert is_map(updated_state2)
+      assert is_map(updated_temp_state)
       
       # Check that correlated metrics have changed appropriately
-      if Map.has_key?(updated_state2, :error_rate) do
+      if Map.has_key?(updated_state1, :error_rate) do
         # Higher utilization should generally increase error rates
-        assert updated_state2.error_rate >= initial_state.error_rate
+        assert updated_state1.error_rate >= initial_state.error_rate
       end
       
-      if Map.has_key?(updated_state2, :signal_quality) do
+      if Map.has_key?(updated_temp_state, :signal_quality) do
         # Higher temperature should generally decrease signal quality (with tolerance for noise)
-        # The correlation includes ±5% noise, so we allow some tolerance
-        signal_change_percent = (updated_state2.signal_quality - initial_state.signal_quality) / initial_state.signal_quality * 100
-        assert signal_change_percent <= 10.0, 
+        # The correlation includes ±2% noise, so we allow some tolerance but expect general decrease
+        signal_change_percent = (updated_temp_state.signal_quality - temp_test_state.signal_quality) / temp_test_state.signal_quality * 100
+        assert signal_change_percent <= 5.0, 
           "Signal quality increased too much (#{Float.round(signal_change_percent, 2)}%) when temperature increased. Expected decrease or small increase due to noise."
       end
       
       # All values should remain within realistic bounds
-      Enum.each(updated_state2, fn {key, value} ->
+      Enum.each(updated_temp_state, fn {key, value} ->
         assert is_number(value)
         
         case key do

@@ -5,6 +5,7 @@ defmodule SNMPSimExPhase3IntegrationTest do
   alias SNMPSimEx.Device
   alias SNMPSimEx.Core.PDU
   alias SNMPSimEx.MIB.SharedProfiles
+  alias SNMPSimEx.TestHelpers.PortHelper
   
   setup do
     # Start SharedProfiles for tests that need it
@@ -14,6 +15,8 @@ defmodule SNMPSimExPhase3IntegrationTest do
       _pid -> 
         :ok
     end
+    
+    # PortHelper automatically handles port allocation
     
     :ok
   end
@@ -25,7 +28,7 @@ defmodule SNMPSimExPhase3IntegrationTest do
         {:walk_file, "priv/walks/cable_modem.walk"}
       )
       
-      port = find_free_port()
+      port = PortHelper.get_port()
       device_config = %{
         port: port,
         device_type: :cable_modem,
@@ -70,7 +73,7 @@ defmodule SNMPSimExPhase3IntegrationTest do
         {:walk_file, "priv/walks/cable_modem.walk"}
       )
       
-      port = find_free_port()
+      port = PortHelper.get_port()
       device_config = %{
         port: port,
         device_type: :cable_modem,
@@ -109,7 +112,7 @@ defmodule SNMPSimExPhase3IntegrationTest do
         {:walk_file, "priv/walks/cable_modem.walk"}
       )
       
-      port = find_free_port()
+      port = PortHelper.get_port()
       device_config = %{
         port: port,
         device_type: :cable_modem,
@@ -149,7 +152,7 @@ defmodule SNMPSimExPhase3IntegrationTest do
         {:walk_file, "priv/walks/cable_modem.walk"}
       )
       
-      port = find_free_port()
+      port = PortHelper.get_port()
       device_config = %{
         port: port,
         device_type: :cable_modem,
@@ -190,7 +193,7 @@ defmodule SNMPSimExPhase3IntegrationTest do
         {:walk_file, "priv/walks/cable_modem.walk"}
       )
       
-      port = find_free_port()
+      port = PortHelper.get_port()
       device_config = %{
         port: port,
         device_type: :cable_modem,
@@ -235,7 +238,7 @@ defmodule SNMPSimExPhase3IntegrationTest do
         {:walk_file, "priv/walks/cable_modem.walk"}
       )
       
-      port = find_free_port()
+      port = PortHelper.get_port()
       device_config = %{
         port: port,
         device_type: :cable_modem,
@@ -283,7 +286,7 @@ defmodule SNMPSimExPhase3IntegrationTest do
         {:walk_file, "priv/walks/cable_modem.walk"}
       )
       
-      port = find_free_port()
+      port = PortHelper.get_port()
       device_config = %{
         port: port,
         device_type: :cable_modem,
@@ -334,7 +337,7 @@ defmodule SNMPSimExPhase3IntegrationTest do
         metadata: %{}
       }
       
-      port = find_free_port()
+      port = PortHelper.get_port()
       
       # Time device startup (should be fast even with many OIDs)
       start_time = :erlang.monotonic_time(:millisecond)
@@ -377,13 +380,6 @@ defmodule SNMPSimExPhase3IntegrationTest do
   end
   
   # Helper functions
-  
-  defp find_free_port do
-    {:ok, socket} = :gen_udp.open(0, [:binary])
-    {:ok, port} = :inet.port(socket)
-    :gen_udp.close(socket)
-    port
-  end
   
   defp send_snmp_getnext(port, oid, community \\ "public") do
     request_pdu = %PDU{

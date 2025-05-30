@@ -156,7 +156,7 @@ defmodule SNMPSimEx.Core.PDU do
   defp decode_value(@integer, value), do: decode_integer(value)
   defp decode_value(@octet_string, value), do: value
   defp decode_value(@null, _), do: nil
-  defp decode_value(@object_identifier, value), do: decode_oid(value)
+  defp decode_value(@object_identifier, value), do: {:object_identifier, decode_oid(value)}
   defp decode_value(@counter32, value), do: {:counter32, decode_integer(value)}
   defp decode_value(@gauge32, value), do: {:gauge32, decode_integer(value)}
   defp decode_value(@timeticks, value), do: {:timeticks, decode_integer(value)}
@@ -257,7 +257,13 @@ defmodule SNMPSimEx.Core.PDU do
   end
 
   defp parse_varbind({:sequence, [oid, value]}) do
-    {oid, value}
+    # Normalize OID to string format for consistency with test expectations
+    normalized_oid = case oid do
+      {:object_identifier, oid_str} -> oid_str
+      oid_str when is_binary(oid_str) -> oid_str
+      _ -> oid
+    end
+    {normalized_oid, value}
   end
 
   defp parse_varbind(_), do: nil
@@ -305,6 +311,7 @@ defmodule SNMPSimEx.Core.PDU do
 
   defp encode_value(value) when is_binary(value), do: encode_octet_string(value)
   defp encode_value(value) when is_integer(value), do: encode_integer(value)
+  defp encode_value({:object_identifier, oid_string}), do: encode_oid(oid_string)
   defp encode_value({:counter32, value}), do: encode_tag_length_value(@counter32, encode_integer_bytes(value))
   defp encode_value({:gauge32, value}), do: encode_tag_length_value(@gauge32, encode_integer_bytes(value))
   defp encode_value({:timeticks, value}), do: encode_tag_length_value(@timeticks, encode_integer_bytes(value))
@@ -348,6 +355,10 @@ defmodule SNMPSimEx.Core.PDU do
     encode_tag_length_value(@octet_string, value)
   end
 
+  defp encode_oid({:object_identifier, oid_string}) when is_binary(oid_string) do
+    encode_oid(oid_string)
+  end
+  
   defp encode_oid(oid_string) when is_binary(oid_string) do
     oid_parts = String.split(oid_string, ".") |> Enum.map(&String.to_integer/1)
     encode_tag_length_value(@object_identifier, encode_oid_bytes(oid_parts))
