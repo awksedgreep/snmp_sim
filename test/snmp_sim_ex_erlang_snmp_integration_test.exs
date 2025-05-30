@@ -7,7 +7,8 @@ defmodule SnmpSimExErlangSnmpIntegrationTest do
   
   use ExUnit.Case, async: false
   
-  alias SnmpSimEx.{ProfileLoader, Device}
+  alias SnmpSimEx.ProfileLoader
+  alias SNMPSimEx.Device
   
   describe "Integration with Erlang SNMP Manager" do
     setup do
@@ -28,7 +29,15 @@ defmodule SnmpSimExErlangSnmpIntegrationTest do
       )
       
       port = find_free_port()
-      {:ok, device} = Device.start_link(profile, port: port)
+      
+      device_config = %{
+        port: port,
+        device_type: :cable_modem,
+        device_id: "cable_modem_#{port}",
+        community: "public"
+      }
+      
+      {:ok, device} = Device.start_link(device_config)
       
       Process.sleep(200)  # Give device time to fully initialize
       
@@ -388,7 +397,15 @@ defmodule SnmpSimExErlangSnmpIntegrationTest do
       )
       
       port = find_free_port()
-      {:ok, device} = Device.start_link(profile, port: port)
+      
+      device_config = %{
+        port: port,
+        device_type: :cable_modem,
+        device_id: "cable_modem_#{port}",
+        community: "public"
+      }
+      
+      {:ok, device} = Device.start_link(device_config)
       Process.sleep(200)
       
       # Register agent with correct API

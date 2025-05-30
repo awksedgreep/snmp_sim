@@ -6,7 +6,8 @@ defmodule SnmpSimEx do
   realistic behaviors, and large-scale testing scenarios.
   """
 
-  alias SnmpSimEx.{ProfileLoader, Device, LazyDevicePool}
+  alias SnmpSimEx.ProfileLoader
+  alias SNMPSimEx.{Device, LazyDevicePool}
 
   @doc """
   Start a single SNMP device with the given profile.
@@ -22,7 +23,19 @@ defmodule SnmpSimEx do
       
   """
   def start_device(profile, opts \\ []) do
-    Device.start_link(profile, opts)
+    port = Keyword.fetch!(opts, :port)
+    device_type = profile.device_type
+    device_id = Keyword.get(opts, :device_id, "#{device_type}_#{port}")
+    
+    device_config = %{
+      port: port,
+      device_type: device_type,
+      device_id: device_id,
+      profile: profile,
+      community: Keyword.get(opts, :community, "public")
+    }
+    
+    Device.start_link(device_config)
   end
 
   @doc """

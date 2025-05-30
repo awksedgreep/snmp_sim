@@ -1,8 +1,23 @@
 defmodule SnmpSimExPhase2IntegrationTest do
   use ExUnit.Case, async: false
   
-  alias SnmpSimEx.{ProfileLoader, Device, BehaviorConfig}
+  alias SnmpSimEx.ProfileLoader
+  alias SNMPSimEx.Device
+  alias SnmpSimEx.BehaviorConfig
   alias SnmpSimEx.Core.PDU
+  alias SnmpSimEx.MIB.SharedProfiles
+
+  setup do
+    # Start SharedProfiles for tests that need it
+    case GenServer.whereis(SharedProfiles) do
+      nil -> 
+        {:ok, _} = SharedProfiles.start_link([])
+      _pid -> 
+        :ok
+    end
+    
+    :ok
+  end
 
   describe "Enhanced Behavior Integration" do
     test "loads walk file with automatic behavior enhancement" do
@@ -71,7 +86,13 @@ defmodule SnmpSimExPhase2IntegrationTest do
       )
       
       port = find_free_port()
-      {:ok, device} = Device.start_link(profile, port: port)
+      device_config = %{
+        port: port,
+        device_type: :cable_modem,
+        device_id: "cable_modem_#{port}",
+        community: "public"
+      }
+      {:ok, device} = Device.start_link(device_config)
       
       Process.sleep(100)
       
@@ -134,7 +155,13 @@ defmodule SnmpSimExPhase2IntegrationTest do
       )
       
       port = find_free_port()
-      {:ok, device} = Device.start_link(profile, port: port)
+      device_config = %{
+        port: port,
+        device_type: :cable_modem,
+        device_id: "cable_modem_#{port}",
+        community: "public"
+      }
+      {:ok, device} = Device.start_link(device_config)
       
       # Device should start successfully with preset behaviors
       info = Device.get_info(device)
@@ -157,7 +184,13 @@ defmodule SnmpSimExPhase2IntegrationTest do
       )
       
       port = find_free_port()
-      {:ok, device} = Device.start_link(profile, port: port)
+      device_config = %{
+        port: port,
+        device_type: :cable_modem,
+        device_id: "cable_modem_#{port}",
+        community: "public"
+      }
+      {:ok, device} = Device.start_link(device_config)
       
       # Test that the device responds to requests
       response = send_snmp_get(port, "1.3.6.1.2.1.1.1.0")
@@ -189,8 +222,21 @@ defmodule SnmpSimExPhase2IntegrationTest do
         behaviors: custom_behaviors
       )
       
+      # Load the profile into SharedProfiles for device access
+      :ok = SharedProfiles.load_walk_profile(
+        :cable_modem,
+        "priv/walks/cable_modem.walk",
+        behaviors: custom_behaviors
+      )
+      
       port = find_free_port()
-      {:ok, device} = Device.start_link(profile, port: port)
+      device_config = %{
+        port: port,
+        device_type: :cable_modem,
+        device_id: "cable_modem_#{port}",
+        community: "public"
+      }
+      {:ok, device} = Device.start_link(device_config)
       
       # Test sysDescr (should be static)
       response = send_snmp_get(port, "1.3.6.1.2.1.1.1.0")
@@ -219,7 +265,13 @@ defmodule SnmpSimExPhase2IntegrationTest do
       )
       
       port = find_free_port()
-      {:ok, device} = Device.start_link(profile, port: port)
+      device_config = %{
+        port: port,
+        device_type: :cable_modem,
+        device_id: "cable_modem_#{port}",
+        community: "public"
+      }
+      {:ok, device} = Device.start_link(device_config)
       
       # Should still work even without advanced behaviors
       response = send_snmp_get(port, "1.3.6.1.2.1.1.1.0")
@@ -238,7 +290,13 @@ defmodule SnmpSimExPhase2IntegrationTest do
       )
       
       port = find_free_port()
-      {:ok, device} = Device.start_link(profile, port: port)
+      device_config = %{
+        port: port,
+        device_type: :cable_modem,
+        device_id: "cable_modem_#{port}",
+        community: "public"
+      }
+      {:ok, device} = Device.start_link(device_config)
       
       # Device should still work
       response = send_snmp_get(port, "1.3.6.1.2.1.1.1.0")
@@ -328,7 +386,13 @@ defmodule SnmpSimExPhase2IntegrationTest do
     
     Enum.take(ports, count)
     |> Enum.map(fn port ->
-      {:ok, device_pid} = Device.start_link(profile, port: port)
+      device_config = %{
+        port: port,
+        device_type: device_type,
+        device_id: "#{device_type}_#{port}",
+        community: "public"
+      }
+      {:ok, device_pid} = Device.start_link(device_config)
       Process.sleep(50)  # Give device time to start
       {port, device_pid}
     end)

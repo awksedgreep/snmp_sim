@@ -1,5 +1,5 @@
 defmodule SNMPSimEx.DeviceDistributionTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
   
   alias SNMPSimEx.DeviceDistribution
   

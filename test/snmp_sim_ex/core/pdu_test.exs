@@ -1,5 +1,5 @@
 defmodule SnmpSimEx.Core.PDUTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
   
   alias SnmpSimEx.Core.PDU
 

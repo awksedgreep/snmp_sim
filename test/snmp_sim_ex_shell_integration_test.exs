@@ -13,7 +13,8 @@ defmodule SnmpSimExShellIntegrationTest do
   
   @moduletag :shell_integration
   
-  alias SnmpSimEx.{ProfileLoader, Device}
+  alias SnmpSimEx.ProfileLoader
+  alias SNMPSimEx.Device
   
   describe "Shell Command Integration" do
     setup do
@@ -24,7 +25,14 @@ defmodule SnmpSimExShellIntegrationTest do
       )
       
       port = find_free_port()
-      {:ok, device} = Device.start_link(profile, port: port)
+      device_config = %{
+        port: port,
+        device_type: :cable_modem,
+        device_id: "cable_modem_#{port}",
+        community: "public"
+      }
+      
+      {:ok, device} = Device.start_link(device_config)
       
       Process.sleep(200)  # Give device time to fully initialize
       
@@ -159,7 +167,14 @@ defmodule SnmpSimExShellIntegrationTest do
       )
       
       port = find_free_port()
-      {:ok, device} = Device.start_link(profile, port: port)
+      device_config = %{
+        port: port,
+        device_type: :cable_modem,
+        device_id: "cable_modem_#{port}",
+        community: "public"
+      }
+      
+      {:ok, device} = Device.start_link(device_config)
       Process.sleep(200)
       
       on_exit(fn -> 

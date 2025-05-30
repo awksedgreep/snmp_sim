@@ -1,7 +1,22 @@
 defmodule SnmpSimExPhase3IntegrationTest do
   use ExUnit.Case, async: false
   
-  alias SnmpSimEx.{ProfileLoader, Device, Core.PDU}
+  alias SnmpSimEx.ProfileLoader
+  alias SNMPSimEx.Device
+  alias SnmpSimEx.Core.PDU
+  alias SnmpSimEx.MIB.SharedProfiles
+  
+  setup do
+    # Start SharedProfiles for tests that need it
+    case GenServer.whereis(SharedProfiles) do
+      nil -> 
+        {:ok, _} = SharedProfiles.start_link([])
+      _pid -> 
+        :ok
+    end
+    
+    :ok
+  end
   
   describe "Phase 3: OID Tree and GETBULK Integration" do
     test "device with OID tree responds to GETNEXT requests correctly" do
@@ -11,7 +26,14 @@ defmodule SnmpSimExPhase3IntegrationTest do
       )
       
       port = find_free_port()
-      {:ok, device} = Device.start_link(profile, port: port)
+      device_config = %{
+        port: port,
+        device_type: :cable_modem,
+        device_id: "cable_modem_#{port}",
+        community: "public"
+      }
+
+      {:ok, device} = Device.start_link(device_config)
       
       Process.sleep(100)  # Give device time to initialize
       
@@ -49,7 +71,14 @@ defmodule SnmpSimExPhase3IntegrationTest do
       )
       
       port = find_free_port()
-      {:ok, device} = Device.start_link(profile, port: port)
+      device_config = %{
+        port: port,
+        device_type: :cable_modem,
+        device_id: "cable_modem_#{port}",
+        community: "public"
+      }
+
+      {:ok, device} = Device.start_link(device_config)
       
       Process.sleep(100)
       
@@ -81,7 +110,14 @@ defmodule SnmpSimExPhase3IntegrationTest do
       )
       
       port = find_free_port()
-      {:ok, device} = Device.start_link(profile, port: port)
+      device_config = %{
+        port: port,
+        device_type: :cable_modem,
+        device_id: "cable_modem_#{port}",
+        community: "public"
+      }
+
+      {:ok, device} = Device.start_link(device_config)
       
       Process.sleep(100)
       
@@ -114,7 +150,14 @@ defmodule SnmpSimExPhase3IntegrationTest do
       )
       
       port = find_free_port()
-      {:ok, device} = Device.start_link(profile, port: port)
+      device_config = %{
+        port: port,
+        device_type: :cable_modem,
+        device_id: "cable_modem_#{port}",
+        community: "public"
+      }
+
+      {:ok, device} = Device.start_link(device_config)
       
       Process.sleep(100)
       
@@ -148,7 +191,14 @@ defmodule SnmpSimExPhase3IntegrationTest do
       )
       
       port = find_free_port()
-      {:ok, device} = Device.start_link(profile, port: port)
+      device_config = %{
+        port: port,
+        device_type: :cable_modem,
+        device_id: "cable_modem_#{port}",
+        community: "public"
+      }
+
+      {:ok, device} = Device.start_link(device_config)
       
       Process.sleep(100)
       
@@ -186,7 +236,14 @@ defmodule SnmpSimExPhase3IntegrationTest do
       )
       
       port = find_free_port()
-      {:ok, device} = Device.start_link(profile, port: port)
+      device_config = %{
+        port: port,
+        device_type: :cable_modem,
+        device_id: "cable_modem_#{port}",
+        community: "public"
+      }
+
+      {:ok, device} = Device.start_link(device_config)
       
       Process.sleep(100)
       
@@ -227,7 +284,14 @@ defmodule SnmpSimExPhase3IntegrationTest do
       )
       
       port = find_free_port()
-      {:ok, device} = Device.start_link(profile, port: port)
+      device_config = %{
+        port: port,
+        device_type: :cable_modem,
+        device_id: "cable_modem_#{port}",
+        community: "public"
+      }
+
+      {:ok, device} = Device.start_link(device_config)
       
       Process.sleep(100)
       
@@ -274,7 +338,14 @@ defmodule SnmpSimExPhase3IntegrationTest do
       
       # Time device startup (should be fast even with many OIDs)
       start_time = :erlang.monotonic_time(:millisecond)
-      {:ok, device} = Device.start_link(profile, port: port)
+      device_config = %{
+        port: port,
+        device_type: :large_device,
+        device_id: "large_device_#{port}",
+        community: "public"
+      }
+
+      {:ok, device} = Device.start_link(device_config)
       end_time = :erlang.monotonic_time(:millisecond)
       
       startup_time = end_time - start_time

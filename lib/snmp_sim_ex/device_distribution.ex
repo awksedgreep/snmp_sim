@@ -376,7 +376,7 @@ defmodule SNMPSimEx.DeviceDistribution do
   defp validate_all_ranges_valid(port_assignments) do
     invalid_ranges = 
       Enum.filter(port_assignments, fn {_type, range} ->
-        not Range.size(range) > 0
+        Range.size(range) <= 0 or range.first > range.last
       end)
     
     if length(invalid_ranges) > 0 do
@@ -390,14 +390,14 @@ defmodule SNMPSimEx.DeviceDistribution do
     total_ports = count_total_ports(port_assignments)
     
     cond do
+      map_size(port_assignments) == 0 ->
+        {:error, :no_device_types}
+      
       total_ports == 0 ->
         {:error, :empty_distribution}
       
       total_ports > 100_000 ->
         {:error, {:too_many_devices, total_ports}}
-      
-      map_size(port_assignments) == 0 ->
-        {:error, :no_device_types}
       
       true ->
         :ok

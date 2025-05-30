@@ -368,6 +368,226 @@ defmodule SnmpSimEx.TimePatterns do
     end
   end
 
+  @doc """
+  Get monthly pattern for maintenance windows and operational changes.
+  
+  Some months have different operational characteristics:
+  - End of quarters: Higher activity
+  - Summer months: Maintenance windows
+  - Holiday months: Lower activity
+  """
+  def get_monthly_pattern(datetime) do
+    month = datetime.month
+    
+    case month do
+      # Q1 end (March): Higher activity
+      3 -> 1.15
+      # Q2 end (June): Higher activity + summer prep
+      6 -> 1.20
+      # Summer maintenance months
+      month when month in [7, 8] -> 0.85
+      # Q3 end (September): Back to school/work surge
+      9 -> 1.25
+      # Holiday season (November-December): Mixed patterns
+      11 -> 0.90  # Pre-holiday quiet
+      12 -> 1.10  # Holiday shopping surge
+      # Q4 end/New Year (January): Post-holiday recovery
+      1 -> 0.80
+      # Regular months
+      _ -> 1.0
+    end
+  end
+  
+  @doc """
+  Get correlation patterns for linked metrics.
+  
+  Many network metrics are correlated and should move together:
+  - Traffic volume vs packet count
+  - Utilization vs error rates
+  - Signal quality vs throughput
+  """
+  def get_correlation_pattern(primary_metric, secondary_metric, primary_value, datetime) do
+    correlation_strength = get_correlation_strength(primary_metric, secondary_metric)
+    time_factor = get_daily_utilization_pattern(datetime)
+    
+    # Calculate secondary value based on correlation
+    case {primary_metric, secondary_metric} do
+      {:traffic_bytes, :traffic_packets} ->
+        # Packets typically correlate with bytes but with some variation for packet size
+        packet_size_factor = 0.8 + (:rand.uniform() * 0.4)  # 800-1200 byte average
+        primary_value / packet_size_factor
+        
+      {:utilization, :error_rate} ->
+        # Higher utilization typically increases error rates
+        base_error_rate = 0.001  # 0.1% base error rate
+        utilization_factor = primary_value * 0.05  # Up to 5% additional errors at 100% utilization
+        (base_error_rate + utilization_factor) * time_factor
+        
+      {:signal_quality, :throughput} ->
+        # Better signal quality allows higher throughput
+        signal_factor = primary_value / 100.0  # Assume signal quality is 0-100
+        max_throughput = 1_000_000_000  # 1 Gbps max
+        (max_throughput * signal_factor * time_factor) |> trunc()
+        
+      {:temperature, :cpu_usage} ->
+        # Higher temperature often indicates higher CPU usage
+        temp_factor = max(0, (primary_value - 20) / 60)  # Normalize 20-80°C to 0-1
+        base_cpu = 10.0  # 10% base CPU
+        temp_cpu = base_cpu + (temp_factor * 50)  # Up to 60% CPU at high temp
+        min(100, temp_cpu * time_factor)
+        
+      _ ->
+        # Generic correlation - apply correlation strength
+        base_value = primary_value * correlation_strength
+        base_value * time_factor
+    end
+  end
+  
+  @doc """
+  Get burst patterns for specific device types and times.
+  
+  Different devices have different burst characteristics:
+  - Servers: Application-driven bursts
+  - Routers: Protocol-driven bursts  
+  - Cable modems: User-activity bursts
+  """
+  def get_burst_pattern(device_type, datetime) do
+    hour = datetime.hour
+    minute = datetime.minute
+    day_of_week = Date.day_of_week(datetime)
+    
+    base_burst_probability = case device_type do
+      :server ->
+        # Servers have burst patterns based on application cycles
+        cond do
+          hour >= 2 and hour <= 4 -> 0.25  # Backup/maintenance window
+          hour >= 9 and hour <= 11 -> 0.15  # Morning surge
+          hour >= 14 and hour <= 16 -> 0.10  # Afternoon activity
+          day_of_week == 1 and hour >= 8 and hour <= 10 -> 0.30  # Monday morning
+          true -> 0.05
+        end
+        
+      :router ->
+        # Routers burst during routing protocol updates
+        cond do
+          rem(minute, 30) == 0 -> 0.20  # Every 30 minutes (OSPF/BGP)
+          rem(minute, 15) == 0 -> 0.10  # Every 15 minutes
+          true -> 0.03
+        end
+        
+      :switch ->
+        # Switches burst during spanning tree and discovery protocols
+        cond do
+          rem(minute, 20) == 0 -> 0.15  # Every 20 minutes
+          hour >= 8 and hour <= 9 and day_of_week <= 5 -> 0.25  # Morning startup
+          true -> 0.05
+        end
+        
+      :cable_modem ->
+        # Cable modems burst based on user activity
+        cond do
+          hour >= 19 and hour <= 22 -> 0.20  # Evening streaming
+          hour >= 12 and hour <= 13 -> 0.10  # Lunch break
+          day_of_week >= 6 -> 0.15  # Weekend activity
+          true -> 0.05
+        end
+        
+      :cmts ->
+        # CMTS bursts aggregate from many cable modems
+        cond do
+          hour >= 19 and hour <= 22 -> 0.30  # Peak residential time
+          hour >= 8 and hour <= 9 and day_of_week <= 5 -> 0.25  # Morning start
+          true -> 0.08
+        end
+        
+      _ ->
+        0.05  # Default 5% burst probability
+    end
+    
+    # Apply time-based multipliers
+    time_multiplier = get_daily_utilization_pattern(datetime)
+    
+    adjusted_probability = base_burst_probability * time_multiplier
+    
+    %{
+      probability: min(0.8, adjusted_probability),  # Cap at 80%
+      intensity: get_burst_intensity(device_type),
+      duration_minutes: get_burst_duration(device_type)
+    }
+  end
+  
+  @doc """
+  Get maintenance window patterns.
+  
+  Network maintenance typically happens during low-usage periods:
+  - 2-6 AM local time
+  - Weekend mornings
+  - Holiday periods
+  """
+  def get_maintenance_window_factor(datetime) do
+    hour = datetime.hour
+    day_of_week = Date.day_of_week(datetime)
+    month = datetime.month
+    
+    # Base maintenance probability
+    base_probability = case {hour, day_of_week} do
+      # Weekday maintenance windows (2-6 AM)
+      {h, day} when h >= 2 and h <= 6 and day <= 5 -> 0.15
+      # Weekend maintenance windows (6-10 AM)
+      {h, day} when h >= 6 and h <= 10 and day >= 6 -> 0.25
+      # Late night weekend
+      {h, day} when h >= 1 and h <= 5 and day >= 6 -> 0.10
+      _ -> 0.02  # Very low probability during business hours
+    end
+    
+    # Seasonal adjustments
+    seasonal_multiplier = case month do
+      # Summer months: More maintenance
+      month when month in [6, 7, 8] -> 1.5
+      # Holiday periods: Reduced maintenance  
+      month when month in [11, 12, 1] -> 0.7
+      _ -> 1.0
+    end
+    
+    base_probability * seasonal_multiplier
+  end
+  
+  # Private helper functions (additions)
+  
+  defp get_correlation_strength(primary_metric, secondary_metric) do
+    case {primary_metric, secondary_metric} do
+      {:traffic_bytes, :traffic_packets} -> 0.95  # Very high correlation
+      {:utilization, :error_rate} -> 0.70        # Strong positive correlation
+      {:signal_quality, :throughput} -> 0.85     # Strong positive correlation  
+      {:temperature, :cpu_usage} -> 0.60         # Moderate correlation
+      {:cpu_usage, :memory_usage} -> 0.75        # Strong correlation
+      {:power_consumption, :temperature} -> 0.80 # Strong correlation
+      _ -> 0.30  # Weak default correlation
+    end
+  end
+  
+  defp get_burst_intensity(device_type) do
+    case device_type do
+      :server -> {1.5, 4.0}      # 50% to 400% burst
+      :router -> {1.2, 2.5}      # 20% to 250% burst
+      :switch -> {1.3, 3.0}      # 30% to 300% burst
+      :cable_modem -> {1.4, 2.0} # 40% to 200% burst
+      :cmts -> {1.8, 5.0}        # 80% to 500% burst (aggregation)
+      _ -> {1.2, 2.0}            # Default burst range
+    end
+  end
+  
+  defp get_burst_duration(device_type) do
+    case device_type do
+      :server -> {2, 15}         # 2-15 minutes
+      :router -> {1, 5}          # 1-5 minutes (protocol updates)
+      :switch -> {1, 8}          # 1-8 minutes
+      :cable_modem -> {3, 20}    # 3-20 minutes (user sessions)
+      :cmts -> {5, 30}           # 5-30 minutes (aggregate patterns)
+      _ -> {2, 10}               # Default duration
+    end
+  end
+
   # Generate deterministic "random" values based on datetime to ensure consistency
   defp deterministic_random(datetime, seed_offset \\ 0) do
     # Create a deterministic seed from datetime components
