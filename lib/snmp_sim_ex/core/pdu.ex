@@ -110,6 +110,20 @@ defmodule SNMPSimEx.Core.PDU do
     }
   end
 
+  @doc """
+  Decode SNMP packet from binary format (alias for decode/1).
+  """
+  def decode_snmp_packet(binary_packet) do
+    decode(binary_packet)
+  end
+
+  @doc """
+  Encode SNMP packet to binary format (alias for encode/1).
+  """
+  def encode_snmp_packet(pdu) do
+    encode(pdu)
+  end
+
   # Private functions for BER/DER encoding/decoding
 
   defp decode_sequence(<<0x30, length_byte, rest::binary>>) when length_byte < 0x80 do

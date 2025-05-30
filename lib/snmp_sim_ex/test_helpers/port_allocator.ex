@@ -74,6 +74,18 @@ defmodule SNMPSimEx.TestHelpers.PortAllocator do
   def reset do
     GenServer.call(__MODULE__, :reset)
   end
+
+  @doc """
+  Legacy function for backward compatibility.
+  Allocates a port range for a specific test type.
+  """
+  def allocate_port_range(_test_type, count) do
+    # Ignore test_type for simplicity, just allocate the requested count
+    case reserve_port_range(count) do
+      {:ok, {start_port, _end_port}} -> {:ok, start_port}
+      {:error, reason} -> {:error, reason}
+    end
+  end
   
   ## GenServer Callbacks
   

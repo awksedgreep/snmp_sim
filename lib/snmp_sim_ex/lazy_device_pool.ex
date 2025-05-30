@@ -77,6 +77,13 @@ defmodule SNMPSimEx.LazyDevicePool do
   def shutdown_all_devices do
     GenServer.call(__MODULE__, :shutdown_all_devices)
   end
+
+  @doc """
+  Clear the device cache - alias for shutdown_all_devices for compatibility.
+  """
+  def clear_cache do
+    shutdown_all_devices()
+  end
   
   # Legacy API for backward compatibility
   def start_device_population(device_configs, opts \\ []) do

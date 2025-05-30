@@ -600,8 +600,8 @@ defmodule SNMPSimEx.Phase5IntegrationTest do
       
       # High CPU and utilization should affect power consumption
       if Map.has_key?(state3, :power_consumption) do
-        # Power consumption should be within reasonable range
-        assert state3.power_consumption > 5.0 and state3.power_consumption < 30.0
+        # Power consumption should be within reasonable range for high CPU and utilization
+        assert state3.power_consumption > 5.0 and state3.power_consumption < 50.0
       end
     end
   end

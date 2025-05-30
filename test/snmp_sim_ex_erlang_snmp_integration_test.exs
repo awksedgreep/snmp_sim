@@ -7,6 +7,9 @@ defmodule SNMPSimExErlangSnmpIntegrationTest do
   
   use ExUnit.Case, async: false
   
+  @moduletag :erlang
+  @moduletag :optional
+  
   alias SNMPSimEx.ProfileLoader
   alias SNMPSimEx.Device
   

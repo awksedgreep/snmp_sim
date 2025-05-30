@@ -113,6 +113,27 @@ defmodule SNMPSimEx.Device do
   end
 
   @doc """
+  Get the next OID value from the device (for testing).
+  """
+  def get_next(device_pid, oid) do
+    GenServer.call(device_pid, {:get_next_oid, oid})
+  end
+
+  @doc """
+  Get bulk OID values from the device (for testing).
+  """
+  def get_bulk(device_pid, oid, count) do
+    GenServer.call(device_pid, {:get_bulk_oid, oid, count})
+  end
+
+  @doc """
+  Walk OID values from the device (for testing).
+  """
+  def walk(device_pid, oid) do
+    GenServer.call(device_pid, {:walk_oid, oid})
+  end
+
+  @doc """
   Simulate a device reboot.
   """
   def reboot(device_pid) do
@@ -220,6 +241,36 @@ defmodule SNMPSimEx.Device do
   def handle_call({:get_oid, oid}, _from, state) do
     # Use the same logic as SNMP GET requests for consistency
     result = get_oid_value(oid, state)
+    
+    # Update last access time
+    new_state = %{state | last_access: System.monotonic_time(:millisecond)}
+    {:reply, result, new_state}
+  end
+
+  @impl true
+  def handle_call({:get_next_oid, oid}, _from, state) do
+    # Use SNMP GETNEXT logic
+    result = get_next_oid_value(oid, state)
+    
+    # Update last access time
+    new_state = %{state | last_access: System.monotonic_time(:millisecond)}
+    {:reply, result, new_state}
+  end
+
+  @impl true
+  def handle_call({:get_bulk_oid, oid, count}, _from, state) do
+    # Use SNMP GETBULK logic
+    result = get_bulk_oid_values(oid, count, state)
+    
+    # Update last access time
+    new_state = %{state | last_access: System.monotonic_time(:millisecond)}
+    {:reply, result, new_state}
+  end
+
+  @impl true
+  def handle_call({:walk_oid, oid}, _from, state) do
+    # Walk through OIDs starting from the given OID
+    result = walk_oid_values(oid, state)
     
     # Update last access time
     new_state = %{state | last_access: System.monotonic_time(:millisecond)}
@@ -1049,6 +1100,65 @@ defmodule SNMPSimEx.Device do
         # Just return one fallback OID
         [get_fallback_next_oid(start_oid, state)]
     end
+  end
+
+  # Helper functions for new testing APIs
+
+  defp get_next_oid_value(oid, state) do
+    try do
+      device_state = build_device_state(state)
+      case SharedProfiles.get_next_oid(oid, device_state) do
+        {:ok, next_oid, value} -> {:ok, {next_oid, value}}
+        {:error, :end_of_mib_view} -> {:error, :end_of_mib_view}
+        {:error, _reason} -> get_fallback_next_oid(oid, state)
+      end
+    catch
+      :exit, {:noproc, _} ->
+        get_fallback_next_oid(oid, state)
+      :exit, _reason ->
+        get_fallback_next_oid(oid, state)
+    end
+  end
+
+  defp get_bulk_oid_values(oid, count, state) do
+    try do
+      device_state = build_device_state(state)
+      case SharedProfiles.get_bulk_oids(oid, count, device_state) do
+        {:ok, oid_values} -> {:ok, oid_values}
+        {:error, _reason} -> {:ok, get_fallback_bulk_oids(oid, count, state)}
+      end
+    catch
+      :exit, {:noproc, _} ->
+        {:ok, get_fallback_bulk_oids(oid, count, state)}
+      :exit, _reason ->
+        {:ok, get_fallback_bulk_oids(oid, count, state)}
+    end
+  end
+
+  defp walk_oid_values(oid, state) do
+    # Simple walk implementation - get next OIDs until end of MIB or subtree
+    walk_oid_recursive(oid, state, [])
+  end
+
+  defp walk_oid_recursive(oid, state, acc) when length(acc) < 100 do
+    case get_next_oid_value(oid, state) do
+      {:ok, {next_oid, value}} ->
+        # Check if still in the same subtree
+        if String.starts_with?(next_oid, oid) do
+          walk_oid_recursive(next_oid, state, [{next_oid, value} | acc])
+        else
+          {:ok, Enum.reverse(acc)}
+        end
+      {:error, :end_of_mib_view} ->
+        {:ok, Enum.reverse(acc)}
+      {:error, _reason} ->
+        {:ok, Enum.reverse(acc)}
+    end
+  end
+
+  defp walk_oid_recursive(_oid, _state, acc) do
+    # Limit recursion depth to prevent infinite loops
+    {:ok, Enum.reverse(acc)}
   end
   
 end

@@ -403,12 +403,12 @@ defmodule SNMPSimEx.TestHelpers.StabilityTestHelper do
     end
   end
   
-  defp execute_steady_workload(device_count, duration_minutes) do
+  defp execute_steady_workload(device_count, _duration_minutes) do
     # Implement steady workload pattern
     %{devices_created: device_count, requests_processed: device_count * 10, errors_encountered: 0}
   end
   
-  defp execute_burst_workload(device_count, duration_minutes) do
+  defp execute_burst_workload(device_count, _duration_minutes) do
     # Implement burst workload pattern
     %{devices_created: device_count, requests_processed: device_count * 20, errors_encountered: 1}
   end
@@ -508,7 +508,7 @@ defmodule SNMPSimEx.TestHelpers.StabilityTestHelper do
     end)
   end
   
-  defp inject_network_delays(delay_ms) do
+  defp inject_network_delays(_delay_ms) do
     # This is a simulation - in a real implementation you might
     # intercept network calls or use a proxy
     spawn(fn ->

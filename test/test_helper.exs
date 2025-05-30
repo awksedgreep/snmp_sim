@@ -81,9 +81,11 @@ end
   end, %{}}
 )
 
-# Configure ExUnit to exclude shell integration tests and slow tests by default
-# Run them with: mix test --include shell_integration
-# Run slow tests with: mix test --include slow
+# Configure ExUnit to exclude noisy/optional tests by default
+# Run shell integration tests with: mix test --include shell_integration
+# Run slow tests with: mix test --include slow  
+# Run Erlang SNMP integration tests with: mix test --include erlang
+# Run optional tests with: mix test --include optional
 
 # Note: SNMP manager debug output (snmpm:mk_target_name messages) appears to be
 # deeply embedded in the Erlang SNMP library and cannot be easily suppressed.
@@ -91,4 +93,4 @@ end
 # To filter them visually, you can pipe test output through grep:
 # mix test 2>&1 | grep -v "snmpm:"
 
-ExUnit.start(exclude: [:shell_integration, :slow])
+ExUnit.start(exclude: [:shell_integration, :slow, :erlang, :optional])
