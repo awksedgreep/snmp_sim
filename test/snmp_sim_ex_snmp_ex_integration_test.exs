@@ -178,8 +178,12 @@ defmodule SNMPSimExSnmpExIntegrationTest do
       }
 
       on_exit(fn ->
-        if Process.alive?(device) do
-          GenServer.stop(device)
+        try do
+          if Process.alive?(device) do
+            GenServer.stop(device, :normal, 1000)
+          end
+        catch
+          :exit, _ -> :ok  # Process already stopped or killed
         end
       end)
 
@@ -441,8 +445,12 @@ defmodule SNMPSimExSnmpExIntegrationTest do
       }
 
       on_exit(fn ->
-        if Process.alive?(device) do
-          GenServer.stop(device)
+        try do
+          if Process.alive?(device) do
+            GenServer.stop(device, :normal, 1000)
+          end
+        catch
+          :exit, _ -> :ok  # Process already stopped or killed
         end
       end)
 

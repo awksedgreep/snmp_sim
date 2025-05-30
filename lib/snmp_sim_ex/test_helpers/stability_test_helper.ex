@@ -538,17 +538,17 @@ defmodule SNMPSimEx.TestHelpers.StabilityTestHelper do
     end)
   end
   
-  defp monitor_response_times(duration_ms) do
+  defp monitor_response_times(_duration_ms) do
     # Implementation for monitoring response times
     []  # Placeholder
   end
   
-  defp monitor_error_rates(duration_ms) do
+  defp monitor_error_rates(_duration_ms) do
     # Implementation for monitoring error rates
     []  # Placeholder
   end
   
-  defp monitor_resource_usage(duration_ms) do
+  defp monitor_resource_usage(_duration_ms) do
     # Implementation for monitoring resource usage
     []  # Placeholder
   end

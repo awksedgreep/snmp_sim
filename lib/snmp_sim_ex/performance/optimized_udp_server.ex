@@ -330,7 +330,7 @@ defmodule SNMPSimEx.Performance.OptimizedUdpServer do
       {:ok, pdu} ->
         hot_oids = ["1.3.6.1.2.1.1.1.0", "1.3.6.1.2.1.1.3.0"]  # sysDescr, sysUpTime
         
-        case pdu.varbinds do
+        case pdu.variable_bindings do
           [varbind | _] -> varbind.oid in hot_oids
           _ -> false
         end
@@ -414,7 +414,7 @@ defmodule SNMPSimEx.Performance.OptimizedUdpServer do
                     
                     # Record performance metrics
                     processing_time = System.monotonic_time(:microsecond) - start_time
-                    PerformanceMonitor.record_request_timing(port, hd(pdu.varbinds).oid, processing_time, true)
+                    PerformanceMonitor.record_request_timing(port, hd(pdu.variable_bindings).oid, processing_time, true)
                     
                     processing_time
                   
@@ -425,7 +425,7 @@ defmodule SNMPSimEx.Performance.OptimizedUdpServer do
                     :gen_udp.send(socket, ip, port, error_packet)
                     
                     processing_time = System.monotonic_time(:microsecond) - start_time
-                    PerformanceMonitor.record_request_timing(port, hd(pdu.varbinds).oid, processing_time, false)
+                    PerformanceMonitor.record_request_timing(port, hd(pdu.variable_bindings).oid, processing_time, false)
                     
                     processing_time
                 end
