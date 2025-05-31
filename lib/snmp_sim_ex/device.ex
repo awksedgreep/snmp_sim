@@ -78,10 +78,101 @@ defmodule SNMPSimEx.Device do
   end
 
   @doc """
-  Stop a device gracefully.
+  Stop a device gracefully with resilient error handling.
   """
   def stop(device_pid) when is_pid(device_pid) do
-    GenServer.stop(device_pid, :normal)
+    case Process.alive?(device_pid) do
+      false ->
+        :ok
+      true ->
+        try do
+          GenServer.stop(device_pid, :normal, 5000)
+        catch
+          :exit, {:noproc, _} -> :ok
+          :exit, {:normal, _} -> :ok
+          :exit, {:shutdown, _} -> :ok
+          :exit, {:timeout, _} ->
+            # Process didn't stop gracefully, force kill
+            Process.exit(device_pid, :kill)
+            :ok
+          :exit, reason ->
+            Logger.warning("Device stop failed with reason: #{inspect(reason)}")
+            :ok
+        end
+    end
+  end
+
+  def stop(%{pid: device_pid}) when is_pid(device_pid) do
+    stop(device_pid)
+  end
+
+  def stop(device_info) when is_map(device_info) do
+    cond do
+      Map.has_key?(device_info, :pid) -> stop(device_info.pid)
+      Map.has_key?(device_info, :device_pid) -> stop(device_info.device_pid)
+      true -> {:error, :no_pid_found}
+    end
+  end
+
+  @doc """
+  Cleanup all orphaned SNMP simulator device processes.
+  Useful for test cleanup when devices may have been left running.
+  """
+  def cleanup_all_devices do
+    # Find all processes running SNMPSimEx.Device
+    device_processes = Process.list()
+    |> Enum.filter(fn pid ->
+      try do
+        case Process.info(pid, :dictionary) do
+          {:dictionary, dict} ->
+            # Check if this process is running SNMPSimEx.Device
+            Enum.any?(dict, fn 
+              {:"$initial_call", {SNMPSimEx.Device, :init, 1}} -> true
+              {:"$ancestors", ancestors} when is_list(ancestors) ->
+                Enum.any?(ancestors, fn ancestor ->
+                  is_atom(ancestor) and Atom.to_string(ancestor) =~ "SNMPSimEx"
+                end)
+              _ -> false
+            end)
+          _ -> false
+        end
+      catch
+        _, _ -> false
+      end
+    end)
+
+    # Stop each device process
+    cleanup_count = Enum.reduce(device_processes, 0, fn pid, acc ->
+      case stop(pid) do
+        :ok -> acc + 1
+        _ -> acc
+      end
+    end)
+
+    Logger.info("Cleaned up #{cleanup_count} orphaned device processes")
+    {:ok, cleanup_count}
+  end
+
+  @doc """
+  Monitor a device process and get notified when it dies.
+  Returns a monitor reference that can be used with Process.demonitor/1.
+  """
+  def monitor_device(device_pid) when is_pid(device_pid) do
+    Process.monitor(device_pid)
+  end
+
+  @doc """
+  Create a device with monitoring enabled.
+  Returns {:ok, {device_pid, monitor_ref}} or {:error, reason}.
+  """
+  def start_link_monitored(device_config) when is_map(device_config) do
+    case start_link(device_config) do
+      {:ok, device_pid} ->
+        monitor_ref = monitor_device(device_pid)
+        {:ok, {device_pid, monitor_ref}}
+      error ->
+        error
+    end
   end
 
   @doc """

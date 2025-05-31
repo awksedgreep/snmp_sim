@@ -6,7 +6,8 @@ defmodule SNMPSimEx.TestHelpers do
   performance testing, stability testing, and production validation.
   """
   
-  alias SNMPSimEx.{Device, LazyDevicePool, Core.Server}
+  require Logger
+  alias SNMPSimEx.{Device, LazyDevicePool}
   
   @doc """
   Creates test devices with various configurations.
@@ -191,19 +192,62 @@ defmodule SNMPSimEx.TestHelpers do
   end
   
   @doc """
-  Cleans up test devices and resources.
+  Cleans up test devices and resources with enhanced error handling.
   """
   def cleanup_devices(devices) do
-    Enum.each(devices, fn device ->
-      try do
-        GenServer.stop(device, :normal, 5000)
-      catch
-        _type, _error -> :ok
-      end
+    cleanup_results = Enum.map(devices, fn device ->
+      cleanup_single_device(device)
     end)
+    
+    successful_cleanups = Enum.count(cleanup_results, &(&1 == :ok))
+    failed_cleanups = length(cleanup_results) - successful_cleanups
+    
+    if failed_cleanups > 0 do
+      Logger.warning("#{failed_cleanups} device cleanups failed, attempting global cleanup")
+      Device.cleanup_all_devices()
+    end
     
     # Wait for cleanup to complete
     Process.sleep(1000)
+    
+    %{
+      total: length(devices),
+      successful: successful_cleanups,
+      failed: failed_cleanups
+    }
+  end
+
+  @doc """
+  Cleanup a single device with robust error handling.
+  """
+  def cleanup_single_device(device) do
+    cond do
+      is_pid(device) ->
+        Device.stop(device)
+      
+      is_map(device) ->
+        Device.stop(device)
+      
+      true ->
+        try do
+          GenServer.stop(device, :normal, 5000)
+        catch
+          :exit, {:noproc, _} -> :ok
+          :exit, {:normal, _} -> :ok
+          :exit, {:shutdown, _} -> :ok
+          :exit, {:timeout, _} ->
+            try do
+              if is_pid(device) and Process.alive?(device) do
+                Process.exit(device, :kill)
+              end
+              :ok
+            catch
+              _, _ -> :ok
+            end
+          :exit, _reason -> :ok
+          _, _ -> :ok
+        end
+    end
   end
   
   @doc """
@@ -217,6 +261,13 @@ defmodule SNMPSimEx.TestHelpers do
       _type, _error -> :ok
     end
     
+    # Clean up any orphaned devices
+    try do
+      Device.cleanup_all_devices()
+    catch
+      _type, _error -> :ok
+    end
+    
     # Force garbage collection
     :erlang.garbage_collect()
     
@@ -224,6 +275,89 @@ defmodule SNMPSimEx.TestHelpers do
     clear_test_ets_tables()
     
     :ok
+  end
+
+  @doc """
+  Create test devices with monitoring and automatic cleanup tracking.
+  Returns devices with monitor references for better cleanup handling.
+  """
+  def create_monitored_test_devices(opts \\ []) do
+    count = Keyword.get(opts, :count, 10)
+    community = Keyword.get(opts, :community, "public")
+    host = Keyword.get(opts, :host, "127.0.0.1")
+    port_start = Keyword.get(opts, :port_start, 30000)
+    walk_file = Keyword.get(opts, :walk_file, "priv/walks/cable_modem.walk")
+    batch_size = Keyword.get(opts, :batch_size, 10)
+    delay_between_batches = Keyword.get(opts, :delay_between_batches, 100)
+    
+    1..count
+    |> Enum.chunk_every(batch_size)
+    |> Enum.with_index()
+    |> Enum.flat_map(fn {batch, batch_index} ->
+      devices = Enum.map(batch, fn i ->
+        device_config = %{
+          community: community,
+          host: host,
+          port: port_start + i,
+          walk_file: walk_file,
+          device_id: "test_device_#{port_start + i}",
+          device_type: :cable_modem
+        }
+        
+        case Device.start_link_monitored(device_config) do
+          {:ok, {device_pid, monitor_ref}} ->
+            %{
+              pid: device_pid,
+              monitor_ref: monitor_ref,
+              port: port_start + i,
+              device_id: "test_device_#{port_start + i}"
+            }
+          {:error, reason} ->
+            Logger.error("Failed to create test device #{i}: #{inspect(reason)}")
+            nil
+        end
+      end)
+      |> Enum.filter(&(&1 != nil))
+      
+      # Delay between batches except for the first batch
+      if batch_index > 0 do
+        Process.sleep(delay_between_batches)
+      end
+      
+      devices
+    end)
+  end
+
+  @doc """
+  Cleanup monitored devices with enhanced tracking.
+  """
+  def cleanup_monitored_devices(monitored_devices) do
+    cleanup_results = Enum.map(monitored_devices, fn device_info ->
+      # Demonitor first to avoid getting DOWN messages
+      if Map.has_key?(device_info, :monitor_ref) do
+        Process.demonitor(device_info.monitor_ref, [:flush])
+      end
+      
+      # Then cleanup the device
+      cleanup_single_device(device_info)
+    end)
+    
+    successful_cleanups = Enum.count(cleanup_results, &(&1 == :ok))
+    failed_cleanups = length(cleanup_results) - successful_cleanups
+    
+    if failed_cleanups > 0 do
+      Logger.warning("#{failed_cleanups} monitored device cleanups failed, attempting global cleanup")
+      Device.cleanup_all_devices()
+    end
+    
+    # Wait for cleanup to complete
+    Process.sleep(1000)
+    
+    %{
+      total: length(monitored_devices),
+      successful: successful_cleanups,
+      failed: failed_cleanups
+    }
   end
   
   @doc """

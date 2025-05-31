@@ -245,35 +245,60 @@ defmodule SNMPSimEx.Core.Server do
         
       pid when is_pid(pid) ->
         # GenServer handler (e.g., Device process)
-        try do
-          case GenServer.call(pid, {:handle_snmp, pdu, %{client_ip: client_ip, client_port: client_port}}, 5000) do
-            {:ok, response_pdu} ->
-              send_response_async(state, client_ip, client_port, response_pdu)
-              send(server_pid, {:update_stats, :successful_responses})
+        # Check if process is alive before attempting to call it
+        if Process.alive?(pid) do
+          try do
+            case GenServer.call(pid, {:handle_snmp, pdu, %{client_ip: client_ip, client_port: client_port}}, 5000) do
+              {:ok, response_pdu} ->
+                send_response_async(state, client_ip, client_port, response_pdu)
+                send(server_pid, {:update_stats, :successful_responses})
+                
+              {:error, error_status} ->
+                error_response = PDU.create_error_response(pdu, error_status, 0)
+                send_response_async(state, client_ip, client_port, error_response)
+                send(server_pid, {:update_stats, :error_responses})
+            end
+          catch
+            :exit, {:timeout, _} ->
+              Logger.warning("Device process #{inspect(pid)} timed out responding to SNMP request")
+              error_response = PDU.create_error_response(pdu, 5, 0)  # genErr
+              send_response_async(state, client_ip, client_port, error_response)
+              send(server_pid, {:update_stats, :timeout_errors})
+            
+            :exit, {:noproc, _} ->
+              # Device process has died between alive check and call
+              Logger.warning("Device process #{inspect(pid)} died during SNMP request")
+              error_response = PDU.create_error_response(pdu, 5, 0)  # genErr
+              send_response_async(state, client_ip, client_port, error_response)
+              send(server_pid, {:update_stats, :dead_process_errors})
               
-            {:error, error_status} ->
-              error_response = PDU.create_error_response(pdu, error_status, 0)
+            :exit, {:normal, _} ->
+              # Device process shut down normally
+              Logger.info("Device process #{inspect(pid)} shut down normally during request")
+              error_response = PDU.create_error_response(pdu, 5, 0)  # genErr
+              send_response_async(state, client_ip, client_port, error_response)
+              send(server_pid, {:update_stats, :dead_process_errors})
+              
+            :exit, {:shutdown, _} ->
+              # Device process was shutdown
+              Logger.info("Device process #{inspect(pid)} was shutdown during request")
+              error_response = PDU.create_error_response(pdu, 5, 0)  # genErr
+              send_response_async(state, client_ip, client_port, error_response)
+              send(server_pid, {:update_stats, :dead_process_errors})
+              
+            :exit, reason ->
+              # Other exit reasons
+              Logger.warning("Device process #{inspect(pid)} exited with reason: #{inspect(reason)}")
+              error_response = PDU.create_error_response(pdu, 5, 0)  # genErr
               send_response_async(state, client_ip, client_port, error_response)
               send(server_pid, {:update_stats, :error_responses})
           end
-        catch
-          :exit, {:timeout, _} ->
-            error_response = PDU.create_error_response(pdu, 5, 0)  # genErr
-            send_response_async(state, client_ip, client_port, error_response)
-            send(server_pid, {:update_stats, :timeout_errors})
-          
-          :exit, :noproc ->
-            # Device process has died
-            error_response = PDU.create_error_response(pdu, 5, 0)  # genErr
-            send_response_async(state, client_ip, client_port, error_response)
-            send(server_pid, {:update_stats, :error_responses})
-            
-          :exit, reason ->
-            # Other exit reasons
-            Logger.warning("Device process exited with reason: #{inspect(reason)}")
-            error_response = PDU.create_error_response(pdu, 5, 0)  # genErr
-            send_response_async(state, client_ip, client_port, error_response)
-            send(server_pid, {:update_stats, :error_responses})
+        else
+          # Process is not alive
+          Logger.warning("Device process #{inspect(pid)} is not alive")
+          error_response = PDU.create_error_response(pdu, 5, 0)  # genErr
+          send_response_async(state, client_ip, client_port, error_response)
+          send(server_pid, {:update_stats, :dead_process_errors})
         end
     end
   end
@@ -319,6 +344,8 @@ defmodule SNMPSimEx.Core.Server do
       encode_errors: 0,
       send_errors: 0,
       processing_errors: 0,
+      timeout_errors: 0,
+      dead_process_errors: 0,
       processing_times: [],
       started_at: DateTime.utc_now()
     }
