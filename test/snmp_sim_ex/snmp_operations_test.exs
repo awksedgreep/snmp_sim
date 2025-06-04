@@ -9,7 +9,8 @@ defmodule SNMPSimEx.SNMPOperationsTest do
   
   use ExUnit.Case, async: false
   
-  alias SNMPSimEx.Core.{PDU, Server}
+  alias SNMPSimEx.Core.Server
+  alias SnmpLib.PDU
   alias SNMPSimEx.Device
   alias SNMPSimEx.TestHelpers.PortHelper
   

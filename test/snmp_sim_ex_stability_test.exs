@@ -327,10 +327,10 @@ defmodule SNMPSimExStabilityTest do
   
   # SNMP client functions
   defp send_snmp_get(port, oid, community \\ "public") do
-    request_pdu = %SNMPSimEx.Core.PDU{
+    request_pdu = %SnmpLib.PDU{
       version: 1,
       community: community,
-      pdu_type: 0xA0,  # GET_REQUEST
+      pdu_type: :get_request,
       request_id: :rand.uniform(65535),
       error_status: 0,
       error_index: 0,
@@ -341,10 +341,10 @@ defmodule SNMPSimExStabilityTest do
   end
 
   defp send_snmp_getnext(port, oid, community \\ "public") do
-    request_pdu = %SNMPSimEx.Core.PDU{
+    request_pdu = %SnmpLib.PDU{
       version: 1,
       community: community,
-      pdu_type: 0xA1,  # GETNEXT_REQUEST
+      pdu_type: :getnext_request,
       request_id: :rand.uniform(65535),
       error_status: 0,
       error_index: 0,
@@ -355,7 +355,7 @@ defmodule SNMPSimExStabilityTest do
   end
 
   defp send_snmp_request(port, pdu) do
-    case SNMPSimEx.Core.PDU.encode(pdu) do
+    case SnmpLib.PDU.encode(pdu) do
       {:ok, packet} ->
         {:ok, socket} = :gen_udp.open(0, [:binary, {:active, false}])
         
@@ -363,7 +363,7 @@ defmodule SNMPSimExStabilityTest do
         
         result = case :gen_udp.recv(socket, 0, 2000) do
           {:ok, {_ip, _port, response_data}} ->
-            SNMPSimEx.Core.PDU.decode(response_data)
+            SnmpLib.PDU.decode(response_data)
           {:error, :timeout} ->
             :timeout
           {:error, reason} ->

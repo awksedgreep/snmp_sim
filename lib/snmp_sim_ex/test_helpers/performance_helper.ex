@@ -10,12 +10,12 @@ defmodule SNMPSimEx.TestHelpers.PerformanceHelper do
   """
   def run_sustained_load_test(devices, target_rps, duration_ms, options \\ %{}) do
     monitor_response_times = Map.get(options, :monitor_response_times, true)
-    monitor_throughput = Map.get(options, :monitor_throughput, true)
-    monitor_error_rates = Map.get(options, :monitor_error_rates, true)
+    _monitor_throughput = Map.get(options, :monitor_throughput, true)
+    _monitor_error_rates = Map.get(options, :monitor_error_rates, true)
     monitor_resource_usage = Map.get(options, :monitor_resource_usage, true)
     
     start_time = System.monotonic_time(:millisecond)
-    end_time = start_time + duration_ms
+    _end_time = start_time + duration_ms
     
     # Start monitoring tasks
     monitoring_tasks = []
@@ -68,14 +68,14 @@ defmodule SNMPSimEx.TestHelpers.PerformanceHelper do
     count = length(sorted)
     
     avg = Enum.sum(sorted) / count
-    min = Enum.min(sorted)
-    max = Enum.max(sorted)
+    _min = Enum.min(sorted)
+    _max = Enum.max(sorted)
     
     p50_index = round(count * 0.50) - 1
     p95_index = round(count * 0.95) - 1
     p99_index = round(count * 0.99) - 1
     
-    p50 = Enum.at(sorted, max(0, p50_index))
+    _p50 = Enum.at(sorted, max(0, p50_index))
     p95 = Enum.at(sorted, max(0, p95_index))
     p99 = Enum.at(sorted, max(0, p99_index))
     
@@ -187,7 +187,7 @@ defmodule SNMPSimEx.TestHelpers.PerformanceHelper do
   @doc """
   Profiles CPU usage under load.
   """
-  def profile_cpu_usage(devices, duration_ms, sample_interval_ms) do
+  def profile_cpu_usage(_devices, duration_ms, sample_interval_ms) do
     samples = collect_cpu_samples(duration_ms, sample_interval_ms)
     
     avg_cpu = Enum.sum(samples) / length(samples)

@@ -552,7 +552,8 @@ end
 
 # Make Device and other modules easily accessible
 alias SNMPSimEx.{Device, Config, ValueSimulator}
-alias SNMPSimEx.Core.{Server, PDU}
+alias SNMPSimEx.Core.Server
+alias SnmpLib.PDU
 alias SNMPSimEx.MIB.{BehaviorAnalyzer, SharedProfiles}
 
 IO.puts "✅ Helper functions loaded! Type Sim.start() to begin."

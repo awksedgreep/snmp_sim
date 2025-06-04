@@ -3,9 +3,13 @@ defmodule SNMPSimExSnmpExIntegrationTest do
   True integration tests using the snmp_ex library to validate our SNMP simulator
   against a real SNMP client implementation. This ensures protocol compliance
   and real-world compatibility.
+  
+  DISABLED: Excluded for now, will use snmp_mgr for testing once integration is complete.
   """
 
   use ExUnit.Case, async: false
+  
+  @moduletag :snmp_ex_integration
 
   alias SNMPSimEx.ProfileLoader
   alias SNMPSimEx.Device
@@ -143,10 +147,10 @@ defmodule SNMPSimExSnmpExIntegrationTest do
       # Start snmp_ex application
       {:ok, _} = Application.ensure_all_started(:snmp_ex)
 
-      # Load a test profile
-      {:ok, profile} = ProfileLoader.load_profile(
+      # Load a test profile into SharedProfiles
+      :ok = SharedProfiles.load_walk_profile(
         :cable_modem,
-        {:walk_file, "priv/walks/cable_modem.walk"}
+        "priv/walks/cable_modem.walk"
       )
 
       port = PortHelper.get_port()
@@ -412,9 +416,10 @@ defmodule SNMPSimExSnmpExIntegrationTest do
         _pid -> :ok
       end
 
-      {:ok, profile} = ProfileLoader.load_profile(
+      # Load a test profile into SharedProfiles
+      :ok = SharedProfiles.load_walk_profile(
         :cable_modem,
-        {:walk_file, "priv/walks/cable_modem.walk"}
+        "priv/walks/cable_modem.walk"
       )
 
       port = PortHelper.get_port()

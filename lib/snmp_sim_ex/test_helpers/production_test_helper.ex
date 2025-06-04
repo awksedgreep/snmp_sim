@@ -17,7 +17,7 @@ defmodule SNMPSimEx.TestHelpers.ProductionTestHelper do
     host = Keyword.get(opts, :host, "127.0.0.1")
     # Use PortAllocator service for guaranteed unique ports
     port_start = Keyword.get(opts, :port_start, get_allocated_port_start(:production, device_count))
-    walk_file = Keyword.get(opts, :walk_file, "priv/walks/cable_modem.walk")
+    _walk_file = Keyword.get(opts, :walk_file, "priv/walks/cable_modem.walk")
     
     1..device_count
     |> Enum.chunk_every(batch_size)
@@ -46,9 +46,9 @@ defmodule SNMPSimEx.TestHelpers.ProductionTestHelper do
   Runs a comprehensive reliability test with failure injection.
   """
   def run_reliability_test(devices, duration_ms, failure_scenarios, options \\ %{}) do
-    measure_uptime = Map.get(options, :measure_uptime, true)
-    measure_recovery_times = Map.get(options, :measure_recovery_times, true)
-    measure_data_consistency = Map.get(options, :measure_data_consistency, true)
+    _measure_uptime = Map.get(options, :measure_uptime, true)
+    _measure_recovery_times = Map.get(options, :measure_recovery_times, true)
+    _measure_data_consistency = Map.get(options, :measure_data_consistency, true)
     
     start_time = System.monotonic_time(:millisecond)
     end_time = start_time + duration_ms
@@ -86,7 +86,7 @@ defmodule SNMPSimEx.TestHelpers.ProductionTestHelper do
   def run_security_test(test_type, options \\ %{}) do
     duration_ms = Map.get(options, :duration_ms, 60_000)
     monitor_system_health = Map.get(options, :monitor_system_health, true)
-    log_security_events = Map.get(options, :log_security_events, true)
+    _log_security_events = Map.get(options, :log_security_events, true)
     
     # Initialize security monitoring
     security_monitor = if monitor_system_health do
@@ -177,9 +177,9 @@ defmodule SNMPSimEx.TestHelpers.ProductionTestHelper do
   Runs deployment tests to validate operational procedures.
   """
   def run_deployment_test(test_type, options \\ %{}) do
-    maintain_service_availability = Map.get(options, :maintain_service_availability, true)
-    verify_data_integrity = Map.get(options, :verify_data_integrity, true)
-    measure_downtime = Map.get(options, :measure_downtime, true)
+    _maintain_service_availability = Map.get(options, :maintain_service_availability, true)
+    _verify_data_integrity = Map.get(options, :verify_data_integrity, true)
+    _measure_downtime = Map.get(options, :measure_downtime, true)
     
     case test_type do
       :rolling_update -> 
@@ -212,9 +212,9 @@ defmodule SNMPSimEx.TestHelpers.ProductionTestHelper do
   Runs integration tests with external systems.
   """
   def run_integration_test(test_type, options \\ %{}) do
-    verify_data_flow = Map.get(options, :verify_data_flow, true)
-    verify_protocols = Map.get(options, :verify_protocols, true)
-    verify_authentication = Map.get(options, :verify_authentication, true)
+    _verify_data_flow = Map.get(options, :_verify_data_flow, true)
+    _verify_protocols = Map.get(options, :_verify_protocols, true)
+    _verify_authentication = Map.get(options, :_verify_authentication, true)
     
     case test_type do
       :snmp_tool_compatibility -> run_snmp_tool_compatibility_test(options)
@@ -286,25 +286,31 @@ defmodule SNMPSimEx.TestHelpers.ProductionTestHelper do
   # Private helper functions
   
   defp start_reliability_monitoring(duration_ms, options) do
-    tasks = []
-    
-    # Start uptime monitoring
-    if Map.get(options, :measure_uptime, true) do
-      tasks = [Task.async(fn -> monitor_uptime(duration_ms) end) | tasks]
-    end
-    
-    # Start recovery time monitoring
-    if Map.get(options, :measure_recovery_times, true) do
-      tasks = [Task.async(fn -> monitor_recovery_times(duration_ms) end) | tasks]
-    end
-    
-    # Start data consistency monitoring
-    if Map.get(options, :measure_data_consistency, true) do
-      tasks = [Task.async(fn -> monitor_data_consistency(duration_ms) end) | tasks]
-    end
-    
+  tasks = []
+
+  # Start uptime monitoring
+  tasks = if Map.get(options, :measure_uptime, true) do
+    [Task.async(fn -> monitor_uptime(duration_ms) end) | tasks]
+  else
     tasks
   end
+
+  # Start recovery time monitoring
+  tasks = if Map.get(options, :measure_recovery_times, true) do
+    [Task.async(fn -> monitor_recovery_times(duration_ms) end) | tasks]
+  else
+    tasks
+  end
+
+  # Start data consistency monitoring
+  tasks = if Map.get(options, :measure_data_consistency, true) do
+    [Task.async(fn -> monitor_data_consistency(duration_ms) end) | tasks]
+  else
+    tasks
+  end
+
+  tasks
+end
   
   defp execute_reliability_test_loop(devices, failure_scenarios, start_time, end_time, results) do
     current_time = System.monotonic_time(:millisecond)
@@ -315,7 +321,7 @@ defmodule SNMPSimEx.TestHelpers.ProductionTestHelper do
       # Check if we should inject a failure
       if should_inject_failure?(failure_scenarios) do
         scenario = select_failure_scenario(failure_scenarios)
-        failure_start = System.monotonic_time(:millisecond)
+        _failure_start = System.monotonic_time(:millisecond)
         
         inject_failure_scenario(scenario)
         
@@ -439,12 +445,15 @@ defmodule SNMPSimEx.TestHelpers.ProductionTestHelper do
       
       # Try to create device with invalid community
       result = try do
-        {:ok, device} = Device.start_link(
+        device_config = %{
           community: community,
           host: "127.0.0.1",
           port: 30001,
+          device_type: :cable_modem,
+          device_id: "bruteforce_test_#{:rand.uniform(10000)}",
           walk_file: "priv/walks/cable_modem.walk"
-        )
+        }
+        {:ok, device} = Device.start_link(device_config)
         
         # Try to perform operation
         operation_result = Device.get(device, "1.3.6.1.2.1.1.1.0")
@@ -475,7 +484,7 @@ defmodule SNMPSimEx.TestHelpers.ProductionTestHelper do
     end
   end
   
-  defp run_rate_limiting_test(duration_ms) do
+  defp run_rate_limiting_test(_duration_ms) do
     # Test system's rate limiting capabilities
     %{
       test_type: :rate_limiting,
@@ -484,7 +493,7 @@ defmodule SNMPSimEx.TestHelpers.ProductionTestHelper do
     }
   end
   
-  defp run_resource_exhaustion_test(duration_ms) do
+  defp run_resource_exhaustion_test(_duration_ms) do
     # Test system's resistance to resource exhaustion attacks
     %{
       test_type: :resource_exhaustion,
@@ -493,7 +502,7 @@ defmodule SNMPSimEx.TestHelpers.ProductionTestHelper do
     }
   end
   
-  defp run_malformed_packet_test(duration_ms) do
+  defp run_malformed_packet_test(_duration_ms) do
     # Test handling of malformed SNMP packets
     %{
       test_type: :malformed_packets,
@@ -502,7 +511,7 @@ defmodule SNMPSimEx.TestHelpers.ProductionTestHelper do
     }
   end
   
-  defp run_connection_flood_test(duration_ms) do
+  defp run_connection_flood_test(_duration_ms) do
     # Test resistance to connection flooding
     %{
       test_type: :connection_flood,
@@ -511,7 +520,7 @@ defmodule SNMPSimEx.TestHelpers.ProductionTestHelper do
     }
   end
   
-  defp run_rolling_update_test(options) do
+  defp run_rolling_update_test(_options) do
     # Simulate rolling update deployment
     %{
       deployment_successful: true,
@@ -521,7 +530,7 @@ defmodule SNMPSimEx.TestHelpers.ProductionTestHelper do
     }
   end
   
-  defp run_blue_green_deployment_test(options) do
+  defp run_blue_green_deployment_test(_options) do
     # Simulate blue-green deployment
     %{
       deployment_successful: true,
@@ -531,7 +540,7 @@ defmodule SNMPSimEx.TestHelpers.ProductionTestHelper do
     }
   end
   
-  defp run_graceful_shutdown_test(options) do
+  defp run_graceful_shutdown_test(_options) do
     # Test graceful shutdown procedure
     %{
       deployment_successful: true,
@@ -541,7 +550,7 @@ defmodule SNMPSimEx.TestHelpers.ProductionTestHelper do
     }
   end
   
-  defp run_config_hot_reload_test(options) do
+  defp run_config_hot_reload_test(_options) do
     # Test configuration hot reload
     %{
       deployment_successful: true,
@@ -551,7 +560,7 @@ defmodule SNMPSimEx.TestHelpers.ProductionTestHelper do
     }
   end
   
-  defp run_health_check_test(options) do
+  defp run_health_check_test(_options) do
     # Test health check endpoints
     %{
       deployment_successful: true,
@@ -564,9 +573,9 @@ defmodule SNMPSimEx.TestHelpers.ProductionTestHelper do
   # More helper functions would be implemented here for completeness
   # These are simplified implementations for demonstration
   
-  defp monitor_uptime(duration_ms), do: []
-  defp monitor_recovery_times(duration_ms), do: []
-  defp monitor_data_consistency(duration_ms), do: []
+  defp monitor_uptime(_duration_ms), do: []
+  defp monitor_recovery_times(_duration_ms), do: []
+  defp monitor_data_consistency(_duration_ms), do: []
   defp monitor_security_events(duration_ms) do
     # Start a process to collect security events during the test
     events_collector = spawn(fn -> collect_events_loop([], System.monotonic_time(:millisecond) + duration_ms) end)
@@ -639,17 +648,17 @@ defmodule SNMPSimEx.TestHelpers.ProductionTestHelper do
   defp simulate_device_restart(duration_ms), do: Process.sleep(duration_ms)
   defp simulate_memory_pressure(duration_ms), do: Process.sleep(duration_ms)
   
-  defp create_memory_pressure_for_monitoring(threshold), do: :ok
-  defp inject_artificial_delays(threshold), do: :ok
-  defp inject_failure_rate(threshold), do: :ok
-  defp simulate_device_failures(threshold), do: :ok
+  defp create_memory_pressure_for_monitoring(_threshold), do: :ok
+  defp inject_artificial_delays(_threshold), do: :ok
+  defp inject_failure_rate(_threshold), do: :ok
+  defp simulate_device_failures(_threshold), do: :ok
   
-  defp wait_for_alert_loop(metric, end_time) do
+  defp wait_for_alert_loop(_metric, end_time) do
     current_time = System.monotonic_time(:millisecond)
     if current_time >= end_time, do: false, else: true  # Simplified
   end
   
-  defp wait_for_recovery_alert_loop(metric, end_time) do
+  defp wait_for_recovery_alert_loop(_metric, end_time) do
     current_time = System.monotonic_time(:millisecond)
     if current_time >= end_time, do: false, else: true  # Simplified
   end
@@ -671,23 +680,23 @@ defmodule SNMPSimEx.TestHelpers.ProductionTestHelper do
   
   defp stop_all_monitoring_processes, do: :ok
   
-  defp run_snmp_tool_compatibility_test(options) do
+  defp run_snmp_tool_compatibility_test(_options) do
     %{integration_successful: true, data_flow_correct: true, protocols_compatible: true}
   end
   
-  defp run_monitoring_integration_test(options) do
+  defp run_monitoring_integration_test(_options) do
     %{integration_successful: true, data_flow_correct: true, protocols_compatible: true}
   end
   
-  defp run_log_integration_test(options) do
+  defp run_log_integration_test(_options) do
     %{integration_successful: true, data_flow_correct: true, protocols_compatible: true}
   end
   
-  defp run_metrics_integration_test(options) do
+  defp run_metrics_integration_test(_options) do
     %{integration_successful: true, data_flow_correct: true, protocols_compatible: true}
   end
   
-  defp run_k8s_integration_test(options) do
+  defp run_k8s_integration_test(_options) do
     %{integration_successful: true, data_flow_correct: true, protocols_compatible: true}
   end
   

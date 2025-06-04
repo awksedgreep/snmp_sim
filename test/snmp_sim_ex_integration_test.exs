@@ -4,7 +4,7 @@ defmodule SNMPSimExIntegrationTest do
   alias SNMPSimEx.ProfileLoader
   alias SNMPSimEx.LazyDevicePool
   alias SNMPSimEx.Device
-  alias SNMPSimEx.Core.PDU
+  alias SnmpLib.PDU
   alias SNMPSimEx.MIB.SharedProfiles
   alias SNMPSimEx.TestHelpers.PortHelper
 

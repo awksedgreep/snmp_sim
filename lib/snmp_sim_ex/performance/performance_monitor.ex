@@ -367,7 +367,7 @@ defmodule SNMPSimEx.Performance.PerformanceMonitor do
       process_count: :erlang.system_info(:process_count),
       process_limit: :erlang.system_info(:process_limit),
       cpu_utilization: get_cpu_utilization(),
-      scheduler_utilization: :scheduler.utilization(1)
+      scheduler_utilization: get_scheduler_utilization()
     }
   end
 
@@ -385,11 +385,45 @@ defmodule SNMPSimEx.Performance.PerformanceMonitor do
     end
   end
 
+  # Get the current CPU utilization as a percentage.
+  # Returns a float between 0.0 and 100.0
+  @spec get_cpu_utilization() :: float()
   defp get_cpu_utilization() do
-    # Simple CPU utilization estimation
-    case :cpu_sup.util() do
-      {:ok, utilization} -> utilization
-      _ -> 0.0
+    if Code.ensure_loaded?(:cpu_sup) and function_exported?(:cpu_sup, :util, 0) do
+      try do
+        case :cpu_sup.util() do
+          # Handle direct percentage value (float or integer)
+          percent when is_number(percent) ->
+            percent * 1.0
+            
+          # Handle any other case
+          _ ->
+            0.0
+        end
+      catch
+        _, _ -> 0.0
+      end
+    else
+      0.0
+    end
+  end
+
+  # Estimate scheduler utilization using :erlang.statistics(:scheduler_wall_time)
+  defp get_scheduler_utilization() do
+    case :erlang.statistics(:scheduler_wall_time) do
+      :undefined ->
+        nil
+      schedulers when is_list(schedulers) ->
+        # schedulers is a list of {id, active, total} tuples
+        {active, total} =
+          Enum.reduce(schedulers, {0, 0}, fn {_id, active, total}, {a_acc, t_acc} ->
+            {a_acc + active, t_acc + total}
+          end)
+        if total > 0 do
+          Float.round(active / total * 100, 2)
+        else
+          0.0
+        end
     end
   end
 
@@ -573,6 +607,7 @@ defmodule SNMPSimEx.Performance.PerformanceMonitor do
       last_time -> current_time - last_time > @alert_throttle_interval
     end
   end
+
 
   defp generate_performance_report(current_metrics, baseline_metrics) do
     %{

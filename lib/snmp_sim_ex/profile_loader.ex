@@ -233,42 +233,45 @@ defmodule SNMPSimEx.ProfileLoader do
   end
 
   defp load_from_compiled_mibs(device_type, mib_files, opts) do
-    # Use the new MIB compiler integration
-    case SNMPSimEx.MIB.Compiler.compile_mib_files(mib_files) do
-      {:ok, compiled_mibs} ->
-        # Extract object definitions from compiled MIBs
-        all_objects = 
-          compiled_mibs
-          |> Enum.map(&extract_mib_objects/1)
-          |> Enum.reduce(%{}, &Map.merge/2)
-        
-        # Analyze behaviors automatically
-        {:ok, enhanced_objects} = SNMPSimEx.MIB.BehaviorAnalyzer.analyze_mib_behaviors(all_objects)
-        
-        # Apply any additional behavior configurations
-        final_objects = case Keyword.get(opts, :behaviors) do
-          nil -> enhanced_objects
-          behavior_configs ->
-            temp_profile = %__MODULE__{oid_map: enhanced_objects}
-            enhanced_profile = SNMPSimEx.BehaviorConfig.apply_behaviors(temp_profile, behavior_configs)
-            enhanced_profile.oid_map
-        end
-        
-        {:ok, %__MODULE__{
-          device_type: device_type,
-          source_type: :compiled_mib,
-          oid_map: final_objects,
-          behaviors: Keyword.get(opts, :behaviors, []),
-          metadata: %{
-            mib_files: mib_files,
-            loaded_at: DateTime.utc_now(),
-            oid_count: map_size(final_objects),
-            compilation_method: :erlang_snmpc
-          }
-        }}
-        
-      {:error, reason} ->
-        {:error, {:mib_compilation_failed, reason}}
+    # Compile MIB files and extract successful compilations
+    compiled_mibs = 
+      mib_files
+      |> SNMPSimEx.MIB.Compiler.compile_mib_files()
+      |> Enum.filter(fn {_file, result} -> match?({:ok, _}, result) end)
+      |> Enum.map(fn {_file, {:ok, compiled}} -> compiled end)
+    
+    if Enum.empty?(compiled_mibs) do
+      {:error, :no_mibs_compiled}
+    else
+      # Extract object definitions from successfully compiled MIBs
+      all_objects = 
+        compiled_mibs
+        |> Enum.map(&extract_mib_objects/1)
+        |> Enum.reduce(%{}, &Map.merge/2)
+    
+      # Analyze behaviors automatically
+      {:ok, enhanced_objects} = SNMPSimEx.MIB.BehaviorAnalyzer.analyze_mib_behaviors(all_objects)
+      
+      # Apply any additional behavior configurations
+      final_objects = case Keyword.get(opts, :behaviors) do
+        nil -> enhanced_objects
+        behavior_configs ->
+          apply_behavior_configs(enhanced_objects, behavior_configs)
+      end
+      
+      # Return the final result
+      {:ok, %__MODULE__{
+        device_type: device_type,
+        source_type: :compiled_mib,
+        oid_map: final_objects,
+        behaviors: Keyword.get(opts, :behaviors, []),
+        metadata: %{
+          mib_files: mib_files,
+          loaded_at: DateTime.utc_now(),
+          oid_count: map_size(final_objects),
+          compilation_method: :erlang_snmpc
+        }
+      }}
     end
   end
 
@@ -288,16 +291,43 @@ defmodule SNMPSimEx.ProfileLoader do
   end
 
   # Parse individual value entries from JSON
-  defp parse_json_value(%{"type" => type, "value" => value} = data) do
+  defp parse_json_value(%{"type" => "counter", "value" => value}) when is_integer(value) do
     %{
-      type: type,
+      type: "counter",
       value: value,
+      metadata: %{counter_type: :counter32}
+    }
+  end
+  
+  defp parse_json_value(%{"type" => _type, "value" => _value} = data) do
+    %{
+      type: data["type"],
+      value: data["value"],
       metadata: Map.get(data, "metadata", %{})
     }
   end
-
+  
   defp parse_json_value(value) when is_binary(value) or is_integer(value) do
     %{type: "STRING", value: value}
+  end
+
+  # Apply behavior configurations to MIB objects
+  defp apply_behavior_configs(objects, behavior_configs) when is_map(objects) and is_list(behavior_configs) do
+    Enum.reduce(behavior_configs, objects, fn config, acc ->
+      case config do
+        %{oid: oid, behavior: behavior, params: params} ->
+          case Map.get(acc, oid) do
+            nil -> acc  # Skip if OID not found
+            object ->
+              updated_object = Map.merge(object, %{
+                behavior: behavior,
+                behavior_params: params
+              })
+              Map.put(acc, oid, updated_object)
+          end
+        _ -> acc  # Skip invalid configs
+      end
+    end)
   end
 
   # Compare OIDs lexicographically for proper SNMP ordering

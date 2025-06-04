@@ -106,7 +106,15 @@ defmodule SNMPSimEx.MultiDeviceStartup do
   @doc """
   Get startup progress and statistics.
   """
-  @spec get_startup_status() :: map()
+  @type startup_status :: %{
+    active_devices: non_neg_integer(),
+    peak_devices: non_neg_integer(),
+    devices_created: non_neg_integer(),
+    devices_cleaned_up: non_neg_integer(),
+    total_ports_configured: non_neg_integer()
+  }
+  
+  @spec get_startup_status() :: startup_status()
   def get_startup_status do
     pool_stats = LazyDevicePool.get_stats()
     
@@ -215,7 +223,7 @@ defmodule SNMPSimEx.MultiDeviceStartup do
     Logger.info("Executing startup plan: #{total_tasks} devices with #{parallel_workers} workers")
     
     # Start progress tracking if callback provided
-    if progress_callback do
+    _tracker_pid = if progress_callback do
       spawn_progress_tracker(progress_callback, total_tasks)
     end
     
@@ -308,10 +316,18 @@ defmodule SNMPSimEx.MultiDeviceStartup do
     end
   end
   
+  @type progress_callback :: (%{
+    completed: non_neg_integer(),
+    total: non_neg_integer(),
+    progress: float(),
+    elapsed_ms: non_neg_integer(),
+    eta_ms: nil | non_neg_integer()
+  } -> :ok)
+  
   @doc """
   Create a simple progress callback that logs to console.
   """
-  @spec console_progress_callback() :: function()
+  @spec console_progress_callback() :: progress_callback()
   def console_progress_callback do
     fn %{completed: completed, total: total, progress: progress, elapsed_ms: elapsed_ms, eta_ms: eta_ms} ->
       percentage = Float.round(progress * 100, 1)
@@ -320,6 +336,7 @@ defmodule SNMPSimEx.MultiDeviceStartup do
       
       Logger.info("Device startup progress: #{completed}/#{total} (#{percentage}%) - " <>
                   "Elapsed: #{elapsed_s}s, ETA: #{eta_s}s")
+      :ok
     end
   end
   

@@ -8,7 +8,7 @@ defmodule SNMPSimEx.Performance.ResourceManager do
   use GenServer
   require Logger
 
-  alias SNMPSimEx.{LazyDevicePool, Device}
+  alias SNMPSimEx.Device
 
   # Resource limits configuration
   @default_max_devices 10_000
@@ -290,19 +290,24 @@ defmodule SNMPSimEx.Performance.ResourceManager do
     current_memory <= state.max_memory_mb
   end
 
+  # Get the current memory usage in MB.
+  # Uses process memory as a fallback if os_mon is not available
+  @spec get_current_memory_usage() :: non_neg_integer()
   defp get_current_memory_usage() do
-    # Try to get system memory usage, fallback to process memory if os_mon not available
     try do
-      case :memsup.get_memory_data() do
-        {:ok, memory_data} ->
-          system_memory = Keyword.get(memory_data, :system_total_memory, 0)
-          free_memory = Keyword.get(memory_data, :free_memory, 0)
-          used_memory = system_memory - free_memory
-          round(used_memory / (1024 * 1024))
-        _ ->
-          # Fallback to process memory
-          process_memory = :erlang.memory(:total)
-          round(process_memory / (1024 * 1024))
+      # Get memory data and handle the result
+      memory_data = :memsup.get_memory_data()
+      
+      # If we get a keyword list, try to extract memory info
+      if is_list(memory_data) do
+        system_memory = Keyword.get(memory_data, :system_total_memory, 0)
+        free_memory = Keyword.get(memory_data, :free_memory, 0)
+        used_memory = system_memory - free_memory
+        round(used_memory / (1024 * 1024))
+      else
+        # Fall back to process memory for any other case
+        process_memory = :erlang.memory(:total)
+        round(process_memory / (1024 * 1024))
       end
     catch
       _type, _error ->

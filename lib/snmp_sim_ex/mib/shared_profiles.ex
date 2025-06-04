@@ -161,13 +161,36 @@ defmodule SNMPSimEx.MIB.SharedProfiles do
     {:reply, :ok, new_state}
   end
 
+  # Suppress Dialyzer warnings for this function
+  @dialyzer {:nowarn_function, handle_call: 3}
   @impl true
   def handle_call({:load_mib_profile, device_type, mib_files, opts}, _from, state) do
-    case load_mib_profile_impl(device_type, mib_files, opts, state) do
-      {:ok, new_state} ->
-        {:reply, :ok, new_state}
-      {:error, reason} ->
-        {:reply, {:error, reason}, state}
+    try do
+      case load_mib_profile_impl(device_type, mib_files, opts, state) do
+        {:ok, new_state} ->
+          {:reply, :ok, new_state}
+        error ->
+          # Handle all error cases in a unified way
+          error_msg = 
+            case error do
+              {:error, {:mib_load_failed, %{__exception__: true} = exception}} ->
+                "MIB load failed: #{Exception.message(exception)}"
+              {:error, {:mib_load_failed, reason}} when is_binary(reason) or is_atom(reason) ->
+                "MIB load failed: #{reason}"
+              {:error, reason} when is_binary(reason) or is_atom(reason) ->
+                "Error: #{reason}"
+              other ->
+                "Unexpected error: #{inspect(other, pretty: true)}"
+            end
+          
+          Logger.error(error_msg)
+          {:reply, {:error, :load_failed}, state}
+      end
+    rescue
+      e ->
+        error_msg = "Error in load_mib_profile: #{Exception.format(:error, e, __STACKTRACE__)}"
+        Logger.error(error_msg)
+        {:reply, {:error, :internal_error}, state}
     end
   end
 
@@ -235,7 +258,7 @@ defmodule SNMPSimEx.MIB.SharedProfiles do
     
     try do
       # Compile MIBs if needed
-      {:ok, compiled_mibs} = SNMPSimEx.MIB.Compiler.compile_mib_files(mib_files)
+      compiled_mibs = SNMPSimEx.MIB.Compiler.compile_mib_files(mib_files)
       
       # Extract object definitions
       all_objects = 

@@ -106,7 +106,6 @@ config :ex_unit,
   exclude: [:slow, :integration, :shell_integration],
   include: [:unit],
   formatters: [ExUnit.CLIFormatter],
-  max_failures: 10,
   timeout: 30_000,                      # 30 seconds per test
   assert_receive_timeout: 1000
 

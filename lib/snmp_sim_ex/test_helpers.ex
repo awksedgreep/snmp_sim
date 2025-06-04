@@ -39,12 +39,15 @@ defmodule SNMPSimEx.TestHelpers do
     |> Enum.with_index()
     |> Enum.flat_map(fn {batch, batch_index} ->
       devices = Enum.map(batch, fn i ->
-        {:ok, device} = Device.start_link(
+        device_config = %{
           community: community,
           host: host,
           port: port_start + i,
+          device_type: :cable_modem,
+          device_id: "test_device_#{port_start + i}",
           walk_file: walk_file
-        )
+        }
+        {:ok, device} = Device.start_link(device_config)
         device
       end)
       

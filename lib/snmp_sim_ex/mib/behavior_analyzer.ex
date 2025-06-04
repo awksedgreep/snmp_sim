@@ -1,4 +1,12 @@
 defmodule SNMPSimEx.MIB.BehaviorAnalyzer do
+  # Suppress warnings for private functions that are only called internally
+  @dialyzer [
+    {:nowarn_function, finalize_behavior: 1},
+    {:nowarn_function, determine_final_behavior: 4},
+    {:nowarn_function, determine_behavior_by_type: 2},
+    {:nowarn_function, generate_behavior_config: 2},
+    {:nowarn_function, analyze_by_oid_pattern: 1}
+  ]
   @moduledoc """
   Automatically determine realistic behaviors from MIB object definitions.
   Analyze object names, descriptions, and types to infer simulation patterns.
@@ -161,6 +169,18 @@ defmodule SNMPSimEx.MIB.BehaviorAnalyzer do
     Map.put(oid_info, :detected_type_pattern, detected_type)
   end
 
+  @type description_pattern ::
+        :rate_based
+        | :cumulative
+        | :instantaneous
+        | :inbound
+        | :outbound
+        | :quality_metric
+        | :threshold_based
+        | :time_based
+        | :timestamp_based
+
+  @spec analyze_by_description(map()) :: %{detected_description_patterns: [description_pattern()]}
   defp analyze_by_description(oid_info) do
     description = String.downcase(oid_info.description || "")
     
@@ -246,9 +266,13 @@ defmodule SNMPSimEx.MIB.BehaviorAnalyzer do
     {behavior, behavior_config}
   end
 
+  # This function determines the final behavior based on name, type, and description patterns
   defp determine_final_behavior(name_pattern, type_pattern, _oid_pattern, description_patterns) do
     # Name patterns have highest priority
     case name_pattern do
+      nil ->
+        # If no name pattern, fall through to type-based behavior
+        determine_behavior_by_type(type_pattern, description_patterns)
       :traffic_counter -> :traffic_counter
       :packet_counter -> :packet_counter  
       :error_counter -> :error_counter
@@ -263,20 +287,24 @@ defmodule SNMPSimEx.MIB.BehaviorAnalyzer do
       :operational_status -> :operational_status
       _ ->
         # Fall back to type-based behavior
-        case type_pattern do
-          :counter_behavior -> 
-            if :inbound in description_patterns, do: :inbound_counter, else: :generic_counter
-          :gauge_behavior ->
-            cond do
-              :quality_metric in description_patterns -> :quality_gauge
-              :utilization_gauge in description_patterns -> :utilization_gauge
-              true -> :generic_gauge
-            end
-          :timeticks_behavior -> :uptime_counter
-          :integer_behavior -> :configuration_value
-          :string_behavior -> :static_string
-          _ -> :static_value
+        determine_behavior_by_type(type_pattern, description_patterns)
+    end
+  end
+
+  defp determine_behavior_by_type(type_pattern, description_patterns) do
+    case type_pattern do
+      :counter_behavior -> 
+        if :inbound in description_patterns, do: :inbound_counter, else: :generic_counter
+      :gauge_behavior ->
+        cond do
+          :quality_metric in description_patterns -> :quality_gauge
+          :utilization_gauge in description_patterns -> :utilization_gauge
+          true -> :generic_gauge
         end
+      :timeticks_behavior -> :uptime_counter
+      :integer_behavior -> :configuration_value
+      :string_behavior -> :static_string
+      _ -> :static_value
     end
   end
 

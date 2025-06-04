@@ -191,7 +191,7 @@ defmodule SNMPSimEx.ProfileLoaderTest do
         {:compiled_mib, ["TEST-MIB"]}
       )
       
-      assert {:error, {:mib_compilation_failed, :no_mibs_compiled}} = result
+      assert {:error, :no_mibs_compiled} = result
     end
 
     test "returns error for unsupported source types" do

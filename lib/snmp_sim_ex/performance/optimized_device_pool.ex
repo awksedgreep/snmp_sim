@@ -15,7 +15,7 @@ defmodule SNMPSimEx.Performance.OptimizedDevicePool do
   require Logger
 
   alias SNMPSimEx.Device
-  alias SNMPSimEx.SharedProfiles
+  
   alias SNMPSimEx.Performance.ResourceManager
 
   # ETS table names

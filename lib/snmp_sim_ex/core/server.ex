@@ -7,7 +7,7 @@ defmodule SNMPSimEx.Core.Server do
   use GenServer
   require Logger
 
-  alias SNMPSimEx.Core.PDU
+  alias SnmpLib.PDU
 
   defstruct [
     :socket,
@@ -150,10 +150,35 @@ defmodule SNMPSimEx.Core.Server do
     start_time = :erlang.monotonic_time()
     
     try do
-      case PDU.decode(packet) do
-        {:ok, pdu} ->
-          if validate_community(pdu, state.community) do
-            process_snmp_request_async(server_pid, state, client_ip, client_port, pdu)
+      case PDU.decode_message(packet) do
+        {:ok, message} ->
+          Logger.debug("Decoded SNMP message: #{inspect(message)}")
+          if validate_community(message, state.community) do
+            Logger.debug("Processing PDU: #{inspect(message.pdu)}")
+            # Create a complete PDU structure with version and community for handlers
+            # Convert varbinds from {oid, type, value} to {oid, value} format for backward compatibility
+            variable_bindings = case message.pdu.varbinds do
+              varbinds when is_list(varbinds) ->
+                Enum.map(varbinds, fn
+                  {oid, _type, value} -> {oid, value}
+                  {oid, value} -> {oid, value}
+                  other -> other
+                end)
+              _ -> []
+            end
+            
+            complete_pdu = %PDU{
+              version: message.version,
+              community: message.community,
+              pdu_type: message.pdu.type,
+              request_id: message.pdu.request_id,
+              error_status: message.pdu[:error_status] || 0,
+              error_index: message.pdu[:error_index] || 0,
+              variable_bindings: variable_bindings,
+              non_repeaters: message.pdu[:non_repeaters],
+              max_repetitions: message.pdu[:max_repetitions]
+            }
+            process_snmp_request_async(server_pid, state, client_ip, client_port, complete_pdu)
           else
             Logger.warning("Invalid community string from #{format_ip(client_ip)}:#{client_port}")
             send(server_pid, {:update_stats, :auth_failures})
@@ -248,12 +273,15 @@ defmodule SNMPSimEx.Core.Server do
         # Check if process is alive before attempting to call it
         if Process.alive?(pid) do
           try do
+            Logger.debug("Calling device handler with PDU: #{inspect(pdu)}")
             case GenServer.call(pid, {:handle_snmp, pdu, %{client_ip: client_ip, client_port: client_port}}, 5000) do
               {:ok, response_pdu} ->
+                Logger.debug("Device returned response: #{inspect(response_pdu)}")
                 send_response_async(state, client_ip, client_port, response_pdu)
                 send(server_pid, {:update_stats, :successful_responses})
                 
               {:error, error_status} ->
+                Logger.debug("Device returned error: #{inspect(error_status)}")
                 error_response = PDU.create_error_response(pdu, error_status, 0)
                 send_response_async(state, client_ip, client_port, error_response)
                 send(server_pid, {:update_stats, :error_responses})
@@ -305,7 +333,46 @@ defmodule SNMPSimEx.Core.Server do
 
 
   defp send_response_async(state, client_ip, client_port, response_pdu) do
-    case PDU.encode(response_pdu) do
+    # Create message with PDU and community string
+    community = state.community || "public"
+    Logger.debug("Sending response PDU: #{inspect(response_pdu)}")
+    
+    # Convert map format PDU to struct format if needed
+    normalized_pdu = case response_pdu do
+      %{type: pdu_type, request_id: request_id, error_status: error_status, error_index: error_index, varbinds: varbinds} ->
+        # Map format from Device module - convert to struct format
+        %PDU{
+          version: 1,  # SNMPv2c
+          community: community,
+          pdu_type: case pdu_type do
+            :get_response -> 0xA2
+            _ -> 0xA2  # Default to GET_RESPONSE
+          end,
+          request_id: request_id,
+          error_status: error_status,
+          error_index: error_index,
+          variable_bindings: varbinds
+        }
+      
+      %PDU{} = pdu ->
+        # Already in struct format
+        pdu
+        
+      other ->
+        Logger.warning("Unexpected PDU format: #{inspect(other)}")
+        # Create a generic error PDU
+        %PDU{
+          version: 1,
+          community: community,
+          pdu_type: 0xA2,  # GET_RESPONSE
+          request_id: 0,
+          error_status: 5,  # genErr
+          error_index: 0,
+          variable_bindings: []
+        }
+    end
+    
+    case PDU.encode(normalized_pdu) do
       {:ok, response_packet} ->
         case :gen_udp.send(state.socket, client_ip, client_port, response_packet) do
           :ok ->
@@ -321,8 +388,8 @@ defmodule SNMPSimEx.Core.Server do
   end
 
 
-  defp validate_community(pdu, expected_community) do
-    pdu.community == expected_community
+  defp validate_community(message, expected_community) do
+    message.community == expected_community
   end
 
   defp format_ip({a, b, c, d}) do
@@ -364,4 +431,5 @@ defmodule SNMPSimEx.Core.Server do
   defp update_stats(stats, counter_key) when is_atom(counter_key) do
     Map.update(stats, counter_key, 1, &(&1 + 1))
   end
+
 end

@@ -516,16 +516,40 @@ defmodule SNMPSimEx.ValueSimulator do
     end
   end
 
-  defp format_static_value(profile_data) do
-    case String.downcase(profile_data.type) do
-      "counter32" -> {:counter32, profile_data.value}
-      "counter64" -> {:counter64, profile_data.value}
-      "gauge32" -> {:gauge32, profile_data.value}
-      "gauge" -> {:gauge32, profile_data.value}
-      "timeticks" -> {:timeticks, profile_data.value}
-      "integer" -> profile_data.value
-      _ -> to_string(profile_data.value)
+  defp format_static_value(profile_data) when is_map(profile_data) do
+    # Handle both atom and string keys for backward compatibility
+    data_type = Map.get(profile_data, :type) || Map.get(profile_data, "type")
+    data_value = Map.get(profile_data, :value) || Map.get(profile_data, "value")
+    
+    case data_type do
+      nil -> 
+        # No type specified, return the value as-is or try to infer
+        case data_value do
+          nil -> nil
+          val when is_binary(val) -> val
+          val when is_integer(val) -> val
+          _ -> to_string(data_value)
+        end
+      type_str when is_binary(type_str) ->
+        case String.downcase(type_str) do
+          "counter32" -> {:counter32, data_value || 0}
+          "counter64" -> {:counter64, data_value || 0}
+          "gauge32" -> {:gauge32, data_value || 0}
+          "gauge" -> {:gauge32, data_value || 0}
+          "timeticks" -> {:timeticks, data_value || 0}
+          "integer" -> data_value || 0
+          "string" -> to_string(data_value || "")
+          _ -> to_string(data_value || "")
+        end
+      _ ->
+        # Type is not a string, return value as-is
+        data_value || nil
     end
+  end
+  
+  defp format_static_value(profile_data) do
+    # Handle non-map data (fallback for direct values)
+    profile_data
   end
 
   defp format_counter_value(value, type) do
@@ -545,10 +569,10 @@ defmodule SNMPSimEx.ValueSimulator do
   end
 
   defp format_enum_value(value, _type) do
-    case value do
-      value when is_binary(value) -> value
-      value when is_integer(value) -> value
-      _ -> to_string(value)
+    cond do
+      is_binary(value) -> value
+      is_integer(value) -> value
+      true -> to_string(value)
     end
   end
   

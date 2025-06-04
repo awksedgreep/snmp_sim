@@ -1,7 +1,8 @@
 defmodule SNMPSimEx.Core.ServerTest do
   use ExUnit.Case, async: false  # UDP servers need unique ports
   
-  alias SNMPSimEx.Core.{Server, PDU}
+  alias SNMPSimEx.Core.Server
+  alias SnmpLib.PDU
   alias SNMPSimEx.TestHelpers.PortHelper
 
   describe "UDP Server" do
@@ -13,7 +14,7 @@ defmodule SNMPSimEx.Core.ServerTest do
         response = %PDU{
           version: pdu.version,
           community: pdu.community,
-          pdu_type: 0xA2,  # GET_RESPONSE
+          pdu_type: :get_response,
           request_id: pdu.request_id,
           error_status: 0,
           error_index: 0,
@@ -47,7 +48,7 @@ defmodule SNMPSimEx.Core.ServerTest do
         response = %PDU{
           version: pdu.version,
           community: pdu.community,
-          pdu_type: 0xA2,
+          pdu_type: :get_response,
           request_id: pdu.request_id,
           error_status: 0,
           error_index: 0,
@@ -145,7 +146,7 @@ defmodule SNMPSimEx.Core.ServerTest do
         response = %PDU{
           version: pdu.version,
           community: pdu.community,
-          pdu_type: 0xA2,
+          pdu_type: :get_response,
           request_id: pdu.request_id,
           error_status: 0,
           error_index: 0,
@@ -235,7 +236,7 @@ defmodule SNMPSimEx.Core.ServerTest do
         response = %PDU{
           version: pdu.version,
           community: pdu.community,
-          pdu_type: 0xA2,
+          pdu_type: :get_response,
           request_id: pdu.request_id,
           error_status: 0,
           error_index: 0,
@@ -277,7 +278,7 @@ defmodule SNMPSimEx.Core.ServerTest do
     test_pdu = %PDU{
       version: 1,
       community: community,
-      pdu_type: 0xA0,  # GET_REQUEST
+      pdu_type: :get_request,
       request_id: request_id,
       error_status: 0,
       error_index: 0,

@@ -11,7 +11,7 @@ defmodule SNMPSimEx.SNMPWalkRootTest do
   
   alias SNMPSimEx.{Device, LazyDevicePool}
   alias SNMPSimEx.MIB.SharedProfiles
-  alias SNMPSimEx.Core.PDU
+  alias SnmpLib.PDU
   alias SNMPSimEx.TestHelpers.PortHelper
   
   setup do
@@ -31,26 +31,21 @@ defmodule SNMPSimEx.SNMPWalkRootTest do
       # Create a device that will use fallback logic (no SharedProfiles)
       {:ok, device_pid} = LazyDevicePool.get_or_create_device(test_port)
       
-      # Create a GETNEXT PDU starting from mib-2 root
-      request_pdu = %PDU{
-        version: 1,
-        community: "public",
-        pdu_type: 0xA1,  # GETNEXT_REQUEST
-        request_id: 12345,
-        error_status: 0,
-        error_index: 0,
-        variable_bindings: [{"1.3.6.1.2.1", nil}]
-      }
+      # Create a GETNEXT PDU starting from mib-2 root using new SnmpLib.PDU API
+      oid_list = [1, 3, 6, 1, 2, 1]
+      request_id = 12345
+      request_pdu = PDU.build_get_next_request(oid_list, request_id)
       
       # Send the PDU to the device
       {:ok, response_pdu} = GenServer.call(device_pid, {:handle_snmp, request_pdu, %{}})
       
       # Should return the first system OID with device description
-      assert response_pdu.pdu_type == 0xA2  # GET_RESPONSE
+      assert response_pdu.type == :get_response
       assert response_pdu.error_status == 0
-      assert length(response_pdu.variable_bindings) == 1
+      assert length(response_pdu.varbinds) == 1
       
-      [{response_oid, response_value}] = response_pdu.variable_bindings
+      [{response_oid_list, _type, response_value}] = response_pdu.varbinds
+      response_oid = Enum.join(response_oid_list, ".")
       assert response_oid == "1.3.6.1.2.1.1.1.0"
       assert is_binary(response_value)
       assert String.contains?(response_value, "Cable Modem") or 
@@ -60,26 +55,26 @@ defmodule SNMPSimEx.SNMPWalkRootTest do
     test "handles GETNEXT from various root OIDs", %{test_port: test_port} do
       {:ok, device_pid} = LazyDevicePool.get_or_create_device(test_port)
       
-      root_oids = ["1.3.6.1.2.1.1", "1.3.6.1", "1.3.6", "1.3", "1"]
+      root_oids = [
+        [1, 3, 6, 1, 2, 1, 1], 
+        [1, 3, 6, 1], 
+        [1, 3, 6], 
+        [1, 3], 
+        [1]
+      ]
       
       for root_oid <- root_oids do
-        request_pdu = %PDU{
-          version: 1,
-          community: "public",
-          pdu_type: 0xA1,  # GETNEXT_REQUEST
-          request_id: :rand.uniform(65535),
-          error_status: 0,
-          error_index: 0,
-          variable_bindings: [{root_oid, nil}]
-        }
+        request_id = :rand.uniform(65535)
+        request_pdu = PDU.build_get_next_request(root_oid, request_id)
         
         {:ok, response_pdu} = GenServer.call(device_pid, {:handle_snmp, request_pdu, %{}})
         
-        assert response_pdu.pdu_type == 0xA2  # GET_RESPONSE
+        assert response_pdu.type == :get_response
         assert response_pdu.error_status == 0
-        assert length(response_pdu.variable_bindings) == 1
+        assert length(response_pdu.varbinds) == 1
         
-        [{response_oid, response_value}] = response_pdu.variable_bindings
+        [{response_oid_list, _type, response_value}] = response_pdu.varbinds
+        response_oid = Enum.join(response_oid_list, ".")
         assert response_oid == "1.3.6.1.2.1.1.1.0"
         assert is_binary(response_value)
       end
@@ -89,18 +84,13 @@ defmodule SNMPSimEx.SNMPWalkRootTest do
       {:ok, device_pid} = LazyDevicePool.get_or_create_device(test_port)
       
       # Start from root and verify we can walk through the tree
-      request_pdu = %PDU{
-        version: 1,
-        community: "public",
-        pdu_type: 0xA1,  # GETNEXT_REQUEST
-        request_id: 12345,
-        error_status: 0,
-        error_index: 0,
-        variable_bindings: [{"1.3.6.1.2.1", nil}]
-      }
+      oid_list = [1, 3, 6, 1, 2, 1]
+      request_id = 12345
+      request_pdu = PDU.build_get_next_request(oid_list, request_id)
       
       {:ok, response_pdu} = GenServer.call(device_pid, {:handle_snmp, request_pdu, %{}})
-      [{response_oid, response_value}] = response_pdu.variable_bindings
+      [{response_oid_list, _type, response_value}] = response_pdu.varbinds
+      response_oid = Enum.join(response_oid_list, ".")
       assert response_oid == "1.3.6.1.2.1.1.1.0"
       assert is_binary(response_value)
       
@@ -159,25 +149,20 @@ defmodule SNMPSimEx.SNMPWalkRootTest do
       {:ok, device_pid} = LazyDevicePool.get_or_create_device(test_port)
       
       # Create a GETNEXT PDU starting from mib-2 root
-      request_pdu = %PDU{
-        version: 1,
-        community: "public",
-        pdu_type: 0xA1,  # GETNEXT_REQUEST
-        request_id: 12345,
-        error_status: 0,
-        error_index: 0,
-        variable_bindings: [{"1.3.6.1.2.1", nil}]
-      }
+      oid_list = [1, 3, 6, 1, 2, 1]
+      request_id = 12345
+      request_pdu = PDU.build_get_next_request(oid_list, request_id)
       
       # Send the PDU to the device
       {:ok, response_pdu} = GenServer.call(device_pid, {:handle_snmp, request_pdu, %{}})
       
       # Verify response
-      assert response_pdu.pdu_type == 0xA2  # GET_RESPONSE
+      assert response_pdu.type == :get_response
       assert response_pdu.error_status == 0
-      assert length(response_pdu.variable_bindings) == 1
+      assert length(response_pdu.varbinds) == 1
       
-      [{response_oid, response_value}] = response_pdu.variable_bindings
+      [{response_oid_list, _type, response_value}] = response_pdu.varbinds
+      response_oid = Enum.join(response_oid_list, ".")
       
       # Should return first system OID
       assert response_oid == "1.3.6.1.2.1.1.1.0"
@@ -189,26 +174,27 @@ defmodule SNMPSimEx.SNMPWalkRootTest do
     test "PDU GETNEXT walk simulation from various roots", %{test_port: test_port} do
       {:ok, device_pid} = LazyDevicePool.get_or_create_device(test_port)
       
-      root_oids = ["1", "1.3", "1.3.6", "1.3.6.1", "1.3.6.1.2.1", "1.3.6.1.2.1.1"]
+      root_oids = [
+        [1], 
+        [1, 3], 
+        [1, 3, 6], 
+        [1, 3, 6, 1], 
+        [1, 3, 6, 1, 2, 1], 
+        [1, 3, 6, 1, 2, 1, 1]
+      ]
       
       for root_oid <- root_oids do
-        request_pdu = %PDU{
-          version: 1,
-          community: "public", 
-          pdu_type: 0xA1,  # GETNEXT_REQUEST
-          request_id: :rand.uniform(65535),
-          error_status: 0,
-          error_index: 0,
-          variable_bindings: [{root_oid, nil}]
-        }
+        request_id = :rand.uniform(65535)
+        request_pdu = PDU.build_get_next_request(root_oid, request_id)
         
         {:ok, response_pdu} = GenServer.call(device_pid, {:handle_snmp, request_pdu, %{}})
         
-        assert response_pdu.pdu_type == 0xA2  # GET_RESPONSE
+        assert response_pdu.type == :get_response
         assert response_pdu.error_status == 0
-        assert length(response_pdu.variable_bindings) == 1
+        assert length(response_pdu.varbinds) == 1
         
-        [{response_oid, response_value}] = response_pdu.variable_bindings
+        [{response_oid_list, _type, response_value}] = response_pdu.varbinds
+        response_oid = Enum.join(response_oid_list, ".")
         
         # All should lead to the first system OID
         assert response_oid == "1.3.6.1.2.1.1.1.0"
@@ -222,39 +208,31 @@ defmodule SNMPSimEx.SNMPWalkRootTest do
       {:ok, device_pid} = LazyDevicePool.get_or_create_device(test_port)
       
       # Try a GETNEXT from an OID that doesn't exist and has no descendants
-      request_pdu = %PDU{
-        version: 1,
-        community: "public",
-        pdu_type: 0xA1,  # GETNEXT_REQUEST
-        request_id: 12345,
-        error_status: 0,
-        error_index: 0,
-        variable_bindings: [{"9.9.9.9.9", nil}]
-      }
+      oid_list = [9, 9, 9, 9, 9]
+      request_id = 12345
+      request_pdu = PDU.build_get_next_request(oid_list, request_id)
       
       {:ok, response_pdu} = GenServer.call(device_pid, {:handle_snmp, request_pdu, %{}})
-      [{_response_oid, response_value}] = response_pdu.variable_bindings
+      [{_response_oid_list, _type, response_value}] = response_pdu.varbinds
       
       # Should return end of MIB view
       assert {:end_of_mib_view, nil} = response_value
     end
     
-    test "handles malformed OIDs gracefully", %{test_port: test_port} do
+    test "handles edge case OIDs gracefully", %{test_port: test_port} do
       {:ok, device_pid} = LazyDevicePool.get_or_create_device(test_port)
       
-      # Try various malformed OIDs with GETNEXT
-      malformed_oids = ["abc", "1.abc.3", "1..3"]
+      # Try various edge case OIDs with GETNEXT (using valid integer lists)
+      edge_case_oids = [
+        [], # Empty OID
+        [0], # Zero OID
+        [2147483647], # Large integer
+        [1, 0, 0, 0], # OID with zeros
+      ]
       
-      for bad_oid <- malformed_oids do
-        request_pdu = %PDU{
-          version: 1,
-          community: "public",
-          pdu_type: 0xA1,  # GETNEXT_REQUEST
-          request_id: 12345,
-          error_status: 0,
-          error_index: 0,
-          variable_bindings: [{bad_oid, nil}]
-        }
+      for edge_oid <- edge_case_oids do
+        request_id = 12345
+        request_pdu = PDU.build_get_next_request(edge_oid, request_id)
         
         # Should not crash
         result = GenServer.call(device_pid, {:handle_snmp, request_pdu, %{}})

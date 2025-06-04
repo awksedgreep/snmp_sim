@@ -13,6 +13,8 @@ defmodule SNMPSimEx.Application do
   def start(_type, _args) do
     # Start the supervisor first
     children = [
+      # Shared profiles manager for memory-efficient device data
+      SNMPSimEx.MIB.SharedProfiles,
       # Core supervisor for managing device processes
       {DynamicSupervisor, name: SNMPSimEx.DeviceSupervisor, strategy: :one_for_one}
     ]
@@ -39,8 +41,6 @@ defmodule SNMPSimEx.Application do
         case Config.start_from_config(config) do
           {:ok, devices} ->
             Logger.info("Successfully started #{length(devices)} SNMP devices")
-          {:error, reason} ->
-            Logger.error("Failed to start devices from config: #{inspect(reason)}")
         end
       {:error, reason} ->
         Logger.warning("No configuration found or failed to load: #{inspect(reason)}")
@@ -110,8 +110,6 @@ defmodule SNMPSimEx.Application do
       case Config.start_from_config(config) do
         {:ok, devices} ->
           Logger.info("Started #{length(devices)} default SNMP devices on ports #{port_start}-#{port_start + device_count - 1}")
-        {:error, reason} ->
-          Logger.error("Failed to start default devices: #{inspect(reason)}")
       end
     else
       Logger.info("No devices configured to start")
