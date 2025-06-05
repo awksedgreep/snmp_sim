@@ -844,7 +844,7 @@ defmodule SNMPSimEx.Device do
           {type, actual_value} = extract_type_and_value(value)
           {oid, type, actual_value}
         {:error, :no_such_name} -> 
-          {oid, :no_such_object, nil}
+          {oid, :no_such_object, {:no_such_object, nil}}
       end
     end)
   end
