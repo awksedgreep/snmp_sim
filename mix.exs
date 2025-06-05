@@ -43,7 +43,7 @@ defmodule SnmpSim.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:snmp_lib, git: "https://github.com/awksedgreep/snmp_lib", tag: "v0.4.0"},
+      {:snmp_lib, git: "https://github.com/awksedgreep/snmp_lib", tag: "v1.0.0"},
       {:jason, "~> 1.4"},
       {:yaml_elixir, "~> 2.9", optional: true},
       {:telemetry, "~> 1.0", optional: true},

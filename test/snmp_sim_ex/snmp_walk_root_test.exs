@@ -117,7 +117,7 @@ defmodule SnmpSim.SNMPWalkRootTest do
       end
       
       # Try to load a profile from existing walk file
-      walk_file = Path.join([Application.app_dir(:snmp_sim_ex), "priv", "walks", "cable_modem.walk"])
+      walk_file = Path.join([Application.app_dir(:snmp_sim), "priv", "walks", "cable_modem.walk"])
       
       if File.exists?(walk_file) do
         :ok = SharedProfiles.load_walk_profile(:cable_modem, walk_file)
