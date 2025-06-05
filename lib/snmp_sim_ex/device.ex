@@ -17,7 +17,6 @@ defmodule SNMPSimEx.Device do
   alias SNMPSimEx.Core.Server
   alias SnmpLib.PDU
   alias SNMPSimEx.MIB.SharedProfiles
-  alias SnmpLib.{OID, Types}
 
   defstruct [
     :device_id,
@@ -852,8 +851,8 @@ defmodule SNMPSimEx.Device do
   defp process_getnext_request(variable_bindings, state) do
     try do
       result = Enum.map(variable_bindings, fn 
-        {oid, _type, _value} -> {oid, _type}  # Convert 3-tuple to 2-tuple
-        {oid, _value} -> {oid, _value}       # Already 2-tuple format
+        {oid, type, _value} -> {oid, type}  # Convert 3-tuple to 2-tuple
+        {oid, value} -> {oid, value}       # Already 2-tuple format
       end)
       |> Enum.map(fn {oid, _value} ->
         # Convert OID to string format for SharedProfiles
