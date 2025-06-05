@@ -1,4 +1,4 @@
-defmodule SNMPSimEx.LazyDevicePool do
+defmodule SnmpSim.LazyDevicePool do
   @moduledoc """
   Lazy Device Pool Manager for on-demand device creation and lifecycle management.
   Supports 10K+ devices with minimal memory footprint through lazy instantiation.
@@ -12,7 +12,7 @@ defmodule SNMPSimEx.LazyDevicePool do
   """
   use GenServer
   
-  alias SNMPSimEx.Device
+  alias SnmpSim.Device
   
   defstruct [
     :active_devices,      # Map: port -> device_pid

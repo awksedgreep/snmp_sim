@@ -1,6 +1,6 @@
-defmodule SNMPSimEx.CorrelationEngineTest do
+defmodule SnmpSim.CorrelationEngineTest do
   use ExUnit.Case, async: false
-  alias SNMPSimEx.CorrelationEngine
+  alias SnmpSim.CorrelationEngine
 
   describe "apply_correlations/5" do
     test "applies correlations between related metrics" do

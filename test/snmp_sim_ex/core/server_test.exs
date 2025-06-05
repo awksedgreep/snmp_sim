@@ -1,9 +1,9 @@
-defmodule SNMPSimEx.Core.ServerTest do
+defmodule SnmpSim.Core.ServerTest do
   use ExUnit.Case, async: false  # UDP servers need unique ports
   
-  alias SNMPSimEx.Core.Server
+  alias SnmpSim.Core.Server
   alias SnmpLib.PDU
-  alias SNMPSimEx.TestHelpers.PortHelper
+  alias SnmpSim.TestHelpers.PortHelper
 
   describe "UDP Server" do
     test "handles concurrent requests without blocking" do

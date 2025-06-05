@@ -1,6 +1,6 @@
-defmodule SNMPSimExStabilityTest do
+defmodule SnmpSimStabilityTest do
   @moduledoc """
-  Long-running stability tests for SNMPSimEx.
+  Long-running stability tests for SnmpSim.
   
   These tests verify system stability under sustained load and various stress conditions.
   They are designed to run for extended periods to catch memory leaks, resource exhaustion,
@@ -17,9 +17,9 @@ defmodule SNMPSimExStabilityTest do
   
   use ExUnit.Case, async: false
   require Logger
-  alias SNMPSimEx.{Device, LazyDevicePool, Core.Server}
-  alias SNMPSimEx.MIB.SharedProfiles
-  alias SNMPSimEx.TestHelpers.{StabilityTestHelper, PortHelper}
+  alias SnmpSim.{Device, LazyDevicePool, Core.Server}
+  alias SnmpSim.MIB.SharedProfiles
+  alias SnmpSim.TestHelpers.{StabilityTestHelper, PortHelper}
   @moduletag :slow
   
   setup do

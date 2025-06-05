@@ -1,4 +1,4 @@
-defmodule SNMPSimEx.Performance.PerformanceTest do
+defmodule SnmpSim.Performance.PerformanceTest do
   @moduledoc """
   Comprehensive performance tests for 10K+ device scenarios.
   
@@ -9,14 +9,14 @@ defmodule SNMPSimEx.Performance.PerformanceTest do
   use ExUnit.Case, async: false
   require Logger
 
-  alias SNMPSimEx.Performance.{
+  alias SnmpSim.Performance.{
     ResourceManager,
     OptimizedDevicePool,
     PerformanceMonitor,
     OptimizedUdpServer,
     Benchmarks
   }
-  alias SNMPSimEx.TestHelpers.PortHelper
+  alias SnmpSim.TestHelpers.PortHelper
 
   # Test configuration
   @performance_timeout 600_000  # 10 minutes for long-running tests

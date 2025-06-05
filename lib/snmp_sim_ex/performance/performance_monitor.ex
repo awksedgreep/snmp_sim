@@ -1,4 +1,4 @@
-defmodule SNMPSimEx.Performance.PerformanceMonitor do
+defmodule SnmpSim.Performance.PerformanceMonitor do
   @moduledoc """
   Real-time performance monitoring and telemetry for SNMP simulator.
   Provides comprehensive metrics collection, alerting, and performance analytics.
@@ -8,8 +8,8 @@ defmodule SNMPSimEx.Performance.PerformanceMonitor do
   use GenServer
   require Logger
 
-  alias SNMPSimEx.Performance.ResourceManager
-  alias SNMPSimEx.Performance.OptimizedDevicePool
+  alias SnmpSim.Performance.ResourceManager
+  alias SnmpSim.Performance.OptimizedDevicePool
 
   # Telemetry event names
   @telemetry_prefix [:snmp_sim_ex]

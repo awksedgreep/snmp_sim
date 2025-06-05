@@ -22,7 +22,7 @@ defmodule SimulatorTest do
       community: "public"
     }
     
-    {:ok, device_pid} = SNMPSimEx.Device.start_link(device_config)
+    {:ok, device_pid} = SnmpSim.Device.start_link(device_config)
     IO.puts("Device started on port 9001")
     
     # Give it a moment to start
@@ -30,13 +30,13 @@ defmodule SimulatorTest do
     
     # Test direct device function calls first
     IO.puts("\n=== Testing direct device API ===")
-    result = SNMPSimEx.Device.get(device_pid, "1.3.6.1.2.1.1.1.0")
+    result = SnmpSim.Device.get(device_pid, "1.3.6.1.2.1.1.1.0")
     IO.puts("Direct device.get(1.3.6.1.2.1.1.1.0): #{inspect(result)}")
     
     # Test with SNMP request using test helper
     IO.puts("\n=== Testing SNMP request via test helper ===")
     
-    result = SNMPSimEx.TestHelpers.SNMPTestHelpers.send_snmp_get(9001, "1.3.6.1.2.1.1.1.0", "public")
+    result = SnmpSim.TestHelpers.SNMPTestHelpers.send_snmp_get(9001, "1.3.6.1.2.1.1.1.0", "public")
     IO.puts("SNMP GET result: #{inspect(result)}")
     
     # Test a few more OIDs
@@ -47,17 +47,17 @@ defmodule SimulatorTest do
     ]
     
     for oid <- test_oids do
-      result = SNMPSimEx.TestHelpers.SNMPTestHelpers.send_snmp_get(9001, oid, "public")
+      result = SnmpSim.TestHelpers.SNMPTestHelpers.send_snmp_get(9001, oid, "public")
       IO.puts("SNMP GET #{oid}: #{inspect(result)}")
     end
     
     # Test invalid community
     IO.puts("\n=== Testing invalid community ===")
-    result = SNMPSimEx.TestHelpers.SNMPTestHelpers.send_snmp_get(9001, "1.3.6.1.2.1.1.1.0", "invalid")
+    result = SnmpSim.TestHelpers.SNMPTestHelpers.send_snmp_get(9001, "1.3.6.1.2.1.1.1.0", "invalid")
     IO.puts("SNMP GET with invalid community: #{inspect(result)}")
     
     # Stop device
-    SNMPSimEx.Device.stop(device_pid)
+    SnmpSim.Device.stop(device_pid)
     IO.puts("\nDevice stopped")
     
     :ok

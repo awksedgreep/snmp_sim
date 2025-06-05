@@ -1,4 +1,4 @@
-defmodule SNMPSimExErlangSnmpIntegrationTest do
+defmodule SnmpSimErlangSnmpIntegrationTest do
   @moduledoc """
   True integration tests using Erlang's built-in SNMP manager (:snmpm) to validate 
   our SNMP simulator against the standard Erlang SNMP implementation. This ensures 
@@ -10,8 +10,8 @@ defmodule SNMPSimExErlangSnmpIntegrationTest do
   @moduletag :erlang
   @moduletag :optional
   
-  alias SNMPSimEx.ProfileLoader
-  alias SNMPSimEx.Device
+  alias SnmpSim.ProfileLoader
+  alias SnmpSim.Device
   
   describe "Integration with Erlang SNMP Manager" do
     setup do

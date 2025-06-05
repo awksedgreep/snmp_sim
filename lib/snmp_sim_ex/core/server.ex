@@ -1,4 +1,4 @@
-defmodule SNMPSimEx.Core.Server do
+defmodule SnmpSim.Core.Server do
   @moduledoc """
   High-performance UDP server for SNMP request handling.
   Supports concurrent packet processing with minimal latency.
@@ -31,7 +31,7 @@ defmodule SNMPSimEx.Core.Server do
   
   ## Examples
   
-      {:ok, server} = SNMPSimEx.Core.Server.start_link(9001,
+      {:ok, server} = SnmpSim.Core.Server.start_link(9001,
         community: "public",
         device_handler: &MyDevice.handle_request/2
       )

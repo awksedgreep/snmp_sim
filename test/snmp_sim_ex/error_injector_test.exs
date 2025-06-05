@@ -1,11 +1,11 @@
-defmodule SNMPSimEx.ErrorInjectorTest do
+defmodule SnmpSim.ErrorInjectorTest do
   use ExUnit.Case, async: false
   
-  alias SNMPSimEx.{ErrorInjector}
-  alias SNMPSimEx.Device
-  alias SNMPSimEx.MIB.SharedProfiles
-  alias SNMPSimEx.{LazyDevicePool}
-  alias SNMPSimEx.TestHelpers.PortHelper
+  alias SnmpSim.{ErrorInjector}
+  alias SnmpSim.Device
+  alias SnmpSim.MIB.SharedProfiles
+  alias SnmpSim.{LazyDevicePool}
+  alias SnmpSim.TestHelpers.PortHelper
   
   setup do
     # Start shared profiles for testing only if not already started

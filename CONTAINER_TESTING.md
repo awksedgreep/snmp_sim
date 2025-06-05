@@ -1,6 +1,6 @@
-# SNMPSimEx Container Testing Guide
+# SnmpSim Container Testing Guide
 
-This comprehensive guide covers testing SNMPSimEx in containerized environments using Podman, from small-scale development to large-scale production deployments.
+This comprehensive guide covers testing SnmpSim in containerized environments using Podman, from small-scale development to large-scale production deployments.
 
 ## 🚀 Container Testing Solution Overview
 
@@ -258,7 +258,7 @@ podman run -d -p 40000-49999:30000-39999/udp snmp_sim_ex:latest
 - ⚠️ **Still uses many host ports**
 
 **Use when:**
-- Multiple SNMPSimEx instances
+- Multiple SnmpSim instances
 - Port conflicts with other services
 - Testing different configurations
 - Need clear separation
@@ -457,7 +457,7 @@ podman top snmp_sim_ex_test
 podman inspect snmp_sim_ex_test
 
 # Health check
-podman exec snmp_sim_ex_test /app/bin/snmp_sim_ex eval "SNMPSimEx.health_check()"
+podman exec snmp_sim_ex_test /app/bin/snmp_sim_ex eval "SnmpSim.health_check()"
 ```
 
 ### **Network Diagnostics**
@@ -514,7 +514,7 @@ Error: cannot listen on the TCP port: listen tcp :30000: bind: address already i
    ```
 3. **Check health:**
    ```bash
-   podman exec container_name /app/bin/snmp_sim_ex eval "SNMPSimEx.health_check()"
+   podman exec container_name /app/bin/snmp_sim_ex eval "SnmpSim.health_check()"
    ```
 4. **Reduce device count** for testing
 
@@ -729,4 +729,4 @@ echo "Router:" && snmpget -v2c -c public localhost:32000 1.3.6.1.2.1.1.1.0
 
 The port mapping complexity is **definitely manageable** for hundreds of devices with the right strategy, and for thousands of devices, you'd typically move to orchestration platforms that handle the complexity for you.
 
-This guide provides everything you need to test SNMPSimEx at any scale! 🚀
+This guide provides everything you need to test SnmpSim at any scale! 🚀

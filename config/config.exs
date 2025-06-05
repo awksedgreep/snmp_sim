@@ -1,10 +1,10 @@
-# SNMPSimEx Configuration
+# SnmpSim Configuration
 import Config
 
 # Default application configuration
 config :snmp_sim_ex,
   # Application metadata
-  app_name: "SNMPSimEx",
+  app_name: "SnmpSim",
   app_version: "0.1.0",
   
   # Default SNMP settings

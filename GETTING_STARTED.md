@@ -1,6 +1,6 @@
-# Getting Started with SNMPSimEx
+# Getting Started with SnmpSim
 
-This guide will help you get up and running with SNMPSimEx quickly, whether you're using it from Elixir code, configuration files, or container deployments.
+This guide will help you get up and running with SnmpSim quickly, whether you're using it from Elixir code, configuration files, or container deployments.
 
 ## Quick Start (5 Minutes)
 
@@ -28,7 +28,7 @@ mix deps.get
 {:ok, _} = Application.ensure_all_started(:snmp_sim_ex)
 
 # Create a simple device
-{:ok, device} = SNMPSimEx.Device.start_link(
+{:ok, device} = SnmpSim.Device.start_link(
   community: "public",
   host: "127.0.0.1",
   port: 9001,
@@ -53,7 +53,7 @@ snmpwalk -v2c -c public 127.0.0.1:9001 1.3.6.1.2.1.1
 
 ## Configuration-Driven Setup
 
-For easier management, especially in containers, SNMPSimEx supports JSON and YAML configuration files.
+For easier management, especially in containers, SnmpSim supports JSON and YAML configuration files.
 
 ### JSON Configuration
 
@@ -174,12 +174,12 @@ snmp_sim_ex:
 
 ```elixir
 # Load from JSON
-{:ok, config} = SNMPSimEx.Config.load_from_file("config/devices.json")
-{:ok, _devices} = SNMPSimEx.Config.start_from_config(config)
+{:ok, config} = SnmpSim.Config.load_from_file("config/devices.json")
+{:ok, _devices} = SnmpSim.Config.start_from_config(config)
 
 # Load from YAML (requires :yaml_elixir dependency)
-{:ok, config} = SNMPSimEx.Config.load_yaml("config/devices.yaml")
-{:ok, _devices} = SNMPSimEx.Config.start_from_config(config)
+{:ok, config} = SnmpSim.Config.load_yaml("config/devices.yaml")
+{:ok, _devices} = SnmpSim.Config.start_from_config(config)
 ```
 
 ## Container Usage
@@ -248,7 +248,7 @@ device_specs = [
   {:router, 50}           # 50 routers
 ]
 
-{:ok, devices} = SNMPSimEx.MultiDeviceStartup.start_device_population(
+{:ok, devices} = SnmpSim.MultiDeviceStartup.start_device_population(
   device_specs,
   port_range: 30_000..39_999,
   behaviors: [:realistic_counters, :time_patterns, :correlations],
@@ -256,10 +256,10 @@ device_specs = [
 )
 
 # Monitor performance
-{:ok, _monitor} = SNMPSimEx.Performance.PerformanceMonitor.start_link()
+{:ok, _monitor} = SnmpSim.Performance.PerformanceMonitor.start_link()
 
 # Check stats
-stats = SNMPSimEx.Performance.PerformanceMonitor.get_current_metrics()
+stats = SnmpSim.Performance.PerformanceMonitor.get_current_metrics()
 IO.inspect(stats)
 ```
 
@@ -267,7 +267,7 @@ IO.inspect(stats)
 
 ```elixir
 # Start a few devices for development
-{:ok, _} = SNMPSimEx.TestHelpers.create_test_devices(
+{:ok, _} = SnmpSim.TestHelpers.create_test_devices(
   count: 10,
   community: "public",
   port_start: 30000,
@@ -279,7 +279,7 @@ Logger.configure(level: :debug)
 
 # Test with error injection
 device = Process.whereis({:device, 30001})
-SNMPSimEx.ErrorInjector.inject_packet_loss(device, 0.1)  # 10% packet loss
+SnmpSim.ErrorInjector.inject_packet_loss(device, 0.1)  # 10% packet loss
 ```
 
 ### 3. CI/CD Integration
@@ -291,10 +291,10 @@ defmodule IntegrationTest do
   
   setup_all do
     # Start test devices
-    {:ok, devices} = SNMPSimEx.TestHelpers.create_test_devices(count: 5)
+    {:ok, devices} = SnmpSim.TestHelpers.create_test_devices(count: 5)
     
     on_exit(fn ->
-      SNMPSimEx.TestHelpers.cleanup_devices(devices)
+      SnmpSim.TestHelpers.cleanup_devices(devices)
     end)
     
     {:ok, devices: devices}
@@ -302,7 +302,7 @@ defmodule IntegrationTest do
   
   test "devices respond to SNMP requests", %{devices: devices} do
     device = List.first(devices)
-    {:ok, response} = SNMPSimEx.Device.get(device, "1.3.6.1.2.1.1.1.0")
+    {:ok, response} = SnmpSim.Device.get(device, "1.3.6.1.2.1.1.1.0")
     assert response.value != nil
   end
 end
@@ -314,7 +314,7 @@ end
 
 ```elixir
 # Configure resource limits
-{:ok, _} = SNMPSimEx.Performance.ResourceManager.start_link([
+{:ok, _} = SnmpSim.Performance.ResourceManager.start_link([
   max_devices: 10_000,
   max_memory_mb: 1024,
   cleanup_threshold_percent: 80,
@@ -334,7 +334,7 @@ Application.put_env(:snmp_sim_ex, :device_pool, [
 
 ```elixir
 # Start optimized UDP server
-{:ok, server} = SNMPSimEx.Performance.OptimizedUdpServer.start_optimized(9001, [
+{:ok, server} = SnmpSim.Performance.OptimizedUdpServer.start_optimized(9001, [
   socket_count: 8,           # Multiple sockets for load distribution
   worker_pool_size: 32,      # More concurrent workers
   optimization_level: :aggressive
@@ -360,7 +360,7 @@ curl http://localhost:4000/performance
 
 ```elixir
 # Get real-time metrics
-metrics = SNMPSimEx.Performance.PerformanceMonitor.get_current_metrics()
+metrics = SnmpSim.Performance.PerformanceMonitor.get_current_metrics()
 %{
   requests_per_second: 45_231,
   avg_latency_ms: 3.2,
@@ -370,7 +370,7 @@ metrics = SNMPSimEx.Performance.PerformanceMonitor.get_current_metrics()
 }
 
 # Check system health
-health = SNMPSimEx.TestHelpers.check_system_health()
+health = SnmpSim.TestHelpers.check_system_health()
 %{
   memory_usage_mb: 432.5,
   process_count: 15_432,
@@ -404,10 +404,10 @@ health = SNMPSimEx.TestHelpers.check_system_health()
 3. **Performance issues**:
    ```elixir
    # Enable performance monitoring
-   {:ok, _} = SNMPSimEx.Performance.PerformanceMonitor.start_link()
+   {:ok, _} = SnmpSim.Performance.PerformanceMonitor.start_link()
    
    # Check for bottlenecks
-   stats = SNMPSimEx.Performance.PerformanceMonitor.get_current_metrics()
+   stats = SnmpSim.Performance.PerformanceMonitor.get_current_metrics()
    ```
 
 ### Debug Mode

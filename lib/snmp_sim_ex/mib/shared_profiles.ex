@@ -1,4 +1,4 @@
-defmodule SNMPSimEx.MIB.SharedProfiles do
+defmodule SnmpSim.MIB.SharedProfiles do
   @moduledoc """
   Memory-efficient shared OID profiles using ETS tables.
   Reduces memory from 1GB to ~10MB for 10K devices by sharing profile data.
@@ -30,7 +30,7 @@ defmodule SNMPSimEx.MIB.SharedProfiles do
   
   ## Examples
   
-      :ok = SNMPSimEx.MIB.SharedProfiles.init_profiles()
+      :ok = SnmpSim.MIB.SharedProfiles.init_profiles()
       
   """
   def init_profiles do
@@ -42,7 +42,7 @@ defmodule SNMPSimEx.MIB.SharedProfiles do
   
   ## Examples
   
-      :ok = SNMPSimEx.MIB.SharedProfiles.load_mib_profile(
+      :ok = SnmpSim.MIB.SharedProfiles.load_mib_profile(
         :cable_modem,
         ["DOCS-CABLE-DEVICE-MIB", "IF-MIB"]
       )
@@ -57,7 +57,7 @@ defmodule SNMPSimEx.MIB.SharedProfiles do
   
   ## Examples
   
-      :ok = SNMPSimEx.MIB.SharedProfiles.load_walk_profile(
+      :ok = SnmpSim.MIB.SharedProfiles.load_walk_profile(
         :cable_modem,
         "priv/walks/cable_modem.walk",
         behaviors: [:realistic_counters, :daily_patterns]
@@ -73,7 +73,7 @@ defmodule SNMPSimEx.MIB.SharedProfiles do
   
   ## Examples
   
-      value = SNMPSimEx.MIB.SharedProfiles.get_oid_value(
+      value = SnmpSim.MIB.SharedProfiles.get_oid_value(
         :cable_modem,
         "1.3.6.1.2.1.2.2.1.10.1",
         %{device_id: "cm_001", uptime: 3600}
@@ -258,7 +258,7 @@ defmodule SNMPSimEx.MIB.SharedProfiles do
     
     try do
       # Compile MIBs if needed
-      compiled_mibs = SNMPSimEx.MIB.Compiler.compile_mib_files(mib_files)
+      compiled_mibs = SnmpSim.MIB.Compiler.compile_mib_files(mib_files)
       
       # Extract object definitions
       all_objects = 
@@ -267,7 +267,7 @@ defmodule SNMPSimEx.MIB.SharedProfiles do
         |> Enum.reduce(%{}, &Map.merge/2)
       
       # Analyze behaviors
-      {:ok, behaviors} = SNMPSimEx.MIB.BehaviorAnalyzer.analyze_mib_behaviors(all_objects)
+      {:ok, behaviors} = SnmpSim.MIB.BehaviorAnalyzer.analyze_mib_behaviors(all_objects)
       
       # Store in ETS tables
       store_profile_data(prof_table, all_objects)
@@ -303,10 +303,10 @@ defmodule SNMPSimEx.MIB.SharedProfiles do
     
     try do
       # Parse walk file
-      {:ok, oid_map} = SNMPSimEx.WalkParser.parse_walk_file(walk_file)
+      {:ok, oid_map} = SnmpSim.WalkParser.parse_walk_file(walk_file)
       
       # Enhance with intelligent behaviors
-      enhanced_behaviors = SNMPSimEx.MIB.BehaviorAnalyzer.enhance_walk_file_behaviors(oid_map)
+      enhanced_behaviors = SnmpSim.MIB.BehaviorAnalyzer.enhance_walk_file_behaviors(oid_map)
       
       # Separate profile data and behaviors
       profile_data = Map.new(enhanced_behaviors, fn {oid, data} ->
@@ -358,7 +358,7 @@ defmodule SNMPSimEx.MIB.SharedProfiles do
           end
           
           # Apply behavior to generate current value
-          current_value = SNMPSimEx.ValueSimulator.simulate_value(
+          current_value = SnmpSim.ValueSimulator.simulate_value(
             profile_data,
             behavior_config,
             device_state

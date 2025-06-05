@@ -1,10 +1,10 @@
-defmodule SNMPSimEx.ValueSimulator do
+defmodule SnmpSim.ValueSimulator do
   @moduledoc """
   Generate realistic values based on MIB-derived behavior patterns.
   Supports counters, gauges, enums, and correlated metrics with time-based variations.
   """
 
-  alias SNMPSimEx.TimePatterns
+  alias SnmpSim.TimePatterns
 
   @doc """
   Simulate a value based on profile data, behavior configuration, and device state.
@@ -12,7 +12,7 @@ defmodule SNMPSimEx.ValueSimulator do
   ## Examples
   
       # Traffic counter simulation
-      value = SNMPSimEx.ValueSimulator.simulate_value(
+      value = SnmpSim.ValueSimulator.simulate_value(
         %{type: "Counter32", value: 1000000},
         {:traffic_counter, %{rate_range: {1000, 125_000_000}}},
         %{device_id: "cm_001", uptime: 3600, interface_utilization: 0.3}

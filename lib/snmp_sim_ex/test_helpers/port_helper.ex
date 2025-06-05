@@ -1,9 +1,9 @@
-defmodule SNMPSimEx.TestHelpers.PortHelper do
+defmodule SnmpSim.TestHelpers.PortHelper do
   @moduledoc """
   Simple helper functions for port allocation in tests.
   """
   
-  alias SNMPSimEx.TestHelpers.PortAllocator
+  alias SnmpSim.TestHelpers.PortAllocator
 
   @doc """
   Get a port for testing, ensuring PortAllocator is started.

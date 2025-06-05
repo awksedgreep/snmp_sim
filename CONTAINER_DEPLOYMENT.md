@@ -1,6 +1,6 @@
 # Container Deployment Guide
 
-This guide covers deploying SNMPSimEx in containerized environments including Docker, Docker Compose, Kubernetes, and cloud platforms.
+This guide covers deploying SnmpSim in containerized environments including Docker, Docker Compose, Kubernetes, and cloud platforms.
 
 ## Quick Start
 
@@ -685,7 +685,7 @@ Create `monitoring/grafana/dashboards/snmp-sim-ex.json`:
 ```json
 {
   "dashboard": {
-    "title": "SNMPSimEx Dashboard",
+    "title": "SnmpSim Dashboard",
     "panels": [
       {
         "title": "Active Devices",
@@ -826,4 +826,4 @@ deploy:
 docker run --sysctl net.core.rmem_max=134217728 snmp-sim-ex
 ```
 
-This comprehensive container deployment guide covers all major containerization scenarios from simple Docker runs to complex Kubernetes deployments, providing everything needed to deploy SNMPSimEx in any containerized environment.
+This comprehensive container deployment guide covers all major containerization scenarios from simple Docker runs to complex Kubernetes deployments, providing everything needed to deploy SnmpSim in any containerized environment.

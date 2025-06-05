@@ -1,10 +1,10 @@
-defmodule SNMPSimEx.MixProject do
+defmodule SnmpSim.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :snmp_sim_ex,
-      version: "0.2.0",
+      app: :snmp_sim,
+      version: "1.0.0",
       elixir: "~> 1.15",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
@@ -36,7 +36,7 @@ defmodule SNMPSimEx.MixProject do
   def application do
     [
       extra_applications: [:logger, :snmp, :os_mon],
-      mod: {SNMPSimEx.Application, []}
+      mod: {SnmpSim.Application, []}
     ]
   end
 
@@ -55,9 +55,9 @@ defmodule SNMPSimEx.MixProject do
   # Release configuration
   defp releases do
     [
-      snmp_sim_ex: [
-        version: "0.2.0",
-        applications: [snmp_sim_ex: :permanent],
+      snmp_sim: [
+        version: "1.0.0",
+        applications: [snmp_sim: :permanent],
         steps: [:assemble, :tar],
         strip_beams: Mix.env() == :prod,
         include_executables_for: [:unix],

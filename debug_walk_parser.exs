@@ -8,7 +8,7 @@ Code.compile_file("lib/snmp_sim_ex/walk_parser.ex")
 
 # Test the walk parser
 line = "SNMPv2-MIB::sysDescr.0 = STRING: \"Motorola SB6141 DOCSIS 3.0 Cable Modem\""
-result = SNMPSimEx.WalkParser.parse_walk_line(line)
+result = SnmpSim.WalkParser.parse_walk_line(line)
 
 IO.puts("Input line: #{line}")
 IO.puts("Parsed result: #{inspect(result, pretty: true)}")
@@ -29,7 +29,7 @@ test_lines = [
 
 IO.puts("\n--- Testing additional lines ---")
 for line <- test_lines do
-  result = SNMPSimEx.WalkParser.parse_walk_line(line)
+  result = SnmpSim.WalkParser.parse_walk_line(line)
   IO.puts("Line: #{line}")
   IO.puts("Result: #{inspect(result, pretty: true)}")
   IO.puts("")

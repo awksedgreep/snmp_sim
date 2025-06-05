@@ -1,4 +1,4 @@
-defmodule SNMPSimEx.SNMPRegressionTest do
+defmodule SnmpSim.SNMPRegressionTest do
   @moduledoc """
   Regression tests for specific SNMP issues that were discovered during testing.
   
@@ -9,8 +9,8 @@ defmodule SNMPSimEx.SNMPRegressionTest do
   
   use ExUnit.Case, async: false
   
-  alias SNMPSimEx.Core.Server
-  alias SNMPSimEx.Device
+  alias SnmpSim.Core.Server
+  alias SnmpSim.Device
   
   @test_port 19163
   @test_community "public"

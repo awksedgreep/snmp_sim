@@ -1,4 +1,4 @@
-defmodule SNMPSimEx.TestHelpers.PortAllocator do
+defmodule SnmpSim.TestHelpers.PortAllocator do
   @moduledoc """
   Simple port allocation service for tests.
   

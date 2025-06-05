@@ -1,10 +1,10 @@
-defmodule SNMPSimExTest do
+defmodule SnmpSimTest do
   use ExUnit.Case, async: false  # Changed to false to avoid process conflicts
-  doctest SNMPSimEx
+  doctest SnmpSim
 
-  alias SNMPSimEx.ProfileLoader
-  alias SNMPSimEx.LazyDevicePool
-  alias SNMPSimEx.TestHelpers.PortHelper
+  alias SnmpSim.ProfileLoader
+  alias SnmpSim.LazyDevicePool
+  alias SnmpSim.TestHelpers.PortHelper
   
   setup do
     # Start LazyDevicePool if not already started
@@ -42,7 +42,7 @@ defmodule SNMPSimExTest do
       port = PortHelper.get_port()
       
       # Start device
-      {:ok, device_pid} = SNMPSimEx.start_device(profile, port: port)
+      {:ok, device_pid} = SnmpSim.start_device(profile, port: port)
       
       # Verify device started
       assert is_pid(device_pid)
@@ -61,7 +61,7 @@ defmodule SNMPSimExTest do
       # Get a range of ports for testing
       port_range = PortHelper.get_port_range(3)
       
-      {:ok, devices} = SNMPSimEx.start_device_population(
+      {:ok, devices} = SnmpSim.start_device_population(
         device_configs,
         port_range: port_range,
         pre_warm: true
@@ -85,7 +85,7 @@ defmodule SNMPSimExTest do
     test "handles errors gracefully" do
       # Note: Current implementation creates mock devices instead of failing for invalid walk files
       # This is actually a limitation that should be addressed in a future version
-      result = SNMPSimEx.start_device_population([
+      result = SnmpSim.start_device_population([
         {:bad_device, {:walk_file, "non_existent_file.walk"}, count: 1}
       ], port_range: PortHelper.get_port_range(1), pre_warm: true)
       
@@ -104,7 +104,7 @@ defmodule SNMPSimExTest do
   describe "Module Documentation" do
     test "has proper module documentation" do
       {:docs_v1, _annotation, _beam_language, _format, module_doc, _metadata, _docs} = 
-        Code.fetch_docs(SNMPSimEx)
+        Code.fetch_docs(SnmpSim)
       
       assert module_doc != :hidden
       assert module_doc != :none

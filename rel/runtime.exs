@@ -1,6 +1,6 @@
 import Config
 
-# Runtime configuration for SNMPSimEx
+# Runtime configuration for SnmpSim
 # This file is evaluated at runtime and allows for dynamic configuration
 # based on environment variables and system state.
 

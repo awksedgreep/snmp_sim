@@ -1,4 +1,4 @@
-# SNMPSimEx Master Plan - Comprehensive SNMP Simulator for Elixir
+# SnmpSim Master Plan - Comprehensive SNMP Simulator for Elixir
 
 A complete implementation plan for building a production-ready, large-scale SNMP simulator with MIB-based realistic behaviors, supporting 10,000+ concurrent devices for comprehensive testing of SNMP polling systems.
 
@@ -50,7 +50,7 @@ A complete implementation plan for building a production-ready, large-scale SNMP
 ### Profile Source Hierarchy
 
 ```elixir
-defmodule SNMPSimEx.ProfileLoader do
+defmodule SnmpSim.ProfileLoader do
   @moduledoc """
   Flexible profile loading supporting multiple sources and progressive enhancement.
   Start with simple walk files, upgrade to MIB-based simulation when ready.
@@ -117,7 +117,7 @@ snmpwalk -v2c -c public -On cable-modem.example.com 1.3.6.1.2.1 > cable_modem_oi
 ### Profile Parsing Implementation
 
 ```elixir
-defmodule SNMPSimEx.WalkParser do
+defmodule SnmpSim.WalkParser do
   @moduledoc """
   Parse both named MIB and numeric OID walk file formats.
   Handle different snmpwalk output variations automatically.
@@ -241,12 +241,12 @@ end
 #### Level 1: Static Walk Files (Start Here)
 ```elixir
 # Basic usage - just get devices responding
-cable_modem_profile = SNMPSimEx.ProfileLoader.load_profile(
+cable_modem_profile = SnmpSim.ProfileLoader.load_profile(
   :cable_modem,
   {:walk_file, "priv/walks/cable_modem.walk"}
 )
 
-{:ok, device} = SNMPSimEx.start_device(cable_modem_profile, port: 9001)
+{:ok, device} = SnmpSim.start_device(cable_modem_profile, port: 9001)
 
 # Test basic functionality
 response = :snmp.sync_get("127.0.0.1", 9001, "public", ["1.3.6.1.2.1.1.1.0"])
@@ -256,7 +256,7 @@ response = :snmp.sync_get("127.0.0.1", 9001, "public", ["1.3.6.1.2.1.1.1.0"])
 #### Level 2: Add Basic Behaviors
 ```elixir
 # Add simple counter increments and gauge variations
-cable_modem_profile = SNMPSimEx.ProfileLoader.load_profile(
+cable_modem_profile = SnmpSim.ProfileLoader.load_profile(
   :cable_modem,
   {:walk_file, "priv/walks/cable_modem.walk"},
   behaviors: [
@@ -270,7 +270,7 @@ cable_modem_profile = SNMPSimEx.ProfileLoader.load_profile(
 #### Level 3: Realistic Time Patterns
 ```elixir
 # Add daily traffic patterns and correlations
-cable_modem_profile = SNMPSimEx.ProfileLoader.load_profile(
+cable_modem_profile = SnmpSim.ProfileLoader.load_profile(
   :cable_modem,
   {:walk_file, "priv/walks/cable_modem.walk"},
   behaviors: [
@@ -284,7 +284,7 @@ cable_modem_profile = SNMPSimEx.ProfileLoader.load_profile(
 #### Level 4: MIB-Based Simulation (Future)
 ```elixir
 # Upgrade to full MIB compilation when ready
-cable_modem_profile = SNMPSimEx.ProfileLoader.load_profile(
+cable_modem_profile = SnmpSim.ProfileLoader.load_profile(
   :cable_modem,
   {:compiled_mib, ["DOCS-CABLE-DEVICE-MIB", "IF-MIB"]}
 )
@@ -308,7 +308,7 @@ device_configs = [
   {:router, {:manual, %{"1.3.6.1.2.1.1.1.0" => "Test Router"}}, count: 10}
 ]
 
-{:ok, devices} = SNMPSimEx.start_device_population(device_configs, 
+{:ok, devices} = SnmpSim.start_device_population(device_configs, 
   port_range: 30_000..39_999
 )
 ```
@@ -369,7 +369,7 @@ IF-MIB::ifOutOctets.2 = Counter32: 234567890
 #### Core Components
 ```elixir
 # SNMP PDU Processing
-defmodule SNMPSimEx.PDU do
+defmodule SnmpSim.PDU do
   @moduledoc """
   Complete SNMP PDU encoding/decoding for v1 and v2c protocols.
   Handles GET, GETNEXT, GETBULK, and SET operations.
@@ -391,7 +391,7 @@ defmodule SNMPSimEx.PDU do
 end
 
 # UDP Server Management
-defmodule SNMPSimEx.Server do
+defmodule SnmpSim.Server do
   @moduledoc """
   High-performance UDP server for SNMP request handling.
   Supports concurrent packet processing with minimal latency.
@@ -461,7 +461,7 @@ end
 #### MIB Integration Components
 ```elixir
 # Erlang MIB Compiler Integration
-defmodule SNMPSimEx.MIBCompiler do
+defmodule SnmpSim.MIBCompiler do
   @moduledoc """
   Leverage Erlang's battle-tested :snmpc module for MIB compilation.
   Extract OID definitions, data types, and constraints from vendor MIBs.
@@ -480,7 +480,7 @@ defmodule SNMPSimEx.MIBCompiler do
 end
 
 # Behavior Analysis Engine
-defmodule SNMPSimEx.BehaviorAnalyzer do
+defmodule SnmpSim.BehaviorAnalyzer do
   @moduledoc """
   Automatically determine realistic behaviors from MIB object definitions.
   Analyze object names, descriptions, and types to infer simulation patterns.
@@ -506,7 +506,7 @@ defmodule SNMPSimEx.BehaviorAnalyzer do
 end
 
 # Shared Profile Management
-defmodule SNMPSimEx.SharedProfiles do
+defmodule SnmpSim.SharedProfiles do
   @moduledoc """
   Memory-efficient shared OID profiles using ETS tables.
   Reduces memory from 1GB to ~10MB for 10K devices.
@@ -561,7 +561,7 @@ end
 #### OID Tree Components
 ```elixir
 # High-Performance OID Tree
-defmodule SNMPSimEx.OIDTree do
+defmodule SnmpSim.OIDTree do
   @moduledoc """
   Optimized OID tree for fast lookups and lexicographic traversal.
   Supports GETNEXT operations and GETBULK bulk retrieval.
@@ -590,7 +590,7 @@ defmodule SNMPSimEx.OIDTree do
 end
 
 # GETBULK Operation Handler
-defmodule SNMPSimEx.BulkOperations do
+defmodule SnmpSim.BulkOperations do
   @moduledoc """
   Efficient GETBULK implementation for SNMPv2c.
   Handles non-repeaters, max-repetitions, and response size management.
@@ -641,7 +641,7 @@ end
 #### Lazy Device Management
 ```elixir
 # Lazy Device Pool Manager
-defmodule SNMPSimEx.LazyDevicePool do
+defmodule SnmpSim.LazyDevicePool do
   @moduledoc """
   On-demand device creation and lifecycle management.
   Supports 10K+ devices with minimal memory footprint.
@@ -670,7 +670,7 @@ defmodule SNMPSimEx.LazyDevicePool do
 end
 
 # Device Type Distribution
-defmodule SNMPSimEx.DeviceDistribution do
+defmodule SnmpSim.DeviceDistribution do
   @moduledoc """
   Realistic device type distribution across port ranges.
   Supports mixed device populations for authentic testing.
@@ -694,7 +694,7 @@ defmodule SNMPSimEx.DeviceDistribution do
 end
 
 # Lightweight Device Implementation
-defmodule SNMPSimEx.Device do
+defmodule SnmpSim.Device do
   @moduledoc """
   Minimal memory footprint device simulation.
   Uses shared profiles and device-specific state only.
@@ -759,7 +759,7 @@ end
 #### Value Simulation Engine
 ```elixir
 # Dynamic Value Generation
-defmodule SNMPSimEx.ValueSimulator do
+defmodule SnmpSim.ValueSimulator do
   @moduledoc """
   Generate realistic values based on MIB-derived behavior patterns.
   Supports counters, gauges, enums, and correlated metrics.
@@ -807,7 +807,7 @@ defmodule SNMPSimEx.ValueSimulator do
 end
 
 # Time-Based Pattern Engine
-defmodule SNMPSimEx.TimePatterns do
+defmodule SnmpSim.TimePatterns do
   @moduledoc """
   Realistic time-based variations for network metrics.
   Implements daily, weekly, and seasonal patterns.
@@ -835,7 +835,7 @@ defmodule SNMPSimEx.TimePatterns do
 end
 
 # Metric Correlation Engine
-defmodule SNMPSimEx.CorrelationEngine do
+defmodule SnmpSim.CorrelationEngine do
   @moduledoc """
   Implement realistic correlations between different metrics.
   Signal quality degrades with higher utilization, etc.
@@ -880,7 +880,7 @@ end
 #### Error Injection System
 ```elixir
 # Error Injection Engine
-defmodule SNMPSimEx.ErrorInjector do
+defmodule SnmpSim.ErrorInjector do
   @moduledoc """
   Inject realistic error conditions for comprehensive testing.
   Supports timeouts, packet loss, malformed responses, and device failures.
@@ -918,7 +918,7 @@ defmodule SNMPSimEx.ErrorInjector do
 end
 
 # Test Scenario Builder
-defmodule SNMPSimEx.TestScenarios do
+defmodule SnmpSim.TestScenarios do
   @moduledoc """
   Pre-built test scenarios for common network conditions.
   Simplify complex error injection patterns.
@@ -981,7 +981,7 @@ end
 #### Performance Optimization
 ```elixir
 # Resource Management
-defmodule SNMPSimEx.ResourceManager do
+defmodule SnmpSim.ResourceManager do
   @moduledoc """
   Manage system resources for large-scale simulation.
   Monitor memory usage, file descriptors, and network buffers.
@@ -1012,7 +1012,7 @@ defmodule SNMPSimEx.ResourceManager do
 end
 
 # Performance Monitoring
-defmodule SNMPSimEx.Performance do
+defmodule SnmpSim.Performance do
   @moduledoc """
   Real-time performance monitoring and optimization.
   Track throughput, latency, and resource utilization.
@@ -1039,7 +1039,7 @@ defmodule SNMPSimEx.Performance do
 end
 
 # Load Testing Framework
-defmodule SNMPSimEx.LoadTesting do
+defmodule SnmpSim.LoadTesting do
   @moduledoc """
   Comprehensive load testing and benchmarking.
   Validate performance under realistic conditions.
@@ -1096,7 +1096,7 @@ end
 #### Test Integration
 ```elixir
 # ExUnit Test Helpers
-defmodule SNMPSimEx.TestHelpers do
+defmodule SnmpSim.TestHelpers do
   @moduledoc """
   Seamless ExUnit integration for SNMP Poller testing.
   Simplify test setup and cleanup for complex scenarios.
@@ -1134,7 +1134,7 @@ defmodule SNMPSimEx.TestHelpers do
 end
 
 # Configuration Management
-defmodule SNMPSimEx.Config do
+defmodule SnmpSim.Config do
   @moduledoc """
   Environment-specific configuration management.
   Support development, testing, and production scenarios.
@@ -1163,7 +1163,7 @@ end
 #### Documentation & Deployment
 ```elixir
 # Deployment Manager
-defmodule SNMPSimEx.Deployment do
+defmodule SnmpSim.Deployment do
   @moduledoc """
   Production deployment and management tools.
   Handle large-scale simulator deployment.
@@ -1286,7 +1286,7 @@ test/snmp_sim_ex/
 ### Basic Device Simulation
 ```elixir
 # Start a cable modem with MIB-based profile
-{:ok, device} = SNMPSimEx.start_device(:cable_modem,
+{:ok, device} = SnmpSim.start_device(:cable_modem,
   port: 9001,
   mib_sources: ["DOCS-CABLE-DEVICE-MIB", "IF-MIB"],
   mac_address: "00:1A:2B:3C:4D:5E"
@@ -1307,13 +1307,13 @@ device_population = [
   {:router, 50}          # 50 routers
 ]
 
-{:ok, devices} = SNMPSimEx.start_device_population(device_population,
+{:ok, devices} = SnmpSim.start_device_population(device_population,
   port_range: 30_000..39_999,
   mib_sources: load_vendor_mibs()
 )
 
 # Run sustained load test
-results = SNMPSimEx.run_load_test(devices,
+results = SnmpSim.run_load_test(devices,
   duration: 3_600_000,        # 1 hour
   concurrent_polls: 100,      # 100 concurrent pollers
   polling_interval: 600_000   # 10 minute intervals
@@ -1323,10 +1323,10 @@ results = SNMPSimEx.run_load_test(devices,
 ### Error Injection Testing
 ```elixir
 # Test cable modem signal degradation
-device = SNMPSimEx.start_device(:cable_modem, port: 9001)
+device = SnmpSim.start_device(:cable_modem, port: 9001)
 
 # Simulate weather-related signal issues
-SNMPSimEx.inject_signal_degradation(device,
+SnmpSim.inject_signal_degradation(device,
   duration: 300_000,     # 5 minutes
   snr_degradation: 10,   # 10 dB SNR loss
   power_variation: 5     # ±5 dBmV power swing
@@ -1341,7 +1341,7 @@ assert signal_quality_trends_detected(metrics)
 ```elixir
 defmodule SnmpPollerIntegrationTest do
   use ExUnit.Case
-  import SNMPSimEx.TestHelpers
+  import SnmpSim.TestHelpers
   
   setup do
     # Start test devices automatically
@@ -1358,7 +1358,7 @@ defmodule SnmpPollerIntegrationTest do
     device = devices[:cable_modem]
     
     # Inject timeout condition
-    SNMPSimEx.inject_timeout(device, probability: 1.0, duration: 10_000)
+    SnmpSim.inject_timeout(device, probability: 1.0, duration: 10_000)
     
     # Test poller behavior
     result = SnmpPoller.poll_device_with_retries(device)
@@ -1444,8 +1444,8 @@ snmpwalk -v2c -c public -On your-cable-modem.local 1.3.6.1.2.1 > priv/walks/cabl
 
 # Start simulator with walk file
 iex -S mix
-iex> profile = SNMPSimEx.ProfileLoader.load_profile(:cable_modem, {:walk_file, "priv/walks/cable_modem.walk"})
-iex> {:ok, device} = SNMPSimEx.start_device(profile, port: 9001)
+iex> profile = SnmpSim.ProfileLoader.load_profile(:cable_modem, {:walk_file, "priv/walks/cable_modem.walk"})
+iex> {:ok, device} = SnmpSim.start_device(profile, port: 9001)
 iex> :snmp.sync_get("127.0.0.1", 9001, "public", ["1.3.6.1.2.1.1.1.0"])
 ```
 
@@ -1457,8 +1457,8 @@ mkdir -p priv/mibs
 
 # Compile MIBs and start simulator
 iex -S mix
-iex> SNMPSimEx.setup_mib_profiles()
-iex> SNMPSimEx.start_device(:cable_modem, port: 9001)
+iex> SnmpSim.setup_mib_profiles()
+iex> SnmpSim.start_device(:cable_modem, port: 9001)
 ```
 
 ### Development Workflow
@@ -1467,20 +1467,20 @@ iex> SNMPSimEx.start_device(:cable_modem, port: 9001)
 iex -S mix
 
 # Load test configuration
-SNMPSimEx.Config.load_development_config()
+SnmpSim.Config.load_development_config()
 
 # Start small device population for testing
-devices = SNMPSimEx.start_device_population([
+devices = SnmpSim.start_device_population([
   {:cable_modem, 10},
   {:switch, 5},
   {:cmts, 1}
 ], port_range: 9001..9020)
 
 # Run basic functionality tests
-SNMPSimEx.run_basic_tests(devices)
+SnmpSim.run_basic_tests(devices)
 
 # Monitor performance
-SNMPSimEx.Performance.start_monitoring()
+SnmpSim.Performance.start_monitoring()
 :observer.start()
 ```
 

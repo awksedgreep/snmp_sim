@@ -13,7 +13,7 @@ device_config = %{
   community: "public"
 }
 
-{:ok, device_pid} = SNMPSimEx.Device.start_link(device_config)
+{:ok, device_pid} = SnmpSim.Device.start_link(device_config)
 Process.sleep(100)
 
 test_oid = "1.3.6.1.2.1.1.1.0"
@@ -24,9 +24,9 @@ result = GenServer.call(device_pid, {:get_oid, test_oid})
 IO.puts("Direct get_oid result: #{inspect(result)}")
 
 # Also test through the Device.get wrapper
-wrapper_result = SNMPSimEx.Device.get(device_pid, test_oid)
+wrapper_result = SnmpSim.Device.get(device_pid, test_oid)
 IO.puts("Device.get result: #{inspect(wrapper_result)}")
 
-SNMPSimEx.Device.stop(device_pid)
+SnmpSim.Device.stop(device_pid)
 
 IO.puts("=== Complete ===")

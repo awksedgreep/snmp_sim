@@ -1,4 +1,4 @@
-defmodule SNMPSimEx.OIDTree do
+defmodule SnmpSim.OIDTree do
   @moduledoc """
   Optimized OID tree for fast lookups and lexicographic traversal.
   Supports GETNEXT operations and GETBULK bulk retrieval.
@@ -33,7 +33,7 @@ defmodule SNMPSimEx.OIDTree do
   
   ## Examples
   
-      tree = SNMPSimEx.OIDTree.new()
+      tree = SnmpSim.OIDTree.new()
       
   """
   def new() do
@@ -50,8 +50,8 @@ defmodule SNMPSimEx.OIDTree do
   
   ## Examples
   
-      tree = SNMPSimEx.OIDTree.new()
-      tree = SNMPSimEx.OIDTree.insert(tree, "1.3.6.1.2.1.1.1.0", "System Description", nil)
+      tree = SnmpSim.OIDTree.new()
+      tree = SnmpSim.OIDTree.insert(tree, "1.3.6.1.2.1.1.1.0", "System Description", nil)
       
   """
   def insert(%__MODULE__{} = tree, oid_string, value, behavior_info \\ nil) do
@@ -74,8 +74,8 @@ defmodule SNMPSimEx.OIDTree do
   
   ## Examples
   
-      {:ok, value, behavior} = SNMPSimEx.OIDTree.get(tree, "1.3.6.1.2.1.1.1.0")
-      :not_found = SNMPSimEx.OIDTree.get(tree, "1.3.6.1.2.1.1.1.999")
+      {:ok, value, behavior} = SnmpSim.OIDTree.get(tree, "1.3.6.1.2.1.1.1.0")
+      :not_found = SnmpSim.OIDTree.get(tree, "1.3.6.1.2.1.1.1.999")
       
   """
   def get(%__MODULE__{} = tree, oid_string) do
@@ -89,8 +89,8 @@ defmodule SNMPSimEx.OIDTree do
   
   ## Examples
   
-      {:ok, next_oid, value, behavior} = SNMPSimEx.OIDTree.get_next(tree, "1.3.6.1.2.1.1.1.0")
-      :end_of_mib = SNMPSimEx.OIDTree.get_next(tree, "1.3.6.1.9.9.9.9.9")
+      {:ok, next_oid, value, behavior} = SnmpSim.OIDTree.get_next(tree, "1.3.6.1.2.1.1.1.0")
+      :end_of_mib = SnmpSim.OIDTree.get_next(tree, "1.3.6.1.9.9.9.9.9")
       
   """
   def get_next(%__MODULE__{} = tree, oid_string) do
@@ -115,7 +115,7 @@ defmodule SNMPSimEx.OIDTree do
   
   ## Examples
   
-      results = SNMPSimEx.OIDTree.bulk_walk(tree, "1.3.6.1.2.1.2.2.1", 10, 0)
+      results = SnmpSim.OIDTree.bulk_walk(tree, "1.3.6.1.2.1.2.2.1", 10, 0)
       
   """
   def bulk_walk(%__MODULE__{} = tree, start_oid, max_repetitions, non_repeaters \\ 0) do
@@ -137,7 +137,7 @@ defmodule SNMPSimEx.OIDTree do
   
   ## Examples
   
-      oids = SNMPSimEx.OIDTree.list_oids(tree)
+      oids = SnmpSim.OIDTree.list_oids(tree)
       
   """
   def list_oids(%__MODULE__{} = tree) do
@@ -150,7 +150,7 @@ defmodule SNMPSimEx.OIDTree do
   
   ## Examples
   
-      size = SNMPSimEx.OIDTree.size(tree)
+      size = SnmpSim.OIDTree.size(tree)
       
   """
   def size(%__MODULE__{} = tree), do: tree.size
@@ -160,7 +160,7 @@ defmodule SNMPSimEx.OIDTree do
   
   ## Examples
   
-      empty? = SNMPSimEx.OIDTree.empty?(tree)
+      empty? = SnmpSim.OIDTree.empty?(tree)
       
   """
   def empty?(%__MODULE__{} = tree), do: tree.size == 0

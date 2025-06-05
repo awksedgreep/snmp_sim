@@ -1,6 +1,6 @@
-defmodule SNMPSimEx.ConfigTest do
+defmodule SnmpSim.ConfigTest do
   use ExUnit.Case, async: true
-  alias SNMPSimEx.Config
+  alias SnmpSim.Config
   
   describe "configuration validation" do
     test "validates correct configuration" do

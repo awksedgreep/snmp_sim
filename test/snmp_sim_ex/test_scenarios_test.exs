@@ -1,12 +1,12 @@
-defmodule SNMPSimEx.TestScenariosTest do
+defmodule SnmpSim.TestScenariosTest do
   use ExUnit.Case, async: false
 
   @moduletag :skip
 
-  alias SNMPSimEx.{TestScenarios}
-  alias SNMPSimEx.Device
-  alias SNMPSimEx.MIB.SharedProfiles
-  alias SNMPSimEx.TestHelpers.PortHelper
+  alias SnmpSim.{TestScenarios}
+  alias SnmpSim.Device
+  alias SnmpSim.MIB.SharedProfiles
+  alias SnmpSim.TestHelpers.PortHelper
 
   setup do
     # Start shared profiles for testing only if not already started

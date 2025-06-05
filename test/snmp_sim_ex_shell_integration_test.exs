@@ -1,4 +1,4 @@
-defmodule SNMPSimExShellIntegrationTest do
+defmodule SnmpSimShellIntegrationTest do
   @moduledoc """
   Integration tests using actual SNMP command-line tools to validate our simulator
   against real-world SNMP clients. This provides the ultimate validation of 
@@ -13,9 +13,9 @@ defmodule SNMPSimExShellIntegrationTest do
   
   @moduletag :shell_integration
   
-  alias SNMPSimEx.ProfileLoader
-  alias SNMPSimEx.Device
-  alias SNMPSimEx.TestHelpers.PortHelper
+  alias SnmpSim.ProfileLoader
+  alias SnmpSim.Device
+  alias SnmpSim.TestHelpers.PortHelper
   
   describe "Shell Command Integration" do
     setup do

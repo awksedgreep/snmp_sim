@@ -1,4 +1,4 @@
-defmodule SNMPSimEx.MultiDeviceStartup do
+defmodule SnmpSim.MultiDeviceStartup do
   @moduledoc """
   Multi-Device Startup functionality for large-scale device population management.
   
@@ -11,7 +11,7 @@ defmodule SNMPSimEx.MultiDeviceStartup do
   """
   
   require Logger
-  alias SNMPSimEx.{LazyDevicePool, DeviceDistribution}
+  alias SnmpSim.{LazyDevicePool, DeviceDistribution}
   
   @type device_spec :: {device_type :: atom(), count :: non_neg_integer()}
   @type startup_opts :: [
@@ -36,7 +36,7 @@ defmodule SNMPSimEx.MultiDeviceStartup do
         {:cmts, 5}
       ]
       
-      {:ok, result} = SNMPSimEx.MultiDeviceStartup.start_device_population(
+      {:ok, result} = SnmpSim.MultiDeviceStartup.start_device_population(
         device_specs,
         port_range: 30_000..31_099,
         parallel_workers: 100
@@ -78,7 +78,7 @@ defmodule SNMPSimEx.MultiDeviceStartup do
   
   ## Examples
   
-      {:ok, result} = SNMPSimEx.MultiDeviceStartup.start_device_mix(
+      {:ok, result} = SnmpSim.MultiDeviceStartup.start_device_mix(
         :cable_network,
         port_range: 30_000..39_999
       )

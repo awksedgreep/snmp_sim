@@ -1,11 +1,11 @@
-defmodule SNMPSimEx.TestHelpers.ProductionTestHelper do
+defmodule SnmpSim.TestHelpers.ProductionTestHelper do
   @moduledoc """
   Specialized testing utilities for production validation and testing.
   """
   
   require Logger
-  alias SNMPSimEx.{Device, LazyDevicePool}
-  alias SNMPSimEx.TestHelpers.PortAllocator
+  alias SnmpSim.{Device, LazyDevicePool}
+  alias SnmpSim.TestHelpers.PortAllocator
   
   @doc """
   Creates devices efficiently in batches for large-scale testing.

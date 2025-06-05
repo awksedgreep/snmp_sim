@@ -1,4 +1,4 @@
-defmodule SNMPSimExErlangSnmpIntegrationSimpleTest do
+defmodule SnmpSimErlangSnmpIntegrationSimpleTest do
   @moduledoc """
   Simplified Erlang SNMP integration test using correct SNMP manager API.
   This validates our SNMP simulator against Erlang's built-in SNMP manager.
@@ -9,8 +9,8 @@ defmodule SNMPSimExErlangSnmpIntegrationSimpleTest do
   @moduletag :erlang
   @moduletag :optional
   
-  alias SNMPSimEx.ProfileLoader
-  alias SNMPSimEx.Device
+  alias SnmpSim.ProfileLoader
+  alias SnmpSim.Device
   
   describe "Erlang SNMP Manager Integration" do
     setup do

@@ -1,10 +1,10 @@
-# SNMPSimEx Web Management Interface
+# SnmpSim Web Management Interface
 
-A comprehensive web-based management interface for SNMPSimEx virtual SNMP device simulation, implemented as a separate Phoenix application with SNMPSimEx as a dependency.
+A comprehensive web-based management interface for SnmpSim virtual SNMP device simulation, implemented as a separate Phoenix application with SnmpSim as a dependency.
 
 ## Architecture Approach
 
-**Separate Project Structure**: Clean separation between the core simulation engine (SNMPSimEx) and the web management interface, allowing for:
+**Separate Project Structure**: Clean separation between the core simulation engine (SnmpSim) and the web management interface, allowing for:
 - Independent scaling and deployment
 - Technology flexibility
 - Clean API boundaries
@@ -200,7 +200,7 @@ A comprehensive web-based management interface for SNMPSimEx virtual SNMP device
 ## Technical Architecture
 
 - **Frontend**: Phoenix LiveView for real-time updates
-- **Backend**: Phoenix application with SNMPSimEx dependency
+- **Backend**: Phoenix application with SnmpSim dependency
 - **Database**: PostgreSQL for persistent data storage
 - **Real-time**: Phoenix PubSub for live updates
 - **API**: REST endpoints for external integration

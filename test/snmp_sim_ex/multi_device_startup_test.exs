@@ -1,8 +1,8 @@
-defmodule SNMPSimEx.MultiDeviceStartupTest do
+defmodule SnmpSim.MultiDeviceStartupTest do
   use ExUnit.Case, async: false
   
-  alias SNMPSimEx.{MultiDeviceStartup, LazyDevicePool, DeviceDistribution}
-  alias SNMPSimEx.TestHelpers.PortHelper
+  alias SnmpSim.{MultiDeviceStartup, LazyDevicePool, DeviceDistribution}
+  alias SnmpSim.TestHelpers.PortHelper
   
   # Helper function to get unique port range for each test using PortHelper
   defp get_port_range(_test_name, size \\ 20) do

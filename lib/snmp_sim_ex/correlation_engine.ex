@@ -1,4 +1,4 @@
-defmodule SNMPSimEx.CorrelationEngine do
+defmodule SnmpSim.CorrelationEngine do
   @moduledoc """
   Implement realistic correlations between different metrics.
   
@@ -11,7 +11,7 @@ defmodule SNMPSimEx.CorrelationEngine do
   This module provides sophisticated correlation modeling for authentic network simulation.
   """
   
-  alias SNMPSimEx.TimePatterns
+  alias SnmpSim.TimePatterns
   
   @type correlation_type :: 
     :positive |     # Metrics increase together
@@ -45,7 +45,7 @@ defmodule SNMPSimEx.CorrelationEngine do
         {:temperature, :cpu_usage, :positive, 0.6}
       ]
       
-      updated_state = SNMPSimEx.CorrelationEngine.apply_correlations(
+      updated_state = SnmpSim.CorrelationEngine.apply_correlations(
         :interface_utilization, 0.8, device_state, correlations, DateTime.utc_now()
       )
       
@@ -70,7 +70,7 @@ defmodule SNMPSimEx.CorrelationEngine do
   
   ## Examples
   
-      correlations = SNMPSimEx.CorrelationEngine.get_device_correlations(:cable_modem)
+      correlations = SnmpSim.CorrelationEngine.get_device_correlations(:cable_modem)
       
   """
   @spec get_device_correlations(atom()) :: list()

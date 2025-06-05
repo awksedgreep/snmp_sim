@@ -1,4 +1,4 @@
-defmodule SNMPSimEx.MIB.BehaviorAnalyzer do
+defmodule SnmpSim.MIB.BehaviorAnalyzer do
   # Suppress warnings for private functions that are only called internally
   @dialyzer [
     {:nowarn_function, finalize_behavior: 1},
@@ -19,7 +19,7 @@ defmodule SNMPSimEx.MIB.BehaviorAnalyzer do
   
   ## Examples
   
-      behavior = SNMPSimEx.MIB.BehaviorAnalyzer.analyze_object_behavior(%{
+      behavior = SnmpSim.MIB.BehaviorAnalyzer.analyze_object_behavior(%{
         name: "ifInOctets",
         oid: "1.3.6.1.2.1.2.2.1.10",
         type: :counter32,
@@ -43,7 +43,7 @@ defmodule SNMPSimEx.MIB.BehaviorAnalyzer do
   
   ## Examples
   
-      {:ok, behaviors} = SNMPSimEx.MIB.BehaviorAnalyzer.analyze_mib_behaviors(compiled_mib)
+      {:ok, behaviors} = SnmpSim.MIB.BehaviorAnalyzer.analyze_mib_behaviors(compiled_mib)
       
   """
   def analyze_mib_behaviors(mib_objects) when is_map(mib_objects) do

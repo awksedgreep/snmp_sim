@@ -1,8 +1,8 @@
-# SNMPSimEx IEx Helper Functions
+# SnmpSim IEx Helper Functions
 # Load this with: iex -S mix
 
 IO.puts """
-🚀 SNMPSimEx Interactive Console
+🚀 SnmpSim Interactive Console
 ================================
 
 Quick Start:
@@ -33,10 +33,10 @@ Configuration:
 """
 
 defmodule Sim do
-  @moduledoc "SNMPSimEx Interactive Helpers"
+  @moduledoc "SnmpSim Interactive Helpers"
 
-  alias SNMPSimEx.{Device, Config, Core.Server}
-  alias SNMPSimEx.Performance.{PerformanceMonitor, ResourceManager}
+  alias SnmpSim.{Device, Config, Core.Server}
+  alias SnmpSim.Performance.{PerformanceMonitor, ResourceManager}
   
   @doc "Start sample devices for testing"
   def start do
@@ -551,9 +551,9 @@ defmodule Sim do
 end
 
 # Make Device and other modules easily accessible
-alias SNMPSimEx.{Device, Config, ValueSimulator}
-alias SNMPSimEx.Core.Server
+alias SnmpSim.{Device, Config, ValueSimulator}
+alias SnmpSim.Core.Server
 alias SnmpLib.PDU
-alias SNMPSimEx.MIB.{BehaviorAnalyzer, SharedProfiles}
+alias SnmpSim.MIB.{BehaviorAnalyzer, SharedProfiles}
 
 IO.puts "✅ Helper functions loaded! Type Sim.start() to begin."

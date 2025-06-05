@@ -1,6 +1,6 @@
-# SNMPSimEx Container Testing Scripts
+# SnmpSim Container Testing Scripts
 
-This directory contains scripts for testing SNMPSimEx in containerized environments using Podman.
+This directory contains scripts for testing SnmpSim in containerized environments using Podman.
 
 ## Quick Start (10 Devices)
 
@@ -148,7 +148,7 @@ If you get port binding errors:
 For hundred devices, startup takes longer:
 - Allow 60+ seconds for full initialization
 - Monitor logs: `./test_container_hundred.sh logs -f`
-- Check health: `podman exec container_name /app/bin/snmp_sim_ex eval "SNMPSimEx.health_check()"`
+- Check health: `podman exec container_name /app/bin/snmp_sim_ex eval "SnmpSim.health_check()"`
 
 ### SNMP Timeouts
 If SNMP requests timeout:

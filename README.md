@@ -1,10 +1,10 @@
-# SNMPSimEx - Comprehensive SNMP Simulator for Elixir
+# SnmpSim - Comprehensive SNMP Simulator for Elixir
 
 A production-ready, large-scale SNMP simulator built with Elixir, designed to support 10,000+ concurrent devices for comprehensive testing of SNMP polling systems.
 
 ## Overview
 
-SNMPSimEx combines Elixir's massive concurrency capabilities with authentic vendor MIB-driven behaviors to create the most realistic and scalable SNMP simulator available. The project follows a phased implementation approach, with **all 8 phases now complete!** 🎉
+SnmpSim combines Elixir's massive concurrency capabilities with authentic vendor MIB-driven behaviors to create the most realistic and scalable SNMP simulator available. The project follows a phased implementation approach, with **all 8 phases now complete!** 🎉
 
 ## Key Features
 
@@ -148,7 +148,7 @@ device_config = %{
   community: "public"
 }
 
-{:ok, device} = SNMPSimEx.Device.start_link(device_config)
+{:ok, device} = SnmpSim.Device.start_link(device_config)
 
 # Device automatically responds to SNMP requests with realistic values
 response = :snmp.sync_get("127.0.0.1", 9001, "public", ["1.3.6.1.2.1.1.1.0"])
@@ -204,14 +204,14 @@ Sim.get_gauges(9001)
 
 ```elixir
 # Start optimized high-performance server
-{:ok, server} = SNMPSimEx.Performance.OptimizedUdpServer.start_optimized(9001, [
+{:ok, server} = SnmpSim.Performance.OptimizedUdpServer.start_optimized(9001, [
   socket_count: 4,           # Multi-socket for load distribution
   worker_pool_size: 16,      # Concurrent packet processors
   optimization_level: :high  # Maximum performance optimizations
 ])
 
 # Start resource-managed device population
-{:ok, _} = SNMPSimEx.Performance.ResourceManager.start_link([
+{:ok, _} = SnmpSim.Performance.ResourceManager.start_link([
   max_devices: 10_000,
   max_memory_mb: 1024
 ])
@@ -225,7 +225,7 @@ device_specs = [
   {:cmts, 50}            # 50 CMTS with environmental variations
 ]
 
-{:ok, result} = SNMPSimEx.MultiDeviceStartup.start_device_population(
+{:ok, result} = SnmpSim.MultiDeviceStartup.start_device_population(
   device_specs,
   port_range: 30_000..39_999,
   behaviors: [:realistic_counters, :time_patterns, :correlations],
@@ -257,10 +257,10 @@ Sim.monitor(60)  # Monitor for 60 seconds
 #   Port 9001 (cable_modem): +2,891,234 in, +1,934,567 out
 
 # Test cable modem specific features
-SNMPSimEx.Device.get(device, "1.3.6.1.2.1.10.127.1.1.4.1.5.3")  # SNR
+SnmpSim.Device.get(device, "1.3.6.1.2.1.10.127.1.1.4.1.5.3")  # SNR
 # => {:ok, {:gauge32, 32}}  # 32 dB SNR
 
-SNMPSimEx.Device.get(device, "1.3.6.1.2.1.25.3.3.1.2.1")  # CPU load
+SnmpSim.Device.get(device, "1.3.6.1.2.1.25.3.3.1.2.1")  # CPU load
 # => {:ok, {:gauge32, 15}}  # 15% CPU utilization
 
 # Walk through all interface counters
@@ -276,22 +276,22 @@ Sim.walk_device(9001, "1.3.6.1.2.1.2.2.1")
 
 ```elixir
 # Run comprehensive performance benchmarks
-results = SNMPSimEx.Performance.Benchmarks.run_benchmark_suite([
+results = SnmpSim.Performance.Benchmarks.run_benchmark_suite([
   concurrent_clients: 100,
   request_rate: 10_000,
   duration: 300_000  # 5 minutes
 ])
 
 # Monitor real-time performance
-{:ok, _} = SNMPSimEx.Performance.PerformanceMonitor.start_link()
+{:ok, _} = SnmpSim.Performance.PerformanceMonitor.start_link()
 
 # Get current performance metrics
-metrics = SNMPSimEx.Performance.PerformanceMonitor.get_current_metrics()
+metrics = SnmpSim.Performance.PerformanceMonitor.get_current_metrics()
 # => %{requests_per_second: 85_432, avg_latency_ms: 2.3, memory_usage_mb: 847}
 
 # Inject realistic error conditions for testing
-SNMPSimEx.ErrorInjector.inject_packet_loss(device, 0.05)  # 5% packet loss
-SNMPSimEx.ErrorInjector.inject_timeout(device, 0.02, 5000)  # 2% timeouts, 5s duration
+SnmpSim.ErrorInjector.inject_packet_loss(device, 0.05)  # 5% packet loss
+SnmpSim.ErrorInjector.inject_timeout(device, 0.02, 5000)  # 2% timeouts, 5s duration
 ```
 
 ## Production Deployment (Phase 8 Complete!)
@@ -472,7 +472,7 @@ MIX_ENV=dev mix test             # Development environment
 
 ## Project Completion Status 🎉
 
-**SNMPSimEx is now feature-complete!** All 8 phases have been successfully implemented and tested:
+**SnmpSim is now feature-complete!** All 8 phases have been successfully implemented and tested:
 
 1. ✅ **Core SNMP Protocol** - Full v1/v2c support with walk file parsing
 2. ✅ **Enhanced Behaviors** - MIB compilation and realistic value simulation
@@ -487,7 +487,7 @@ The project represents a **complete, production-ready SNMP simulation platform**
 
 ## Web Management Interface
 
-SNMPSimEx is designed to work with a separate Phoenix-based web management interface. See `snmp_sim_ex_webui.md` for the complete feature specification including:
+SnmpSim is designed to work with a separate Phoenix-based web management interface. See `snmp_sim_ex_webui.md` for the complete feature specification including:
 
 - **Walk File Management**: Upload, parse, and analyze SNMP walk files
 - **Device Creation Wizard**: Template-based device creation with bulk operations
@@ -496,7 +496,7 @@ SNMPSimEx is designed to work with a separate Phoenix-based web management inter
 - **Testing & Validation**: Built-in SNMP testing tools and load testing capabilities
 - **Analytics & Reporting**: Usage patterns, performance trends, and capacity planning
 
-The web interface will use SNMPSimEx as a dependency, providing clean separation between the simulation engine and management interface.
+The web interface will use SnmpSim as a dependency, providing clean separation between the simulation engine and management interface.
 
 ## Contributing
 
@@ -520,4 +520,4 @@ MIT License - see LICENSE file for details.
 
 **🎉 Project Status: COMPLETE! All 8 phases successfully implemented and tested!**
 
-*SNMPSimEx - Bringing enterprise-grade SNMP simulation to the Elixir ecosystem.*
+*SnmpSim - Bringing enterprise-grade SNMP simulation to the Elixir ecosystem.*

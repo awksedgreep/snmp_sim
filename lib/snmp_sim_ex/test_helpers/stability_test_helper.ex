@@ -1,9 +1,9 @@
-defmodule SNMPSimEx.TestHelpers.StabilityTestHelper do
+defmodule SnmpSim.TestHelpers.StabilityTestHelper do
   @moduledoc """
   Specialized testing utilities for stability and endurance testing.
   """
   
-  alias SNMPSimEx.{Device, LazyDevicePool}
+  alias SnmpSim.{Device, LazyDevicePool}
   
   @doc """
   Monitors memory usage over a specified duration while running a test function.
@@ -458,16 +458,16 @@ defmodule SNMPSimEx.TestHelpers.StabilityTestHelper do
         {:registered_name, []} ->
           # Check if it's a device process by looking at initial call
           case Process.info(pid, :initial_call) do
-            {:initial_call, {SNMPSimEx.Device, :init, 1}} -> true
-            {:initial_call, {SNMPSimEx.Core.Server, :init, 1}} -> true
+            {:initial_call, {SnmpSim.Device, :init, 1}} -> true
+            {:initial_call, {SnmpSim.Core.Server, :init, 1}} -> true
             _ -> false
           end
         {:registered_name, name} ->
           # Don't kill critical named processes
           case name do
-            SNMPSimEx.MIB.SharedProfiles -> false
-            SNMPSimEx.LazyDevicePool -> false
-            SNMPSimEx.Application -> false
+            SnmpSim.MIB.SharedProfiles -> false
+            SnmpSim.LazyDevicePool -> false
+            SnmpSim.Application -> false
             _ -> false
           end
         nil -> false

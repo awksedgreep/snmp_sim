@@ -1,7 +1,7 @@
-defmodule SNMPSimEx.DeviceDistributionTest do
+defmodule SnmpSim.DeviceDistributionTest do
   use ExUnit.Case, async: false
   
-  alias SNMPSimEx.DeviceDistribution
+  alias SnmpSim.DeviceDistribution
   
   describe "default port assignments" do
     test "returns valid default port assignments" do

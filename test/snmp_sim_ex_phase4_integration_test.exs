@@ -1,8 +1,8 @@
-defmodule SNMPSimExPhase4IntegrationTest do
+defmodule SnmpSimPhase4IntegrationTest do
   use ExUnit.Case, async: false
   
-  alias SNMPSimEx.{LazyDevicePool, DeviceDistribution, MultiDeviceStartup, Device}
-  alias SNMPSimEx.TestHelpers.PortHelper
+  alias SnmpSim.{LazyDevicePool, DeviceDistribution, MultiDeviceStartup, Device}
+  alias SnmpSim.TestHelpers.PortHelper
   
   @moduletag :integration
   

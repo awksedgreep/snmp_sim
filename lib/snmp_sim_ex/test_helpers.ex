@@ -1,13 +1,13 @@
-defmodule SNMPSimEx.TestHelpers do
+defmodule SnmpSim.TestHelpers do
   @moduledoc """
-  Comprehensive SNMP testing utilities for SNMPSimEx.
+  Comprehensive SNMP testing utilities for SnmpSim.
   
   This module provides a rich set of testing utilities for SNMP simulation,
   performance testing, stability testing, and production validation.
   """
   
   require Logger
-  alias SNMPSimEx.{Device, LazyDevicePool}
+  alias SnmpSim.{Device, LazyDevicePool}
   
   @doc """
   Creates test devices with various configurations.

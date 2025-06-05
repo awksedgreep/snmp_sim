@@ -1,11 +1,11 @@
-defmodule SNMPSimEx.Application do
+defmodule SnmpSim.Application do
   # See https://hexdocs.pm/elixir/Application.html
   # for more information on OTP Applications
   @moduledoc false
 
   use Application
 
-  alias SNMPSimEx.Config
+  alias SnmpSim.Config
 
   require Logger
 
@@ -14,12 +14,12 @@ defmodule SNMPSimEx.Application do
     # Start the supervisor first
     children = [
       # Shared profiles manager for memory-efficient device data
-      SNMPSimEx.MIB.SharedProfiles,
+      SnmpSim.MIB.SharedProfiles,
       # Core supervisor for managing device processes
-      {DynamicSupervisor, name: SNMPSimEx.DeviceSupervisor, strategy: :one_for_one}
+      {DynamicSupervisor, name: SnmpSim.DeviceSupervisor, strategy: :one_for_one}
     ]
 
-    opts = [strategy: :one_for_one, name: SNMPSimEx.Supervisor]
+    opts = [strategy: :one_for_one, name: SnmpSim.Supervisor]
     
     case Supervisor.start_link(children, opts) do
       {:ok, pid} ->
@@ -37,14 +37,14 @@ defmodule SNMPSimEx.Application do
     
     case config_result do
       {:ok, config} ->
-        Logger.info("Loading SNMPSimEx configuration...")
+        Logger.info("Loading SnmpSim configuration...")
         case Config.start_from_config(config) do
           {:ok, devices} ->
             Logger.info("Successfully started #{length(devices)} SNMP devices")
         end
       {:error, reason} ->
         Logger.warning("No configuration found or failed to load: #{inspect(reason)}")
-        Logger.info("Starting SNMPSimEx with default settings...")
+        Logger.info("Starting SnmpSim with default settings...")
         start_default_devices()
     end
   end

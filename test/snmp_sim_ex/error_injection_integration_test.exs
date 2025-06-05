@@ -1,9 +1,9 @@
-defmodule SNMPSimEx.ErrorInjectionIntegrationTest do
+defmodule SnmpSim.ErrorInjectionIntegrationTest do
   use ExUnit.Case, async: false
   
-  alias SNMPSimEx.{ErrorInjector, TestScenarios}
-  alias SNMPSimEx.Device
-  alias SNMPSimEx.MIB.SharedProfiles
+  alias SnmpSim.{ErrorInjector, TestScenarios}
+  alias SnmpSim.Device
+  alias SnmpSim.MIB.SharedProfiles
   
   setup do
     # Start shared profiles for testing only if not already started

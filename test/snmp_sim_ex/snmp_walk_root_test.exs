@@ -1,4 +1,4 @@
-defmodule SNMPSimEx.SNMPWalkRootTest do
+defmodule SnmpSim.SNMPWalkRootTest do
   @moduledoc """
   Tests for SNMP walk functionality starting from root OIDs.
   
@@ -9,10 +9,10 @@ defmodule SNMPSimEx.SNMPWalkRootTest do
   
   use ExUnit.Case, async: false
   
-  alias SNMPSimEx.{Device, LazyDevicePool}
-  alias SNMPSimEx.MIB.SharedProfiles
+  alias SnmpSim.{Device, LazyDevicePool}
+  alias SnmpSim.MIB.SharedProfiles
   alias SnmpLib.PDU
-  alias SNMPSimEx.TestHelpers.PortHelper
+  alias SnmpSim.TestHelpers.PortHelper
   
   setup do
     # Ensure clean state

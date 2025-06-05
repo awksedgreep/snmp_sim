@@ -1,4 +1,4 @@
-defmodule SNMPSimEx.Device do
+defmodule SnmpSim.Device do
   @moduledoc """
   Lightweight Device GenServer for handling SNMP requests.
   Uses shared profiles and minimal device-specific state for scalability.
@@ -13,10 +13,10 @@ defmodule SNMPSimEx.Device do
   use GenServer
   require Logger
 
-  alias SNMPSimEx.{DeviceDistribution}
-  alias SNMPSimEx.Core.Server
+  alias SnmpSim.{DeviceDistribution}
+  alias SnmpSim.Core.Server
   alias SnmpLib.PDU
-  alias SNMPSimEx.MIB.SharedProfiles
+  alias SnmpSim.MIB.SharedProfiles
 
   defstruct [
     :device_id,
@@ -73,7 +73,7 @@ defmodule SNMPSimEx.Device do
         community: "public"
       }
       
-      {:ok, device} = SNMPSimEx.Device.start_link(device_config)
+      {:ok, device} = SnmpSim.Device.start_link(device_config)
       
   """
   def start_link(device_config) when is_map(device_config) do
@@ -122,18 +122,18 @@ defmodule SNMPSimEx.Device do
   Useful for test cleanup when devices may have been left running.
   """
   def cleanup_all_devices do
-    # Find all processes running SNMPSimEx.Device
+    # Find all processes running SnmpSim.Device
     device_processes = Process.list()
     |> Enum.filter(fn pid ->
       try do
         case Process.info(pid, :dictionary) do
           {:dictionary, dict} ->
-            # Check if this process is running SNMPSimEx.Device
+            # Check if this process is running SnmpSim.Device
             Enum.any?(dict, fn 
-              {:"$initial_call", {SNMPSimEx.Device, :init, 1}} -> true
+              {:"$initial_call", {SnmpSim.Device, :init, 1}} -> true
               {:"$ancestors", ancestors} when is_list(ancestors) ->
                 Enum.any?(ancestors, fn ancestor ->
-                  is_atom(ancestor) and Atom.to_string(ancestor) =~ "SNMPSimEx"
+                  is_atom(ancestor) and Atom.to_string(ancestor) =~ "SnmpSim"
                 end)
               _ -> false
             end)

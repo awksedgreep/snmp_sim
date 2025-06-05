@@ -14,11 +14,11 @@ IO.puts("\n1. Testing SharedProfiles...")
 
 # Test SharedProfiles directly
 IO.puts("Loading cable_modem walk profile...")
-result = SNMPSimEx.MIB.SharedProfiles.load_walk_profile(:cable_modem, "priv/walks/cable_modem.walk")
+result = SnmpSim.MIB.SharedProfiles.load_walk_profile(:cable_modem, "priv/walks/cable_modem.walk")
 IO.puts("Load result: #{inspect(result)}")
 
 IO.puts("\nTesting OID retrieval from SharedProfiles...")
-test_result = SNMPSimEx.MIB.SharedProfiles.get_oid_value(:cable_modem, "1.3.6.1.2.1.1.1.0", %{device_id: "test"})
+test_result = SnmpSim.MIB.SharedProfiles.get_oid_value(:cable_modem, "1.3.6.1.2.1.1.1.0", %{device_id: "test"})
 IO.puts("SharedProfiles get_oid_value result: #{inspect(test_result)}")
 
 IO.puts("\n2. Testing Device module...")
@@ -32,11 +32,11 @@ device_config = %{
 }
 
 IO.puts("Starting test device...")
-{:ok, device_pid} = SNMPSimEx.Device.start_link(device_config)
+{:ok, device_pid} = SnmpSim.Device.start_link(device_config)
 Process.sleep(100)
 
 IO.puts("Testing device OID retrieval...")
-device_result = SNMPSimEx.Device.get(device_pid, "1.3.6.1.2.1.1.1.0")
+device_result = SnmpSim.Device.get(device_pid, "1.3.6.1.2.1.1.1.0")
 IO.puts("Device.get result: #{inspect(device_result)}")
 
 IO.puts("\n3. Testing SNMP PDU processing...")
@@ -78,6 +78,6 @@ case pdu_result do
 end
 
 # Cleanup
-SNMPSimEx.Device.stop(device_pid)
+SnmpSim.Device.stop(device_pid)
 
 IO.puts("\n=== Debug Complete ===")

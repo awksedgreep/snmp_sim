@@ -9,7 +9,7 @@ Code.compile_file("lib/snmp_sim_ex/value_simulator.ex")
 
 # Test loading walk file directly
 IO.puts("=== Testing Walk Parser ===")
-case SNMPSimEx.WalkParser.parse_walk_file("priv/walks/cable_modem.walk") do
+case SnmpSim.WalkParser.parse_walk_file("priv/walks/cable_modem.walk") do
   {:ok, oid_map} ->
     IO.puts("Successfully parsed walk file")
     IO.puts("Total OIDs: #{map_size(oid_map)}")
@@ -37,7 +37,7 @@ IO.puts("\n=== Testing SharedProfiles (if running) ===")
 
 try do
   # Check if SharedProfiles is running
-  case GenServer.whereis(SNMPSimEx.MIB.SharedProfiles) do
+  case GenServer.whereis(SnmpSim.MIB.SharedProfiles) do
     nil ->
       IO.puts("SharedProfiles not running - this is expected in script mode")
     pid ->
@@ -45,7 +45,7 @@ try do
       
       # Try to get a value
       device_state = %{device_id: "test", uptime: 3600}
-      case SNMPSimEx.MIB.SharedProfiles.get_oid_value(:cable_modem, "1.3.6.1.2.1.1.1.0", device_state) do
+      case SnmpSim.MIB.SharedProfiles.get_oid_value(:cable_modem, "1.3.6.1.2.1.1.1.0", device_state) do
         {:ok, value} ->
           IO.puts("✅ Got value from SharedProfiles: #{inspect(value)}")
         {:error, reason} ->

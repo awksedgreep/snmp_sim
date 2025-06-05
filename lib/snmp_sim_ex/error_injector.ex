@@ -1,4 +1,4 @@
-defmodule SNMPSimEx.ErrorInjector do
+defmodule SnmpSim.ErrorInjector do
   @moduledoc """
   Inject realistic error conditions for comprehensive testing.
   
@@ -17,13 +17,13 @@ defmodule SNMPSimEx.ErrorInjector do
   ## Usage
   
       # Inject timeout condition
-      SNMPSimEx.ErrorInjector.inject_timeout(device_pid, probability: 0.1, duration: 5000)
+      SnmpSim.ErrorInjector.inject_timeout(device_pid, probability: 0.1, duration: 5000)
       
       # Simulate packet loss
-      SNMPSimEx.ErrorInjector.inject_packet_loss(device_pid, loss_rate: 0.05)
+      SnmpSim.ErrorInjector.inject_packet_loss(device_pid, loss_rate: 0.05)
       
       # Generate SNMP errors
-      SNMPSimEx.ErrorInjector.inject_snmp_error(device_pid, :noSuchName, ["1.3.6.1.2.1.2.2.1.99"])
+      SnmpSim.ErrorInjector.inject_snmp_error(device_pid, :noSuchName, ["1.3.6.1.2.1.2.2.1.99"])
       
   """
   

@@ -1,4 +1,4 @@
-defmodule SNMPSimEx.TestScenarios do
+defmodule SnmpSim.TestScenarios do
   @moduledoc """
   Pre-built test scenarios for common network conditions.
   
@@ -30,7 +30,7 @@ defmodule SNMPSimEx.TestScenarios do
   """
   
   require Logger
-  alias SNMPSimEx.ErrorInjector
+  alias SnmpSim.ErrorInjector
   
   @type device_list :: list(pid()) | list({:device_type, integer()})
   @type scenario_result :: %{

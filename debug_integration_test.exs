@@ -1,7 +1,7 @@
 defmodule DebugIntegrationTest do
   use ExUnit.Case, async: false
 
-  alias SNMPSimEx.MIB.SharedProfiles
+  alias SnmpSim.MIB.SharedProfiles
 
   @moduledoc """
   Debug integration test to understand why SharedProfiles isn't working

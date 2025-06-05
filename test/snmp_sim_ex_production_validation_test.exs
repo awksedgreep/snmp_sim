@@ -1,6 +1,6 @@
-defmodule SNMPSimExProductionValidationTest do
+defmodule SnmpSimProductionValidationTest do
   @moduledoc """
-  Production validation tests for SNMPSimEx.
+  Production validation tests for SnmpSim.
   
   These tests validate that the system meets production requirements and
   behaves correctly under production-like conditions. They test realistic
@@ -16,8 +16,8 @@ defmodule SNMPSimExProductionValidationTest do
   """
   
   use ExUnit.Case, async: false
-  alias SNMPSimEx.{Device, LazyDevicePool, Core.Server}
-  alias SNMPSimEx.TestHelpers.{ProductionTestHelper, PerformanceHelper, PortHelper}
+  alias SnmpSim.{Device, LazyDevicePool, Core.Server}
+  alias SnmpSim.TestHelpers.{ProductionTestHelper, PerformanceHelper, PortHelper}
   
   @moduletag :production_validation
   @moduletag timeout: 300_000  # 5 minutes default timeout

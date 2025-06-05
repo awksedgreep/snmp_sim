@@ -1,4 +1,4 @@
-defmodule SNMPSimEx.Performance.ResourceManager do
+defmodule SnmpSim.Performance.ResourceManager do
   @moduledoc """
   System resource management for SNMP simulator.
   Enforces memory limits, device limits, and automatic cleanup.
@@ -8,7 +8,7 @@ defmodule SNMPSimEx.Performance.ResourceManager do
   use GenServer
   require Logger
 
-  alias SNMPSimEx.Device
+  alias SnmpSim.Device
 
   # Resource limits configuration
   @default_max_devices 10_000

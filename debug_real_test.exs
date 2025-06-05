@@ -1,8 +1,8 @@
 defmodule DebugRealTest do
   use ExUnit.Case, async: false
 
-  alias SNMPSimEx.MIB.SharedProfiles
-  alias SNMPSimEx.Device
+  alias SnmpSim.MIB.SharedProfiles
+  alias SnmpSim.Device
 
   test "mimic exact integration test setup" do
     # Mimic the exact setup from the integration test

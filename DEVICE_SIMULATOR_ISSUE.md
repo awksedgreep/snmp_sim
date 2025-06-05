@@ -1,7 +1,7 @@
 # DeviceSimulator Module Missing - SNMP Device Starting Issue
 
 ## Problem Summary
-The SNMPSimEx Web UI can successfully create devices but fails when trying to start them due to a missing `DeviceSimulator` module. Device creation works perfectly, but the SNMP simulation backend is not available.
+The SnmpSim Web UI can successfully create devices but fails when trying to start them due to a missing `DeviceSimulator` module. Device creation works perfectly, but the SNMP simulation backend is not available.
 
 ## Error Details
 ```
@@ -98,14 +98,14 @@ The project appears to use:
 - Elixir/Phoenix for web UI
 - Ecto for database
 - SQLite for storage
-- The SNMPSimEx core library (which may contain the missing pieces)
+- The SnmpSim core library (which may contain the missing pieces)
 
 ## Files to Examine
 - `lib/snmp_sim_ex_ui/device_manager.ex` - calls DeviceSimulator
 - `deps/snmp_sim_ex/` - may contain the actual SNMP simulation code
 - `lib/snmp_sim_ex_ui/` - web UI components (working)
 
-The SNMPSimEx core library (`deps/snmp_sim_ex/`) likely contains the SNMP simulation functionality, but it may not be properly integrated or the DeviceSimulator module may be missing or misnamed.
+The SnmpSim core library (`deps/snmp_sim_ex/`) likely contains the SNMP simulation functionality, but it may not be properly integrated or the DeviceSimulator module may be missing or misnamed.
 
 ## Goal
 Get device starting to work so users can:

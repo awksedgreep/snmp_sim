@@ -1,4 +1,4 @@
-defmodule SNMPSimEx.TestHelpers.SNMPTestHelpers do
+defmodule SnmpSim.TestHelpers.SNMPTestHelpers do
   @moduledoc """
   Shared SNMP test utilities that handle the new SnmpLib.PDU API
   while maintaining compatibility with existing test expectations.

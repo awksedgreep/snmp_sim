@@ -1,4 +1,4 @@
-defmodule SNMPSimEx do
+defmodule SnmpSim do
   @moduledoc """
   SNMP Simulator for Elixir - Production-ready SNMP device simulation.
   
@@ -6,7 +6,7 @@ defmodule SNMPSimEx do
   realistic behaviors, and large-scale testing scenarios.
   """
 
-  alias SNMPSimEx.{Device, LazyDevicePool}
+  alias SnmpSim.{Device, LazyDevicePool}
 
   @doc """
   Start a single SNMP device with the given profile.
@@ -14,11 +14,11 @@ defmodule SNMPSimEx do
   ## Examples
   
       # Start device with walk file profile
-      profile = SNMPSimEx.ProfileLoader.load_profile(
+      profile = SnmpSim.ProfileLoader.load_profile(
         :cable_modem, 
         {:walk_file, "priv/walks/cable_modem.walk"}
       )
-      {:ok, device} = SNMPSimEx.start_device(profile, port: 9001)
+      {:ok, device} = SnmpSim.start_device(profile, port: 9001)
       
   """
   def start_device(profile, opts \\ []) do
@@ -47,7 +47,7 @@ defmodule SNMPSimEx do
         {:switch, {:oid_walk, "priv/walks/switch.walk"}, count: 50}
       ]
       
-      {:ok, devices} = SNMPSimEx.start_device_population(
+      {:ok, devices} = SnmpSim.start_device_population(
         device_configs, 
         port_range: 30_000..39_999
       )

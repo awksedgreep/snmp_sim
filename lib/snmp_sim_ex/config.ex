@@ -1,8 +1,8 @@
-defmodule SNMPSimEx.Config do
+defmodule SnmpSim.Config do
   @moduledoc """
-  Configuration management for SNMPSimEx with support for JSON and YAML files.
+  Configuration management for SnmpSim with support for JSON and YAML files.
   
-  This module provides a convenient way to configure SNMPSimEx using external
+  This module provides a convenient way to configure SnmpSim using external
   configuration files, making it especially useful for container deployments
   and development environments.
   
@@ -14,19 +14,19 @@ defmodule SNMPSimEx.Config do
   ## Usage
   
       # Load from JSON file
-      {:ok, config} = SNMPSimEx.Config.load_from_file("config/devices.json")
-      {:ok, devices} = SNMPSimEx.Config.start_from_config(config)
+      {:ok, config} = SnmpSim.Config.load_from_file("config/devices.json")
+      {:ok, devices} = SnmpSim.Config.start_from_config(config)
       
       # Load from YAML file
-      {:ok, config} = SNMPSimEx.Config.load_yaml("config/devices.yaml")
-      {:ok, devices} = SNMPSimEx.Config.start_from_config(config)
+      {:ok, config} = SnmpSim.Config.load_yaml("config/devices.yaml")
+      {:ok, devices} = SnmpSim.Config.start_from_config(config)
       
       # Load from environment
-      {:ok, config} = SNMPSimEx.Config.load_from_environment()
-      {:ok, devices} = SNMPSimEx.Config.start_from_config(config)
+      {:ok, config} = SnmpSim.Config.load_from_environment()
+      {:ok, devices} = SnmpSim.Config.start_from_config(config)
   """
   
-  alias SNMPSimEx.{Device, Performance.ResourceManager}
+  alias SnmpSim.{Device, Performance.ResourceManager}
   
   require Logger
   
@@ -114,7 +114,7 @@ defmodule SNMPSimEx.Config do
   Starts devices and services based on the provided configuration.
   """
   def start_from_config(%{snmp_sim_ex: config}) do
-    Logger.info("Starting SNMPSimEx from configuration")
+    Logger.info("Starting SnmpSim from configuration")
     
     # Apply global settings
     apply_global_settings(config[:global_settings] || %{})
@@ -128,7 +128,7 @@ defmodule SNMPSimEx.Config do
     # Start device groups
     devices = start_device_groups(config[:device_groups] || [])
     
-    Logger.info("SNMPSimEx configuration loaded successfully. Started #{length(devices)} devices.")
+    Logger.info("SnmpSim configuration loaded successfully. Started #{length(devices)} devices.")
     {:ok, devices}
   end
   

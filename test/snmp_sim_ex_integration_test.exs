@@ -1,12 +1,12 @@
-defmodule SNMPSimExIntegrationTest do
+defmodule SnmpSimIntegrationTest do
   use ExUnit.Case, async: false
   
-  alias SNMPSimEx.ProfileLoader
-  alias SNMPSimEx.LazyDevicePool
-  alias SNMPSimEx.Device
+  alias SnmpSim.ProfileLoader
+  alias SnmpSim.LazyDevicePool
+  alias SnmpSim.Device
   alias SnmpLib.PDU
-  alias SNMPSimEx.MIB.SharedProfiles
-  alias SNMPSimEx.TestHelpers.PortHelper
+  alias SnmpSim.MIB.SharedProfiles
+  alias SnmpSim.TestHelpers.PortHelper
 
   describe "End-to-End Device Simulation" do
     setup do

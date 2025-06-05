@@ -1,7 +1,7 @@
-defmodule SNMPSimEx.BulkOperationsTest do
+defmodule SnmpSim.BulkOperationsTest do
   use ExUnit.Case, async: false
   
-  alias SNMPSimEx.{BulkOperations, OIDTree}
+  alias SnmpSim.{BulkOperations, OIDTree}
   
   describe "GETBULK Request Handling" do
     setup do

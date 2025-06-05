@@ -1,4 +1,4 @@
-defmodule SNMPSimEx.SNMPOperationsTest do
+defmodule SnmpSim.SNMPOperationsTest do
   @moduledoc """
   Tests for SNMP operation types (GET, GETNEXT, GETBULK) to ensure
   they work correctly and return proper SNMP data types.
@@ -9,10 +9,10 @@ defmodule SNMPSimEx.SNMPOperationsTest do
   
   use ExUnit.Case, async: false
   
-  alias SNMPSimEx.Core.Server
+  alias SnmpSim.Core.Server
   alias SnmpLib.PDU
-  alias SNMPSimEx.Device
-  alias SNMPSimEx.TestHelpers.PortHelper
+  alias SnmpSim.Device
+  alias SnmpSim.TestHelpers.PortHelper
   
   @test_community "public"
   

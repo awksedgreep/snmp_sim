@@ -1,4 +1,4 @@
-defmodule SNMPSimEx.Performance.OptimizedUdpServer do
+defmodule SnmpSim.Performance.OptimizedUdpServer do
   @moduledoc """
   High-performance UDP server optimized for 100K+ requests/second throughput.
   
@@ -26,8 +26,8 @@ defmodule SNMPSimEx.Performance.OptimizedUdpServer do
   ]
 
   alias SnmpLib.PDU
-  alias SNMPSimEx.Performance.PerformanceMonitor
-  alias SNMPSimEx.Performance.OptimizedDevicePool
+  alias SnmpSim.Performance.PerformanceMonitor
+  alias SnmpSim.Performance.OptimizedDevicePool
 
   # Performance optimization constants
   @default_socket_count 4              # Multi-socket for load distribution
@@ -193,7 +193,7 @@ defmodule SNMPSimEx.Performance.OptimizedUdpServer do
   # ... rest of the code remains the same ...
 
 defp via_tuple(port) do
-  {:via, Registry, {SNMPSimEx.ServerRegistry, port}}
+  {:via, Registry, {SnmpSim.ServerRegistry, port}}
 end
 
 defp update_socket_opts(base_opts, buffer_size) do
