@@ -2,7 +2,7 @@
 import Config
 
 # Default application configuration
-config :snmp_sim_ex,
+config :snmp_sim,
   # Application metadata
   app_name: "SnmpSim",
   app_version: "0.1.0",
@@ -58,7 +58,7 @@ config :logger, :console,
   colors: [enabled: true]
 
 # Performance monitoring configuration
-config :snmp_sim_ex, :performance_monitor,
+config :snmp_sim, :performance_monitor,
   enabled: true,
   collection_interval_ms: 30_000,
   metrics_retention_hours: 24,
@@ -72,7 +72,7 @@ config :snmp_sim_ex, :performance_monitor,
   alert_cooldown_ms: 5 * 60 * 1000 # 5 minutes
 
 # Resource manager configuration  
-config :snmp_sim_ex, :resource_manager,
+config :snmp_sim, :resource_manager,
   enabled: true,
   max_devices: 10_000,
   max_memory_mb: 1024,
@@ -81,7 +81,7 @@ config :snmp_sim_ex, :resource_manager,
   emergency_cleanup_enabled: true
 
 # Device pool configuration
-config :snmp_sim_ex, :device_pool,
+config :snmp_sim, :device_pool,
   optimization_enabled: true,
   tier_system_enabled: true,
   tier_promotion_threshold: 100,     # Requests per monitoring period
@@ -91,7 +91,7 @@ config :snmp_sim_ex, :device_pool,
   warm_tier_max_devices: 5000
 
 # Behavior configuration
-config :snmp_sim_ex, :behaviors,
+config :snmp_sim, :behaviors,
   realistic_counters_enabled: true,
   time_patterns_enabled: true,
   correlations_enabled: true,
@@ -99,14 +99,14 @@ config :snmp_sim_ex, :behaviors,
   device_characteristics_enabled: true
 
 # Test scenarios configuration
-config :snmp_sim_ex, :test_scenarios,
+config :snmp_sim, :test_scenarios,
   enabled: false,
   default_duration_seconds: 300,
   max_concurrent_scenarios: 10,
   scenario_cleanup_enabled: true
 
 # Health check configuration
-config :snmp_sim_ex, :health_check,
+config :snmp_sim, :health_check,
   enabled: true,
   port: 4000,
   path: "/health",

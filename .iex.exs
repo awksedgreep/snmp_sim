@@ -1,6 +1,42 @@
 # SnmpSim IEx Helper Functions
 # Load this with: iex -S mix
 
+# Ensure the application and devices are started
+Application.ensure_all_started(:snmp_sim)
+
+# Wait a moment for startup
+Process.sleep(1000)
+
+# Check if devices are running and start them if not
+case DynamicSupervisor.which_children(SnmpSim.DeviceSupervisor) do
+  [] ->
+    IO.puts "🔧 No devices found, starting test devices..."
+    
+    # Start test devices manually if config didn't load
+    test_devices = [
+      %{port: 30000, device_type: :cable_modem, device_id: "test_cable_modems_30000", community: "public"},
+      %{port: 30001, device_type: :cable_modem, device_id: "test_cable_modems_30001", community: "public"},
+      %{port: 31000, device_type: :switch, device_id: "test_switches_31000", community: "public"},
+      %{port: 32000, device_type: :router, device_id: "test_routers_32000", community: "public"}
+    ]
+    
+    Enum.each(test_devices, fn config ->
+      case DynamicSupervisor.start_child(SnmpSim.DeviceSupervisor, {SnmpSim.Device, config}) do
+        {:ok, _pid} -> 
+          IO.puts "✅ Started device #{config.device_id} on port #{config.port}"
+        {:error, reason} -> 
+          IO.puts "❌ Failed to start device #{config.device_id}: #{inspect(reason)}"
+      end
+    end)
+    
+  children ->
+    IO.puts "✅ Found #{length(children)} running devices"
+end
+
+# Show running devices
+running_devices = DynamicSupervisor.which_children(SnmpSim.DeviceSupervisor)
+IO.puts "📊 Active devices: #{length(running_devices)}"
+
 IO.puts """
 🚀 SnmpSim Interactive Console
 ================================
@@ -50,7 +86,7 @@ defmodule Sim do
     ]
     
     results = Enum.map(devices, fn config ->
-      case Device.start_link(config) do
+      case DynamicSupervisor.start_child(SnmpSim.DeviceSupervisor, {SnmpSim.Device, config}) do
         {:ok, pid} ->
           Process.register(pid, String.to_atom("device_#{config.port}"))
           {config.port, config.device_type, pid, :ok}
@@ -114,14 +150,10 @@ defmodule Sim do
 
   @doc "List all running devices"
   def list_devices do
-    devices = Process.registered()
-    |> Enum.filter(fn name -> 
-      String.starts_with?(Atom.to_string(name), "device_")
-    end)
-    |> Enum.map(fn name ->
-      pid = Process.whereis(name)
+    devices = DynamicSupervisor.which_children(SnmpSim.DeviceSupervisor)
+    |> Enum.map(fn {_, pid, _, _} ->
       if Process.alive?(pid) do
-        port = name |> Atom.to_string() |> String.replace("device_", "") |> String.to_integer()
+        port = pid |> Process.info() |> Keyword.get(:registered_name) |> elem(1)
         info = Device.get_info(pid)
         {port, info.device_type, info.device_id, pid}
       else
@@ -416,9 +448,8 @@ defmodule Sim do
       device_id: device_id
     }
     
-    case Device.start_link(config) do
+    case DynamicSupervisor.start_child(SnmpSim.DeviceSupervisor, {SnmpSim.Device, config}) do
       {:ok, pid} ->
-        Process.register(pid, String.to_atom("device_#{port}"))
         if print do
           IO.puts "✅ Created #{device_type} on port #{port} (#{device_id})"
         end
@@ -433,30 +464,34 @@ defmodule Sim do
   end
 
   defp get_device_pid(port) do
-    name = String.to_atom("device_#{port}")
-    
-    case Process.whereis(name) do
-      nil -> {:error, "No device running on port #{port}"}
-      pid when is_pid(pid) ->
-        if Process.alive?(pid) do
-          {:ok, pid}
+    devices = DynamicSupervisor.which_children(SnmpSim.DeviceSupervisor)
+    |> Enum.map(fn {_, pid, _, _} ->
+      if Process.alive?(pid) do
+        info = Device.get_info(pid)
+        if info.port == port do
+          pid
         else
-          {:error, "Device on port #{port} is not alive"}
+          nil
         end
+      else
+        nil
+      end
+    end)
+    |> Enum.reject(&is_nil/1)
+    
+    case devices do
+      [pid] -> {:ok, pid}
+      [] -> {:error, "No device running on port #{port}"}
+      _ -> {:error, "Multiple devices found on port #{port}"}
     end
   end
 
   defp get_running_devices do
-    Process.registered()
-    |> Enum.filter(fn name -> 
-      String.starts_with?(Atom.to_string(name), "device_")
-    end)
-    |> Enum.map(fn name ->
-      pid = Process.whereis(name)
+    DynamicSupervisor.which_children(SnmpSim.DeviceSupervisor)
+    |> Enum.map(fn {_, pid, _, _} ->
       if Process.alive?(pid) do
-        port = name |> Atom.to_string() |> String.replace("device_", "") |> String.to_integer()
         info = Device.get_info(pid)
-        {port, info.device_type, info.device_id, pid}
+        {info.port, info.device_type, info.device_id, pid}
       else
         nil
       end

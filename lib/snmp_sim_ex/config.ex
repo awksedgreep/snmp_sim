@@ -373,7 +373,7 @@ defmodule SnmpSim.Config do
         community: group[:community] || "public"
       }
       
-      case Device.start_link(device_config) do
+      case DynamicSupervisor.start_child(SnmpSim.DeviceSupervisor, {Device, device_config}) do
         {:ok, device} ->
           # Apply behaviors if specified
           apply_device_behaviors(device, behaviors)

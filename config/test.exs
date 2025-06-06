@@ -2,7 +2,7 @@
 import Config
 
 # Test environment overrides for fast, isolated testing
-config :snmp_sim_ex,
+config :snmp_sim,
   # Minimal limits for testing
   max_devices: 50,
   max_memory_mb: 128,
@@ -41,7 +41,7 @@ config :logger, :console,
   colors: [enabled: false]
 
 # Disabled performance monitoring for tests
-config :snmp_sim_ex, :performance_monitor,
+config :snmp_sim, :performance_monitor,
   enabled: false,
   collection_interval_ms: 1000,
   metrics_retention_hours: 1,
@@ -55,7 +55,7 @@ config :snmp_sim_ex, :performance_monitor,
   alert_cooldown_ms: 1000
 
 # Minimal resource manager for tests
-config :snmp_sim_ex, :resource_manager,
+config :snmp_sim, :resource_manager,
   enabled: false,                       # Disabled for test isolation
   max_devices: 50,
   max_memory_mb: 128,
@@ -64,7 +64,7 @@ config :snmp_sim_ex, :resource_manager,
   emergency_cleanup_enabled: false
 
 # Minimal device pool for tests
-config :snmp_sim_ex, :device_pool,
+config :snmp_sim, :device_pool,
   optimization_enabled: false,          # Disabled for predictable tests
   tier_system_enabled: false,           # Disabled for simpler tests
   tier_promotion_threshold: 5,
@@ -74,14 +74,14 @@ config :snmp_sim_ex, :device_pool,
   warm_tier_max_devices: 30
 
 # Enable test scenarios for testing
-config :snmp_sim_ex, :test_scenarios,
+config :snmp_sim, :test_scenarios,
   enabled: true,
   default_duration_seconds: 5,          # Very short for tests
   max_concurrent_scenarios: 3,
   scenario_cleanup_enabled: true
 
 # Fast health checks for tests
-config :snmp_sim_ex, :health_check,
+config :snmp_sim, :health_check,
   enabled: false,                       # Disabled unless specifically testing
   port: 4001,                          # Different port to avoid conflicts
   path: "/health",
@@ -93,7 +93,7 @@ config :snmp_sim_ex, :health_check,
   ]
 
 # Minimal behavior features for faster tests
-config :snmp_sim_ex, :behaviors,
+config :snmp_sim, :behaviors,
   realistic_counters_enabled: false,    # Disabled for predictable tests
   time_patterns_enabled: false,         # Disabled for faster tests
   correlations_enabled: false,          # Disabled for simpler tests
@@ -110,13 +110,13 @@ config :ex_unit,
   assert_receive_timeout: 1000
 
 # Test database configuration (if needed)
-config :snmp_sim_ex, :database,
+config :snmp_sim, :database,
   enabled: false,                       # Disabled for test isolation
   pool_size: 1,
   timeout: 5000
 
 # Test security settings (permissive for testing)
-config :snmp_sim_ex, :security,
+config :snmp_sim, :security,
   enable_rate_limiting: false,
   max_requests_per_second: 1000,
   enable_ip_whitelisting: false,
@@ -124,14 +124,14 @@ config :snmp_sim_ex, :security,
   enable_audit_logging: false
 
 # Disabled telemetry for tests
-config :snmp_sim_ex, :telemetry,
+config :snmp_sim, :telemetry,
   enabled: false,
   metrics_interval_ms: 1000,
   export_prometheus: false,
   export_influxdb: false
 
 # Test helper configuration
-config :snmp_sim_ex, :test_helpers,
+config :snmp_sim, :test_helpers,
   cleanup_on_exit: true,
   auto_start_devices: false,
   mock_network_delays: false,

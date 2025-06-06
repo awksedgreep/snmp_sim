@@ -711,7 +711,7 @@ defmodule SnmpSim.Device do
     end
   end
 
-  # Handle PDU format from tests (with type field)
+  # Handle GET PDU format from tests (with type field)
   defp process_snmp_pdu(%{type: pdu_type} = pdu, state) when pdu_type in [@get_request, :get_request, 0xA0] do
     # Extract variable bindings from either varbinds or variable_bindings field
     varbinds = Map.get(pdu, :varbinds, Map.get(pdu, :variable_bindings, []))
@@ -766,6 +766,10 @@ defmodule SnmpSim.Device do
         Logger.error("Error in GETNEXT PDU processing: #{error_type} #{inspect(reason)}")
         error_response = PDU.create_error_response(pdu, @gen_err, 1)
         {:ok, error_response}
+      :exit, reason ->
+        Logger.error("Exit in GETNEXT PDU processing: #{inspect(reason)}")
+        error_response = PDU.create_error_response(pdu, @gen_err, 1)
+        {:ok, error_response}
     end
   end
 
@@ -798,6 +802,10 @@ defmodule SnmpSim.Device do
     catch
       error_type, reason ->
         Logger.error("Error in GETNEXT PDU processing: #{error_type} #{inspect(reason)}")
+        error_response = PDU.create_error_response(pdu, @gen_err, 1)
+        {:ok, error_response}
+      :exit, reason ->
+        Logger.error("Exit in GETNEXT PDU processing: #{inspect(reason)}")
         error_response = PDU.create_error_response(pdu, @gen_err, 1)
         {:ok, error_response}
     end
@@ -1296,13 +1304,16 @@ defmodule SnmpSim.Device do
     # Add time-of-day variation (peak evening hours)
     time_factor = get_time_factor()
     
-    # Add some randomness for realistic simulation
-    jitter = :rand.uniform(21) - 10  # -10% to +10%
-    jitter_factor = 1.0 + (jitter / 100.0)
+    # Higher utilization = more errors (congestion)
+    utilization_impact = 1.0 + (time_factor - 0.8) * 2.0  # 0.6x to 2.4x
+    
+    # Signal quality impact (simulated via random factor)
+    signal_quality = 0.7 + :rand.uniform(6) / 10  # 0.7 to 1.3
+    signal_impact = 2.0 - signal_quality  # Worse signal = more errors
     
     # Calculate total increment
-    rate_with_variation = trunc(base_rate * time_factor * jitter_factor)
-    total_increment = rate_with_variation * uptime_seconds
+    rate_with_variation = base_rate * utilization_impact * signal_impact
+    total_increment = trunc(rate_with_variation * uptime_seconds)
     
     # Add some accumulated variance
     base_variance = div(total_increment, 20)  # 5% base variance
@@ -1367,15 +1378,15 @@ defmodule SnmpSim.Device do
     
     # Calculate error increment
     effective_rate = base_error_rate * utilization_impact * signal_impact
-    total_errors = effective_rate * uptime_seconds
+    total_errors = trunc(effective_rate * uptime_seconds)
     
     # Add burst errors occasionally
     burst_probability = 0.05  # 5% chance of error burst
     if :rand.uniform() < burst_probability do
       burst_errors = :rand.uniform(10) + 5  # 5-15 extra errors
-      trunc(total_errors + burst_errors)
+      max(0, total_errors + burst_errors)
     else
-      trunc(total_errors)
+      total_errors
     end
   end
 
@@ -1394,10 +1405,10 @@ defmodule SnmpSim.Device do
     utilization_factor = 1.0 - (time_factor - 0.7) * 0.1  # Small impact
     
     # Calculate final SNR with realistic bounds
-    snr = base_snr * utilization_factor + weather_impact
+    snr = trunc(base_snr * utilization_factor + weather_impact)
     
     # Clamp to realistic cable modem SNR range (15-45 dB)
-    max(15, min(45, trunc(snr)))
+    max(15, min(45, snr))
   end
 
   defp calculate_cpu_gauge(state) do
@@ -1412,15 +1423,15 @@ defmodule SnmpSim.Device do
     
     # Add time-of-day variation (more load during peak hours)
     time_factor = get_time_factor()
-    time_cpu_impact = (time_factor - 0.8) * 20  # 0-14% additional load during peak
+    time_cpu_impact = trunc((time_factor - 0.8) * 20)  # 0-14% additional load during peak
     
     # Add traffic correlation (higher traffic = higher CPU)
     traffic_factor = min(time_factor, 1.2)  # Cap at 1.2x
-    traffic_cpu_impact = (traffic_factor - 1.0) * 15  # 0-3% additional load
+    traffic_cpu_impact = trunc((traffic_factor - 1.0) * 15)  # 0-3% additional load
     
     # Add random variation for realistic simulation
     cpu_jitter = :rand.uniform(21) - 10  # -10% to +10%
-    jitter_impact = base_cpu * (cpu_jitter / 100.0)
+    jitter_impact = trunc(base_cpu * (cpu_jitter / 100.0))
     
     # Occasional CPU spikes (process startup, background tasks)
     spike_probability = 0.02  # 2% chance
@@ -1434,7 +1445,7 @@ defmodule SnmpSim.Device do
     final_cpu = base_cpu + time_cpu_impact + traffic_cpu_impact + jitter_impact + spike_impact
     
     # Clamp to realistic range (0-100%)
-    max(0, min(100, trunc(final_cpu)))
+    max(0, min(100, final_cpu))
   end
 
   defp calculate_storage_gauge(state) do
@@ -1461,13 +1472,13 @@ defmodule SnmpSim.Device do
     jitter_factor = 1.0 + (usage_jitter / 100.0)
     
     # Calculate final storage usage
-    final_storage = base_storage * growth_factor * traffic_memory_factor * jitter_factor
+    final_storage = trunc(base_storage * growth_factor * traffic_memory_factor * jitter_factor)
     
     # Ensure reasonable bounds
     min_storage = trunc(base_storage * 0.8)  # Never below 80% of base
     max_storage = trunc(base_storage * 1.3)  # Never above 130% of base
     
-    max(min_storage, min(max_storage, trunc(final_storage)))
+    max(min_storage, min(max_storage, final_storage))
   end
 
   defp get_time_factor do
@@ -1640,14 +1651,12 @@ defmodule SnmpSim.Device do
         {[1, 3, 6, 1, 2, 1, 2, 2, 1, 1, 1], :integer, 1}
       "1.3.6.1.2.1.2.2.1.1.1" -> 
         {[1, 3, 6, 1, 2, 1, 2, 2, 1, 1, 2], :integer, 2}
-      "1.3.6.1.2.1.2.2.1.1.2" -> 
-        {[1, 3, 6, 1, 2, 1, 2, 2, 1, 2, 1], :octet_string, get_interface_description(state)}
       "1.3.6.1.2.1.2.2.1.2.1" -> 
-        {[1, 3, 6, 1, 2, 1, 2, 2, 1, 3, 1], :integer, 6}
+        {[1, 3, 6, 1, 2, 1, 2, 2, 1, 2, 1], :octet_string, get_interface_description(state)}
       "1.3.6.1.2.1.2.2.1.3.1" -> 
-        {[1, 3, 6, 1, 2, 1, 2, 2, 1, 4, 1], :integer, 1500}
+        {[1, 3, 6, 1, 2, 1, 2, 2, 1, 3, 1], :integer, 6}
       "1.3.6.1.2.1.2.2.1.4.1" -> 
-        {[1, 3, 6, 1, 2, 1, 2, 2, 1, 5, 1], :gauge32, 100000000}
+        {[1, 3, 6, 1, 2, 1, 2, 2, 1, 4, 1], :gauge32, 100000000}
       # Handle various starting points for SNMP walk - all redirect to first system OID
       oid when oid in ["1.3.6.1.2.1", "1.3.6.1.2.1.1", "1.3.6.1", "1.3.6", "1.3", "1"] ->
         # Starting from various root points - go to first system OID
@@ -1768,7 +1777,7 @@ defmodule SnmpSim.Device do
   defp create_get_response_with_fields(pdu, variable_bindings) do
     
     # Convert to 3-tuple format expected by SnmpLib with list OIDs
-    converted_bindings = Enum.map(variable_bindings, fn
+    converted_bindings = Enum.map(variable_bindings, fn 
       {oid, :end_of_mib_view, nil} -> 
         oid_list = case oid do
           oid when is_list(oid) -> oid
@@ -1823,9 +1832,13 @@ defmodule SnmpSim.Device do
   end
 
   defp string_to_oid_list(oid_string) when is_binary(oid_string) do
-    oid_string
-    |> String.split(".")
-    |> Enum.map(&String.to_integer/1)
+    case oid_string do
+      "" -> []
+      _ ->
+        oid_string
+        |> String.split(".")
+        |> Enum.map(&String.to_integer/1)
+    end
   end
 
   defp string_to_oid_list(oid) when is_list(oid), do: oid
@@ -1872,15 +1885,25 @@ defmodule SnmpSim.Device do
     try do
       device_state = build_device_state(state)
       case SharedProfiles.get_next_oid(oid, device_state) do
-        {:ok, next_oid, value} -> {:ok, {next_oid, value}}
+        {:ok, next_oid, value} -> {:ok, {oid_to_string(next_oid), value}}
         {:error, :end_of_mib_view} -> {:error, :end_of_mib_view}
-        {:error, _reason} -> get_fallback_next_oid(oid, state)
+        {:error, _reason} -> 
+          case get_fallback_next_oid(oid, state) do
+            {_next_oid, :end_of_mib_view, nil} -> {:error, :end_of_mib_view}
+            {next_oid, _type, value} -> {:ok, {oid_to_string(next_oid), value}}
+          end
       end
     catch
-      :exit, {:noproc, _} ->
-        get_fallback_next_oid(oid, state)
-      :exit, _reason ->
-        get_fallback_next_oid(oid, state)
+      :exit, {:noproc, _} -> 
+        case get_fallback_next_oid(oid, state) do
+          {_next_oid, :end_of_mib_view, nil} -> {:error, :end_of_mib_view}
+          {next_oid, _type, value} -> {:ok, {oid_to_string(next_oid), value}}
+        end
+      :exit, _reason -> 
+        case get_fallback_next_oid(oid, state) do
+          {_next_oid, :end_of_mib_view, nil} -> {:error, :end_of_mib_view}
+          {next_oid, _type, value} -> {:ok, {oid_to_string(next_oid), value}}
+        end
     end
   end
 
@@ -1907,9 +1930,13 @@ defmodule SnmpSim.Device do
   defp walk_oid_recursive(oid, state, acc) when length(acc) < 100 do
     case get_next_oid_value(oid, state) do
       {:ok, {next_oid, value}} ->
+        # Convert both OIDs to strings for comparison
+        oid_str = oid_to_string(oid)
+        next_oid_str = oid_to_string(next_oid)
+        
         # Check if still in the same subtree
-        if String.starts_with?(next_oid, oid) do
-          walk_oid_recursive(next_oid, state, [{next_oid, value} | acc])
+        if String.starts_with?(next_oid_str, oid_str) do
+          walk_oid_recursive(next_oid_str, state, [{next_oid_str, value} | acc])
         else
           {:ok, Enum.reverse(acc)}
         end
@@ -1925,4 +1952,7 @@ defmodule SnmpSim.Device do
     {:ok, Enum.reverse(acc)}
   end
   
+  defp oid_to_string(oid) when is_list(oid), do: Enum.join(oid, ".")
+  defp oid_to_string(oid) when is_binary(oid), do: oid
+  defp oid_to_string(oid), do: to_string(oid)
 end

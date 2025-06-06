@@ -28,7 +28,7 @@ defmodule SnmpSim.Core.ServerTest do
       # Send multiple concurrent requests
       tasks = for i <- 1..10 do
         Task.async(fn ->
-          send_test_snmp_request(port, i)
+          send_test_snmp_request(port, "1.3.6.1.2.1.1.1.0")
         end)
       end
       
@@ -36,7 +36,10 @@ defmodule SnmpSim.Core.ServerTest do
       results = Enum.map(tasks, &Task.await/1)
       
       # All requests should complete successfully
-      assert Enum.all?(results, fn result -> result == :ok end)
+      assert Enum.all?(results, fn 
+        {:ok, _} -> true
+        _ -> false
+      end)
       
       GenServer.stop(server)
     end
@@ -65,7 +68,7 @@ defmodule SnmpSim.Core.ServerTest do
       # Send 50 requests (reduced for better reliability)
       tasks = for i <- 1..50 do
         Task.async(fn ->
-          send_test_snmp_request(port, i)
+          send_test_snmp_request(port, "1.3.6.1.2.1.1.1.0")
         end)
       end
       
@@ -86,7 +89,12 @@ defmodule SnmpSim.Core.ServerTest do
       assert rps > 25
       
       # Allow more failures under heavy load - require at least 60% success rate
-      successful_requests = Enum.count(results, fn result -> result == :ok end)
+      successful_requests = Enum.count(results, fn result ->
+        case result do
+          {:ok, _} -> true
+          _ -> false
+        end
+      end)
       success_rate = successful_requests / length(results)
       assert success_rate >= 0.60, "Success rate was #{success_rate}, expected >= 0.60"
       
@@ -104,7 +112,7 @@ defmodule SnmpSim.Core.ServerTest do
       
       # Send some requests
       for i <- 1..5 do
-        send_test_snmp_request(port, i)
+        send_test_snmp_request(port, "1.3.6.1.2.1.1.1.0")
       end
       
       # Give some time for processing
@@ -124,7 +132,7 @@ defmodule SnmpSim.Core.ServerTest do
       {:ok, server} = Server.start_link(port, community: "secret")
       
       # Send request with wrong community
-      result = send_test_snmp_request(port, 1, "wrong_community")
+      result = send_test_snmp_request(port, "1.3.6.1.2.1.1.1.0", "wrong_community")
       
       # Should not get a proper response (server will ignore)
       assert result == :timeout
@@ -158,8 +166,8 @@ defmodule SnmpSim.Core.ServerTest do
       :ok = Server.set_device_handler(server, new_handler)
       
       # Test that the new handler is working
-      result = send_test_snmp_request(port, 1)
-      assert result == :ok
+      result = send_test_snmp_request(port, "1.3.6.1.2.1.1.1.0")
+      assert match?({:ok, _}, result)
       
       GenServer.stop(server)
     end
@@ -213,7 +221,7 @@ defmodule SnmpSim.Core.ServerTest do
       {:ok, server} = Server.start_link(port, device_handler: failing_handler)
       
       # Send a request
-      send_test_snmp_request(port, 1)
+      send_test_snmp_request(port, "1.3.6.1.2.1.1.1.0")
       
       # Give time for processing
       Process.sleep(100)
@@ -249,7 +257,7 @@ defmodule SnmpSim.Core.ServerTest do
       
       # Send some requests
       for i <- 1..5 do
-        send_test_snmp_request(port, i)
+        send_test_snmp_request(port, "1.3.6.1.2.1.1.1.0")
       end
       
       Process.sleep(200)
@@ -273,40 +281,54 @@ defmodule SnmpSim.Core.ServerTest do
     PortHelper.get_port()
   end
 
-  defp send_test_snmp_request(port, request_id, community \\ "public") do
-    # Create a simple SNMP GET request
-    test_pdu = %PDU{
-      version: 1,
-      community: community,
-      pdu_type: :get_request,
-      request_id: request_id,
-      error_status: 0,
-      error_index: 0,
-      variable_bindings: [{"1.3.6.1.2.1.1.1.0", nil}]
-    }
+  defp send_test_snmp_request(port, oid, community \\ "public") do
+    # Build request using new snmp_lib API
+    request_id = :rand.uniform(1000)
     
-    case PDU.encode(test_pdu) do
+    # Convert string OID to list format
+    oid_list = case oid do
+      oid when is_binary(oid) ->
+        oid |> String.split(".") |> Enum.map(&String.to_integer/1)
+      oid when is_list(oid) ->
+        oid
+    end
+    
+    # Build PDU and message using new API
+    pdu = SnmpLib.PDU.build_get_request(oid_list, request_id)
+    message = SnmpLib.PDU.build_message(pdu, community, :v1)
+    
+    case SnmpLib.PDU.encode_message(message) do
       {:ok, packet} ->
-        {:ok, socket} = :gen_udp.open(0, [:binary, {:active, false}])
-        
-        :gen_udp.send(socket, {127, 0, 0, 1}, port, packet)
-        
-        # Wait for response with shorter timeout for performance testing
-        result = case :gen_udp.recv(socket, 0, 1000) do
-          {:ok, {_ip, _port, response_data}} ->
-            case PDU.decode(response_data) do
-              {:ok, _response_pdu} -> :ok
-              {:error, _} -> :decode_error
+        case :gen_udp.open(0, [:binary, {:active, false}]) do
+          {:ok, socket} ->
+            case :gen_udp.send(socket, {127, 0, 0, 1}, port, packet) do
+              :ok ->
+                case :gen_udp.recv(socket, 0, 5000) do
+                  {:ok, {_ip, _port, response_packet}} ->
+                    :gen_udp.close(socket)
+                    # Decode response using new API
+                    case SnmpLib.PDU.decode_message(response_packet) do
+                      {:ok, response_message} ->
+                        {:ok, response_message}
+                      error ->
+                        error
+                    end
+                  {:error, :timeout} ->
+                    :gen_udp.close(socket)
+                    :timeout
+                  error ->
+                    :gen_udp.close(socket)
+                    error
+                end
+              error ->
+                :gen_udp.close(socket)
+                error
             end
-          {:error, :timeout} -> :timeout
-          {:error, _} -> :error
+          error ->
+            error
         end
-        
-        :gen_udp.close(socket)
-        result
-        
-      {:error, _} ->
-        :encode_error
+      error ->
+        error
     end
   end
 end

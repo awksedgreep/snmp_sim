@@ -2,7 +2,7 @@
 import Config
 
 # Production overrides for maximum performance and stability
-config :snmp_sim_ex,
+config :snmp_sim,
   # Production device limits
   max_devices: 50_000,
   max_memory_mb: 4096,
@@ -41,7 +41,7 @@ config :logger, :console,
   colors: [enabled: false]
 
 # Performance monitoring for production
-config :snmp_sim_ex, :performance_monitor,
+config :snmp_sim, :performance_monitor,
   enabled: true,
   collection_interval_ms: 60_000,      # 1 minute
   metrics_retention_hours: 168,        # 1 week
@@ -55,7 +55,7 @@ config :snmp_sim_ex, :performance_monitor,
   alert_cooldown_ms: 15 * 60 * 1000    # 15 minutes
 
 # Resource manager for production
-config :snmp_sim_ex, :resource_manager,
+config :snmp_sim, :resource_manager,
   enabled: true,
   max_devices: 50_000,
   max_memory_mb: 4096,
@@ -64,7 +64,7 @@ config :snmp_sim_ex, :resource_manager,
   emergency_cleanup_enabled: true
 
 # Device pool optimized for production
-config :snmp_sim_ex, :device_pool,
+config :snmp_sim, :device_pool,
   optimization_enabled: true,
   tier_system_enabled: true,
   tier_promotion_threshold: 500,        # Higher threshold for production
@@ -74,14 +74,14 @@ config :snmp_sim_ex, :device_pool,
   warm_tier_max_devices: 25000
 
 # Disable test scenarios in production
-config :snmp_sim_ex, :test_scenarios,
+config :snmp_sim, :test_scenarios,
   enabled: false,
   default_duration_seconds: 600,
   max_concurrent_scenarios: 20,
   scenario_cleanup_enabled: true
 
 # Production health check configuration
-config :snmp_sim_ex, :health_check,
+config :snmp_sim, :health_check,
   enabled: true,
   port: 4000,
   path: "/health",
@@ -97,7 +97,7 @@ config :snmp_sim_ex, :health_check,
   ]
 
 # All behavior features enabled for production
-config :snmp_sim_ex, :behaviors,
+config :snmp_sim, :behaviors,
   realistic_counters_enabled: true,
   time_patterns_enabled: true,
   correlations_enabled: true,
@@ -105,7 +105,7 @@ config :snmp_sim_ex, :behaviors,
   device_characteristics_enabled: true
 
 # Production security settings
-config :snmp_sim_ex, :security,
+config :snmp_sim, :security,
   enable_rate_limiting: true,
   max_requests_per_second: 10000,
   enable_ip_whitelisting: false,
@@ -113,7 +113,7 @@ config :snmp_sim_ex, :security,
   enable_audit_logging: true
 
 # Database connection pool for production persistence
-config :snmp_sim_ex, :database,
+config :snmp_sim, :database,
   enabled: true,
   pool_size: 20,
   timeout: 30_000,
@@ -121,7 +121,7 @@ config :snmp_sim_ex, :database,
   queue_interval: 1000
 
 # Production telemetry and metrics
-config :snmp_sim_ex, :telemetry,
+config :snmp_sim, :telemetry,
   enabled: true,
   metrics_interval_ms: 30_000,
   export_prometheus: true,

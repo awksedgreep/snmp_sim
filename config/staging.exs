@@ -2,7 +2,7 @@
 import Config
 
 # Staging overrides - production-like but with lower limits and more debugging
-config :snmp_sim_ex,
+config :snmp_sim,
   # Moderate limits for staging
   max_devices: 5000,
   max_memory_mb: 1024,
@@ -47,7 +47,7 @@ config :logger, :console,
   ]
 
 # Performance monitoring for staging
-config :snmp_sim_ex, :performance_monitor,
+config :snmp_sim, :performance_monitor,
   enabled: true,
   collection_interval_ms: 30_000,      # 30 seconds
   metrics_retention_hours: 48,         # 2 days
@@ -61,7 +61,7 @@ config :snmp_sim_ex, :performance_monitor,
   alert_cooldown_ms: 5 * 60 * 1000     # 5 minutes
 
 # Resource manager for staging
-config :snmp_sim_ex, :resource_manager,
+config :snmp_sim, :resource_manager,
   enabled: true,
   max_devices: 5000,
   max_memory_mb: 1024,
@@ -70,7 +70,7 @@ config :snmp_sim_ex, :resource_manager,
   emergency_cleanup_enabled: true
 
 # Device pool for staging
-config :snmp_sim_ex, :device_pool,
+config :snmp_sim, :device_pool,
   optimization_enabled: true,
   tier_system_enabled: true,
   tier_promotion_threshold: 200,       # Moderate threshold
@@ -80,14 +80,14 @@ config :snmp_sim_ex, :device_pool,
   warm_tier_max_devices: 2500
 
 # Enable test scenarios for staging validation
-config :snmp_sim_ex, :test_scenarios,
+config :snmp_sim, :test_scenarios,
   enabled: true,
   default_duration_seconds: 300,       # 5 minutes
   max_concurrent_scenarios: 10,
   scenario_cleanup_enabled: true
 
 # Staging health check configuration
-config :snmp_sim_ex, :health_check,
+config :snmp_sim, :health_check,
   enabled: true,
   port: 4000,
   path: "/health",
@@ -102,7 +102,7 @@ config :snmp_sim_ex, :health_check,
   ]
 
 # All behavior features enabled for staging testing
-config :snmp_sim_ex, :behaviors,
+config :snmp_sim, :behaviors,
   realistic_counters_enabled: true,
   time_patterns_enabled: true,
   correlations_enabled: true,
@@ -110,7 +110,7 @@ config :snmp_sim_ex, :behaviors,
   device_characteristics_enabled: true
 
 # Staging security settings - slightly more permissive than production
-config :snmp_sim_ex, :security,
+config :snmp_sim, :security,
   enable_rate_limiting: true,
   max_requests_per_second: 5000,
   enable_ip_whitelisting: false,
@@ -118,7 +118,7 @@ config :snmp_sim_ex, :security,
   enable_audit_logging: true
 
 # Database configuration for staging
-config :snmp_sim_ex, :database,
+config :snmp_sim, :database,
   enabled: true,
   pool_size: 10,
   timeout: 15_000,
@@ -126,7 +126,7 @@ config :snmp_sim_ex, :database,
   queue_interval: 1000
 
 # Staging telemetry and metrics
-config :snmp_sim_ex, :telemetry,
+config :snmp_sim, :telemetry,
   enabled: true,
   metrics_interval_ms: 30_000,
   export_prometheus: true,
@@ -134,7 +134,7 @@ config :snmp_sim_ex, :telemetry,
   retention_policy: "3d"
 
 # Load testing configuration for staging
-config :snmp_sim_ex, :load_testing,
+config :snmp_sim, :load_testing,
   enabled: true,
   max_concurrent_devices: 1000,
   request_rate_per_second: 1000,
@@ -149,7 +149,7 @@ config :snmp_sim_ex, :load_testing,
   ]
 
 # Staging-specific debugging features
-config :snmp_sim_ex, :debugging,
+config :snmp_sim, :debugging,
   enable_request_tracing: true,
   trace_sample_rate: 0.1,              # 10% of requests
   enable_memory_profiling: true,
@@ -158,7 +158,7 @@ config :snmp_sim_ex, :debugging,
   slow_query_threshold_ms: 100
 
 # Enhanced error reporting for staging
-config :snmp_sim_ex, :error_reporting,
+config :snmp_sim, :error_reporting,
   enabled: true,
   report_internal_errors: true,
   report_performance_issues: true,

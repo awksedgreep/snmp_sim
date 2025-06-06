@@ -6,8 +6,7 @@ defmodule SnmpSim.Core.Server do
 
   use GenServer
   require Logger
-
-  alias SnmpLib.PDU
+  alias SnmpLib.PDU, as: PDU
 
   defstruct [
     :socket,
@@ -18,7 +17,7 @@ defmodule SnmpSim.Core.Server do
   ]
 
   @default_community "public"
-  @socket_opts [:binary, {:active, true}, {:reuseaddr, true}]
+  @socket_opts [:binary, {:active, true}, {:reuseaddr, true}, {:ip, {0, 0, 0, 0}}]
 
   @doc """
   Start an SNMP UDP server on the specified port.
@@ -65,7 +64,13 @@ defmodule SnmpSim.Core.Server do
 
     case :gen_udp.open(port, socket_opts) do
       {:ok, socket} ->
-        Logger.info("SNMP server started on port #{port}")
+        # Debug: Check socket info
+        case :inet.sockname(socket) do
+          {:ok, {ip, bound_port}} ->
+            Logger.info("SNMP server started on port #{port}, socket bound to #{:inet.ntoa(ip)}:#{bound_port}")
+          {:error, reason} ->
+            Logger.error("Failed to get socket name: #{inspect(reason)}")
+        end
         
         state = %__MODULE__{
           socket: socket,
@@ -96,16 +101,18 @@ defmodule SnmpSim.Core.Server do
 
   @impl true
   def handle_info({:udp, socket, client_ip, client_port, packet}, %{socket: socket} = state) do
+    Logger.debug("Received UDP packet from #{:inet.ntoa(client_ip)}:#{client_port}, #{byte_size(packet)} bytes")
+    
+    # Update stats
+    new_stats = update_stats(state.stats, :packets_received)
+    final_state = %{state | stats: new_stats}
+    
     # Process SNMP packet asynchronously for better throughput
     # Pass server PID to avoid process identity issues
     server_pid = self()
     Task.start(fn ->
       handle_snmp_packet_async(server_pid, state, client_ip, client_port, packet)
     end)
-    
-    # Update stats for received packet
-    new_stats = update_stats(state.stats, :packets_received)
-    final_state = %{state | stats: new_stats}
     
     {:noreply, final_state}
   end
@@ -135,12 +142,8 @@ defmodule SnmpSim.Core.Server do
   end
 
   @impl true
-  def terminate(reason, state) do
-    if state.socket do
-      :gen_udp.close(state.socket)
-    end
-    
-    Logger.info("SNMP server on port #{state.port} terminated: #{inspect(reason)}")
+  def terminate(_reason, state) do
+    :gen_udp.close(state.socket)
     :ok
   end
 
@@ -148,6 +151,13 @@ defmodule SnmpSim.Core.Server do
 
   defp handle_snmp_packet_async(server_pid, state, client_ip, client_port, packet) do
     start_time = :erlang.monotonic_time()
+    
+    # Debug: Log raw packet information
+    packet_size = byte_size(packet)
+    packet_hex = Base.encode16(packet)
+    Logger.debug("Received SNMP packet from #{format_ip(client_ip)}:#{client_port}")
+    Logger.debug("Packet size: #{packet_size} bytes")
+    Logger.debug("Packet hex: #{packet_hex}")
     
     try do
       case PDU.decode_message(packet) do
@@ -162,7 +172,6 @@ defmodule SnmpSim.Core.Server do
                 Enum.map(varbinds, fn
                   {oid, _type, value} -> {oid, value}
                   {oid, value} -> {oid, value}
-                  other -> other
                 end)
               _ -> []
             end
@@ -175,8 +184,8 @@ defmodule SnmpSim.Core.Server do
               error_status: message.pdu[:error_status] || 0,
               error_index: message.pdu[:error_index] || 0,
               variable_bindings: variable_bindings,
-              non_repeaters: message.pdu[:non_repeaters],
-              max_repetitions: message.pdu[:max_repetitions]
+              max_repetitions: message.pdu[:max_repetitions] || 0,
+              non_repeaters: message.pdu[:non_repeaters] || 0
             }
             process_snmp_request_async(server_pid, state, client_ip, client_port, complete_pdu)
           else
@@ -186,6 +195,7 @@ defmodule SnmpSim.Core.Server do
           
         {:error, reason} ->
           Logger.warning("Failed to decode SNMP packet from #{format_ip(client_ip)}:#{client_port}: #{inspect(reason)}")
+          Logger.warning("Raw packet (#{packet_size} bytes): #{packet_hex}")
           send(server_pid, {:update_stats, :decode_errors})
       end
     rescue
@@ -199,40 +209,6 @@ defmodule SnmpSim.Core.Server do
     processing_time = :erlang.convert_time_unit(end_time - start_time, :native, :microsecond)
     send(server_pid, {:update_stats, :processing_times, processing_time})
   end
-
-  # Unused functions - kept for future use
-  # defp handle_snmp_packet(state, client_ip, client_port, packet) do
-  #   start_time = :erlang.monotonic_time()
-  #   
-  #   updated_state = try do
-  #     case PDU.decode(packet) do
-  #       {:ok, pdu} ->
-  #         if validate_community(pdu, state.community) do
-  #           process_snmp_request(state, client_ip, client_port, pdu)
-  #         else
-  #           Logger.warning("Invalid community string from #{format_ip(client_ip)}:#{client_port}")
-  #           new_stats = update_stats(state.stats, :auth_failures)
-  #           %{state | stats: new_stats}
-  #         end
-  #         
-  #       {:error, reason} ->
-  #         Logger.warning("Failed to decode SNMP packet from #{format_ip(client_ip)}:#{client_port}: #{inspect(reason)}")
-  #         new_stats = update_stats(state.stats, :decode_errors)
-  #         %{state | stats: new_stats}
-  #     end
-  #   rescue
-  #     error ->
-  #       Logger.error("Error processing SNMP packet: #{inspect(error)}")
-  #       new_stats = update_stats(state.stats, :processing_errors)
-  #       %{state | stats: new_stats}
-  #   end
-  #   
-  #   # Track processing time
-  #   end_time = :erlang.monotonic_time()
-  #   processing_time = :erlang.convert_time_unit(end_time - start_time, :native, :microsecond)
-  #   final_stats = update_stats(updated_state.stats, :processing_times, processing_time)
-  #   %{updated_state | stats: final_stats}
-  # end
 
   defp process_snmp_request_async(server_pid, state, client_ip, client_port, pdu) do
     case state.device_handler do
@@ -337,50 +313,118 @@ defmodule SnmpSim.Core.Server do
     community = state.community || "public"
     Logger.debug("Sending response PDU: #{inspect(response_pdu)}")
     
-    # Convert map format PDU to struct format if needed
-    normalized_pdu = case response_pdu do
-      %{type: pdu_type, request_id: request_id, error_status: error_status, error_index: error_index, varbinds: varbinds} ->
-        # Map format from Device module - convert to struct format
-        %PDU{
-          version: 1,  # SNMPv2c
-          community: community,
-          pdu_type: case pdu_type do
-            :get_response -> 0xA2
-            _ -> 0xA2  # Default to GET_RESPONSE
-          end,
+    # Convert response PDU to proper message format
+    response_message = case response_pdu do
+      # Handle SnmpLib.PDU struct format (returned by Device module)
+      %SnmpLib.PDU{request_id: request_id, error_status: error_status, error_index: error_index, variable_bindings: variable_bindings} ->
+        # Convert variable_bindings from Device format to snmp_lib varbinds format
+        varbinds = Enum.map(variable_bindings, fn varbind ->
+          case varbind do
+            {oid_string, value} when is_binary(oid_string) ->
+              oid_list = String.split(oid_string, ".") |> Enum.map(&String.to_integer/1)
+              # Determine type based on value
+              type = case value do
+                {:no_such_object, _} -> :no_such_object
+                {:no_such_instance, _} -> :no_such_instance
+                {:end_of_mib_view, _} -> :end_of_mib_view
+                {:counter32, _} -> :counter32
+                {:counter64, _} -> :counter64
+                {:gauge32, _} -> :gauge32
+                {:timeticks, _} -> :timeticks
+                {:object_identifier, _} -> :object_identifier
+                {:ip_address, _} -> :ip_address
+                {:opaque, _} -> :opaque
+                _ when is_binary(value) -> :string
+                _ when is_integer(value) -> :integer
+                _ -> :string
+              end
+              # Extract actual value from typed tuples
+              actual_value = case value do
+                {:counter32, val} -> val
+                {:counter64, val} -> val
+                {:gauge32, val} -> val
+                {:timeticks, val} -> val
+                {:object_identifier, val} -> val
+                {:ip_address, val} -> val
+                {:opaque, val} -> val
+                {:no_such_object, _} -> :no_such_object
+                {:no_such_instance, _} -> :no_such_instance
+                {:end_of_mib_view, _} -> :end_of_mib_view
+                other -> other
+              end
+              Logger.debug("Converting varbind: OID=#{oid_string}, Value=#{inspect(value)}, Type=#{type}, ActualValue=#{inspect(actual_value)}")
+              {oid_list, type, actual_value}
+            {oid_list, value} when is_list(oid_list) ->
+              # Determine type based on value
+              type = case value do
+                {:no_such_object, _} -> :no_such_object
+                {:no_such_instance, _} -> :no_such_instance
+                {:end_of_mib_view, _} -> :end_of_mib_view
+                {:counter32, _} -> :counter32
+                {:counter64, _} -> :counter64
+                {:gauge32, _} -> :gauge32
+                {:timeticks, _} -> :timeticks
+                {:object_identifier, _} -> :object_identifier
+                {:ip_address, _} -> :ip_address
+                {:opaque, _} -> :opaque
+                _ when is_binary(value) -> :string
+                _ when is_integer(value) -> :integer
+                _ -> :string
+              end
+              # Extract actual value from typed tuples
+              actual_value = case value do
+                {:counter32, val} -> val
+                {:counter64, val} -> val
+                {:gauge32, val} -> val
+                {:timeticks, val} -> val
+                {:object_identifier, val} -> val
+                {:ip_address, val} -> val
+                {:opaque, val} -> val
+                {:no_such_object, _} -> :no_such_object
+                {:no_such_instance, _} -> :no_such_instance
+                {:end_of_mib_view, _} -> :end_of_mib_view
+                other -> other
+              end
+              Logger.debug("Converting varbind: OID=#{inspect(oid_list)}, Value=#{inspect(value)}, Type=#{type}, ActualValue=#{inspect(actual_value)}")
+              {oid_list, type, actual_value}
+            other ->
+              Logger.warning("Unexpected varbind format: #{inspect(other)}")
+              other
+          end
+        end)
+        
+        # Create response PDU manually
+        response_pdu = %{
+          type: :get_response,
           request_id: request_id,
           error_status: error_status,
           error_index: error_index,
-          variable_bindings: varbinds
+          varbinds: varbinds
         }
-      
-      %PDU{} = pdu ->
-        # Already in struct format
-        pdu
         
+        Logger.debug("Built response PDU: #{inspect(response_pdu)}")
+        pdu = PDU.build_response(request_id, error_status, error_index, varbinds)
+        message = PDU.build_message(pdu, community, :v1)
+        Logger.debug("Built message: #{inspect(message)}")
+        message
+      
+      # Handle map format (legacy)
+      %{type: _pdu_type, request_id: request_id, error_status: error_status, error_index: error_index, varbinds: varbinds} ->
+        pdu = PDU.build_response(request_id, error_status, error_index, varbinds)
+        PDU.build_message(pdu, community, :v1)
+      
       other ->
         Logger.warning("Unexpected PDU format: #{inspect(other)}")
-        # Create a generic error PDU
-        %PDU{
-          version: 1,
-          community: community,
-          pdu_type: 0xA2,  # GET_RESPONSE
-          request_id: 0,
-          error_status: 5,  # genErr
-          error_index: 0,
-          variable_bindings: []
-        }
+        # Create error response
+        pdu = PDU.build_response(0, 5, 0, [])  # genErr
+        PDU.build_message(pdu, community, :v1)
     end
     
-    case PDU.encode(normalized_pdu) do
-      {:ok, response_packet} ->
-        case :gen_udp.send(state.socket, client_ip, client_port, response_packet) do
-          :ok ->
-            :ok
-            
-          {:error, reason} ->
-            Logger.warning("Failed to send SNMP response to #{format_ip(client_ip)}:#{client_port}: #{inspect(reason)}")
-        end
+    case PDU.encode_message(response_message) do
+      {:ok, encoded_packet} ->
+        Logger.debug("Encoded response packet (#{byte_size(encoded_packet)} bytes): #{Base.encode16(encoded_packet)}")
+        :gen_udp.send(state.socket, client_ip, client_port, encoded_packet)
+        Logger.debug("Response sent to #{:inet.ntoa(client_ip)}:#{client_port}")
         
       {:error, reason} ->
         Logger.error("Failed to encode SNMP response: #{inspect(reason)}")

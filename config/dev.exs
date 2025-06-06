@@ -2,7 +2,7 @@
 import Config
 
 # Development-specific overrides
-config :snmp_sim_ex,
+config :snmp_sim,
   # Reduced limits for development
   max_devices: 100,
   max_memory_mb: 256,
@@ -46,7 +46,7 @@ config :logger, :console,
   ]
 
 # Performance monitoring with more frequent collection
-config :snmp_sim_ex, :performance_monitor,
+config :snmp_sim, :performance_monitor,
   enabled: true,
   collection_interval_ms: 10_000, # 10 seconds for development
   metrics_retention_hours: 2,      # Shorter retention
@@ -60,7 +60,7 @@ config :snmp_sim_ex, :performance_monitor,
   alert_cooldown_ms: 30_000 # 30 seconds
 
 # Resource manager with development limits
-config :snmp_sim_ex, :resource_manager,
+config :snmp_sim, :resource_manager,
   enabled: true,
   max_devices: 100,
   max_memory_mb: 256,
@@ -69,7 +69,7 @@ config :snmp_sim_ex, :resource_manager,
   emergency_cleanup_enabled: true
 
 # Device pool with smaller tiers
-config :snmp_sim_ex, :device_pool,
+config :snmp_sim, :device_pool,
   optimization_enabled: true,
   tier_system_enabled: true,
   tier_promotion_threshold: 10,    # Lower threshold for development
@@ -79,14 +79,14 @@ config :snmp_sim_ex, :device_pool,
   warm_tier_max_devices: 50
 
 # Enable test scenarios for development
-config :snmp_sim_ex, :test_scenarios,
+config :snmp_sim, :test_scenarios,
   enabled: true,
   default_duration_seconds: 60,    # Shorter scenarios
   max_concurrent_scenarios: 5,
   scenario_cleanup_enabled: true
 
 # Health check configuration for development
-config :snmp_sim_ex, :health_check,
+config :snmp_sim, :health_check,
   enabled: true,
   port: 4000,
   path: "/health",
@@ -100,7 +100,7 @@ config :snmp_sim_ex, :health_check,
   ]
 
 # Enable all behavior features for development testing
-config :snmp_sim_ex, :behaviors,
+config :snmp_sim, :behaviors,
   realistic_counters_enabled: true,
   time_patterns_enabled: true,
   correlations_enabled: true,
