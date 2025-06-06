@@ -5,7 +5,7 @@ defmodule SnmpSim.ConfigTest do
   describe "configuration validation" do
     test "validates correct configuration" do
       config = %{
-        snmp_sim_ex: %{
+        snmp_sim: %{
           global_settings: %{
             max_devices: 1000,
             max_memory_mb: 512
@@ -23,16 +23,16 @@ defmodule SnmpSim.ConfigTest do
       assert Config.validate_config(config) == :ok
     end
     
-    test "rejects configuration without snmp_sim_ex key" do
+    test "rejects configuration without snmp_sim key" do
       config = %{other_app: %{}}
       
-      assert {:error, "Configuration must contain a 'snmp_sim_ex' key"} = 
+      assert {:error, "Configuration must contain a 'snmp_sim' key"} = 
              Config.validate_config(config)
     end
     
     test "validates device group port ranges" do
       config = %{
-        snmp_sim_ex: %{
+        snmp_sim: %{
           device_groups: [
             %{
               name: "test_devices",
@@ -49,7 +49,7 @@ defmodule SnmpSim.ConfigTest do
     
     test "requires essential fields in device groups" do
       config = %{
-        snmp_sim_ex: %{
+        snmp_sim: %{
           device_groups: [
             %{
               # Missing required fields: name, count, port_range
@@ -77,12 +77,12 @@ defmodule SnmpSim.ConfigTest do
       {:ok, config} = Config.load_from_environment()
       
       # Verify configuration was loaded correctly
-      assert config.snmp_sim_ex.global_settings.max_devices == 500
-      assert config.snmp_sim_ex.global_settings.max_memory_mb == 256
-      assert config.snmp_sim_ex.global_settings.enable_telemetry == true
+      assert config.snmp_sim.global_settings.max_devices == 500
+      assert config.snmp_sim.global_settings.max_memory_mb == 256
+      assert config.snmp_sim.global_settings.enable_telemetry == true
       
       # Verify device group was created from env vars
-      device_groups = config.snmp_sim_ex.device_groups
+      device_groups = config.snmp_sim.device_groups
       assert length(device_groups) == 1
       
       device_group = List.first(device_groups)
@@ -110,11 +110,11 @@ defmodule SnmpSim.ConfigTest do
       {:ok, config} = Config.load_from_environment()
       
       # Should use defaults
-      assert config.snmp_sim_ex.global_settings.max_devices == 1000
-      assert config.snmp_sim_ex.global_settings.max_memory_mb == 512
+      assert config.snmp_sim.global_settings.max_devices == 1000
+      assert config.snmp_sim.global_settings.max_memory_mb == 512
       
       # Should have empty device groups when count is 0 (default)
-      assert config.snmp_sim_ex.device_groups == []
+      assert config.snmp_sim.device_groups == []
     end
   end
   
@@ -122,7 +122,7 @@ defmodule SnmpSim.ConfigTest do
     test "loads valid JSON configuration" do
       json_content = """
       {
-        "snmp_sim_ex": {
+        "snmp_sim": {
           "global_settings": {
             "max_devices": 100,
             "max_memory_mb": 128
@@ -149,10 +149,10 @@ defmodule SnmpSim.ConfigTest do
       try do
         {:ok, config} = Config.load_from_file(file_path)
         
-        assert config.snmp_sim_ex.global_settings.max_devices == 100
-        assert config.snmp_sim_ex.global_settings.max_memory_mb == 128
+        assert config.snmp_sim.global_settings.max_devices == 100
+        assert config.snmp_sim.global_settings.max_memory_mb == 128
         
-        device_group = List.first(config.snmp_sim_ex.device_groups)
+        device_group = List.first(config.snmp_sim.device_groups)
         assert device_group.name == "test_group"
         assert device_group.count == 5
         assert device_group.community == "test"
@@ -164,7 +164,7 @@ defmodule SnmpSim.ConfigTest do
     test "handles invalid JSON" do
       invalid_json = """
       {
-        "snmp_sim_ex": {
+        "snmp_sim": {
           "invalid": json
         }
       """
@@ -211,7 +211,7 @@ defmodule SnmpSim.ConfigTest do
     if Code.ensure_loaded?(YamlElixir) do
       test "loads valid YAML configuration" do
         yaml_content = """
-        snmp_sim_ex:
+        snmp_sim:
           global_settings:
             max_devices: 200
             max_memory_mb: 256
@@ -230,10 +230,10 @@ defmodule SnmpSim.ConfigTest do
         try do
           {:ok, config} = Config.load_yaml(file_path)
           
-          assert config.snmp_sim_ex.global_settings.max_devices == 200
-          assert config.snmp_sim_ex.global_settings.max_memory_mb == 256
+          assert config.snmp_sim.global_settings.max_devices == 200
+          assert config.snmp_sim.global_settings.max_memory_mb == 256
           
-          device_group = List.first(config.snmp_sim_ex.device_groups)
+          device_group = List.first(config.snmp_sim.device_groups)
           assert device_group.name == "yaml_test_group"
           assert device_group.count == 3
           assert device_group.community == "yaml_test"

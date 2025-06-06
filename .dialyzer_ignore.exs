@@ -3,5 +3,5 @@
 
 # Ignore all warnings in test scenarios
 [
-  {"lib/snmp_sim_ex/test_scenarios.ex"}
+  {"lib/snmp_sim/test_scenarios.ex"}
 ]

@@ -4,6 +4,20 @@ defmodule SnmpSim.TestHelpers.SNMPTestHelpers do
   while maintaining compatibility with existing test expectations.
   """
   
+  # Suppress Dialyzer warnings for test helper functions
+  @dialyzer [
+    {:nowarn_function, send_snmp_get: 2},
+    {:nowarn_function, send_snmp_get: 3},
+    {:nowarn_function, send_snmp_getbulk: 4},
+    {:nowarn_function, send_snmp_getbulk: 5},
+    {:nowarn_function, send_snmp_getnext: 2},
+    {:nowarn_function, send_snmp_getnext: 3},
+    {:nowarn_function, send_snmp_request: 2},
+    {:nowarn_function, convert_to_legacy_format: 1},
+    {:nowarn_function, pdu_type_to_hex: 1},
+    {:nowarn_function, convert_varbinds_to_legacy: 1}
+  ]
+  
   alias SnmpLib.PDU
 
   @doc """

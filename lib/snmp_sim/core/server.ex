@@ -8,6 +8,12 @@ defmodule SnmpSim.Core.Server do
   require Logger
   alias SnmpLib.PDU, as: PDU
 
+  # Suppress Dialyzer warnings for async functions and pattern matches
+  @dialyzer [
+    {:nowarn_function, process_snmp_request_async: 5},
+    {:nowarn_function, send_response_async: 4}
+  ]
+
   defstruct [
     :socket,
     :port,
@@ -21,20 +27,20 @@ defmodule SnmpSim.Core.Server do
 
   @doc """
   Start an SNMP UDP server on the specified port.
-  
+
   ## Options
-  
+
   - `:community` - SNMP community string (default: "public")
   - `:device_handler` - Module or function to handle device requests
   - `:socket_opts` - Additional socket options
-  
+
   ## Examples
-  
+
       {:ok, server} = SnmpSim.Core.Server.start_link(9001,
         community: "public",
         device_handler: &MyDevice.handle_request/2
       )
-      
+
   """
   def start_link(port, opts \\ []) do
     GenServer.start_link(__MODULE__, {port, opts})
@@ -71,7 +77,7 @@ defmodule SnmpSim.Core.Server do
           {:error, reason} ->
             Logger.error("Failed to get socket name: #{inspect(reason)}")
         end
-        
+
         state = %__MODULE__{
           socket: socket,
           port: port,
@@ -79,9 +85,9 @@ defmodule SnmpSim.Core.Server do
           community: community,
           stats: init_stats()
         }
-        
+
         {:ok, state}
-        
+
       {:error, reason} ->
         Logger.error("Failed to start SNMP server on port #{port}: #{inspect(reason)}")
         {:stop, reason}
@@ -102,18 +108,18 @@ defmodule SnmpSim.Core.Server do
   @impl true
   def handle_info({:udp, socket, client_ip, client_port, packet}, %{socket: socket} = state) do
     Logger.debug("Received UDP packet from #{:inet.ntoa(client_ip)}:#{client_port}, #{byte_size(packet)} bytes")
-    
+
     # Update stats
     new_stats = update_stats(state.stats, :packets_received)
     final_state = %{state | stats: new_stats}
-    
+
     # Process SNMP packet asynchronously for better throughput
     # Pass server PID to avoid process identity issues
     server_pid = self()
     Task.start(fn ->
       handle_snmp_packet_async(server_pid, state, client_ip, client_port, packet)
     end)
-    
+
     {:noreply, final_state}
   end
 
@@ -151,14 +157,14 @@ defmodule SnmpSim.Core.Server do
 
   defp handle_snmp_packet_async(server_pid, state, client_ip, client_port, packet) do
     start_time = :erlang.monotonic_time()
-    
+
     # Debug: Log raw packet information
     packet_size = byte_size(packet)
     packet_hex = Base.encode16(packet)
     Logger.debug("Received SNMP packet from #{format_ip(client_ip)}:#{client_port}")
     Logger.debug("Packet size: #{packet_size} bytes")
     Logger.debug("Packet hex: #{packet_hex}")
-    
+
     try do
       case PDU.decode_message(packet) do
         {:ok, message} ->
@@ -173,9 +179,8 @@ defmodule SnmpSim.Core.Server do
                   {oid, _type, value} -> {oid, value}
                   {oid, value} -> {oid, value}
                 end)
-              _ -> []
             end
-            
+
             complete_pdu = %PDU{
               version: message.version,
               community: message.community,
@@ -192,7 +197,7 @@ defmodule SnmpSim.Core.Server do
             Logger.warning("Invalid community string from #{format_ip(client_ip)}:#{client_port}")
             send(server_pid, {:update_stats, :auth_failures})
           end
-          
+
         {:error, reason} ->
           Logger.warning("Failed to decode SNMP packet from #{format_ip(client_ip)}:#{client_port}: #{inspect(reason)}")
           Logger.warning("Raw packet (#{packet_size} bytes): #{packet_hex}")
@@ -203,7 +208,7 @@ defmodule SnmpSim.Core.Server do
         Logger.error("Error processing SNMP packet: #{inspect(error)}")
         send(server_pid, {:update_stats, :processing_errors})
     end
-    
+
     # Track processing time
     end_time = :erlang.monotonic_time()
     processing_time = :erlang.convert_time_unit(end_time - start_time, :native, :microsecond)
@@ -217,33 +222,33 @@ defmodule SnmpSim.Core.Server do
         error_response = PDU.create_error_response(pdu, 5, 0)  # genErr
         send_response_async(state, client_ip, client_port, error_response)
         send(server_pid, {:update_stats, :error_responses})
-        
+
       handler when is_function(handler, 2) ->
         # Function handler
         case handler.(pdu, %{client_ip: client_ip, client_port: client_port}) do
           {:ok, response_pdu} ->
             send_response_async(state, client_ip, client_port, response_pdu)
             send(server_pid, {:update_stats, :successful_responses})
-            
+
           {:error, error_status} ->
             error_response = PDU.create_error_response(pdu, error_status, 0)
             send_response_async(state, client_ip, client_port, error_response)
             send(server_pid, {:update_stats, :error_responses})
         end
-        
+
       {module, function} ->
         # Module/function handler
         case apply(module, function, [pdu, %{client_ip: client_ip, client_port: client_port}]) do
           {:ok, response_pdu} ->
             send_response_async(state, client_ip, client_port, response_pdu)
             send(server_pid, {:update_stats, :successful_responses})
-            
+
           {:error, error_status} ->
             error_response = PDU.create_error_response(pdu, error_status, 0)
             send_response_async(state, client_ip, client_port, error_response)
             send(server_pid, {:update_stats, :error_responses})
         end
-        
+
       pid when is_pid(pid) ->
         # GenServer handler (e.g., Device process)
         # Check if process is alive before attempting to call it
@@ -255,7 +260,7 @@ defmodule SnmpSim.Core.Server do
                 Logger.debug("Device returned response: #{inspect(response_pdu)}")
                 send_response_async(state, client_ip, client_port, response_pdu)
                 send(server_pid, {:update_stats, :successful_responses})
-                
+
               {:error, error_status} ->
                 Logger.debug("Device returned error: #{inspect(error_status)}")
                 error_response = PDU.create_error_response(pdu, error_status, 0)
@@ -268,28 +273,28 @@ defmodule SnmpSim.Core.Server do
               error_response = PDU.create_error_response(pdu, 5, 0)  # genErr
               send_response_async(state, client_ip, client_port, error_response)
               send(server_pid, {:update_stats, :timeout_errors})
-            
+
             :exit, {:noproc, _} ->
               # Device process has died between alive check and call
               Logger.warning("Device process #{inspect(pid)} died during SNMP request")
               error_response = PDU.create_error_response(pdu, 5, 0)  # genErr
               send_response_async(state, client_ip, client_port, error_response)
               send(server_pid, {:update_stats, :dead_process_errors})
-              
+
             :exit, {:normal, _} ->
               # Device process shut down normally
               Logger.info("Device process #{inspect(pid)} shut down normally during request")
               error_response = PDU.create_error_response(pdu, 5, 0)  # genErr
               send_response_async(state, client_ip, client_port, error_response)
               send(server_pid, {:update_stats, :dead_process_errors})
-              
+
             :exit, {:shutdown, _} ->
               # Device process was shutdown
               Logger.info("Device process #{inspect(pid)} was shutdown during request")
               error_response = PDU.create_error_response(pdu, 5, 0)  # genErr
               send_response_async(state, client_ip, client_port, error_response)
               send(server_pid, {:update_stats, :dead_process_errors})
-              
+
             :exit, reason ->
               # Other exit reasons
               Logger.warning("Device process #{inspect(pid)} exited with reason: #{inspect(reason)}")
@@ -310,9 +315,9 @@ defmodule SnmpSim.Core.Server do
 
   defp send_response_async(state, client_ip, client_port, response_pdu) do
     # Create message with PDU and community string
-    community = state.community || "public"
+    community = to_string(state.community || "public")
     Logger.debug("Sending response PDU: #{inspect(response_pdu)}")
-    
+
     # Convert response PDU to proper message format
     response_message = case response_pdu do
       # Handle SnmpLib.PDU struct format (returned by Device module)
@@ -392,7 +397,7 @@ defmodule SnmpSim.Core.Server do
               other
           end
         end)
-        
+
         # Create response PDU manually
         response_pdu = %{
           type: :get_response,
@@ -401,31 +406,31 @@ defmodule SnmpSim.Core.Server do
           error_index: error_index,
           varbinds: varbinds
         }
-        
+
         Logger.debug("Built response PDU: #{inspect(response_pdu)}")
         pdu = PDU.build_response(request_id, error_status, error_index, varbinds)
         message = PDU.build_message(pdu, community, :v1)
         Logger.debug("Built message: #{inspect(message)}")
         message
-      
+
       # Handle map format (legacy)
       %{type: _pdu_type, request_id: request_id, error_status: error_status, error_index: error_index, varbinds: varbinds} ->
         pdu = PDU.build_response(request_id, error_status, error_index, varbinds)
         PDU.build_message(pdu, community, :v1)
-      
+
       other ->
         Logger.warning("Unexpected PDU format: #{inspect(other)}")
         # Create error response
         pdu = PDU.build_response(0, 5, 0, [])  # genErr
         PDU.build_message(pdu, community, :v1)
     end
-    
+
     case PDU.encode_message(response_message) do
       {:ok, encoded_packet} ->
         Logger.debug("Encoded response packet (#{byte_size(encoded_packet)} bytes): #{Base.encode16(encoded_packet)}")
         :gen_udp.send(state.socket, client_ip, client_port, encoded_packet)
         Logger.debug("Response sent to #{:inet.ntoa(client_ip)}:#{client_port}")
-        
+
       {:error, reason} ->
         Logger.error("Failed to encode SNMP response: #{inspect(reason)}")
     end

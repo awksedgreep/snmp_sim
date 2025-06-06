@@ -77,7 +77,7 @@ defmodule SnmpSim.Config do
   """
   def load_from_environment do
     config = %{
-      snmp_sim_ex: %{
+      snmp_sim: %{
         global_settings: %{
           max_devices: get_env_int("SNMP_SIM_EX_MAX_DEVICES", 1000),
           max_memory_mb: get_env_int("SNMP_SIM_EX_MAX_MEMORY_MB", 512),
@@ -113,7 +113,7 @@ defmodule SnmpSim.Config do
   @doc """
   Starts devices and services based on the provided configuration.
   """
-  def start_from_config(%{snmp_sim_ex: config}) do
+  def start_from_config(%{snmp_sim: config}) do
     Logger.info("Starting SnmpSim from configuration")
     
     # Apply global settings
@@ -147,7 +147,7 @@ defmodule SnmpSim.Config do
   """
   def sample_config do
     %{
-      snmp_sim_ex: %{
+      snmp_sim: %{
         global_settings: %{
           max_devices: 1000,
           max_memory_mb: 512,
@@ -229,13 +229,13 @@ defmodule SnmpSim.Config do
   
   defp validate_and_normalize_config(config) do
     case config do
-      %{snmp_sim_ex: snmp_config} ->
+      %{snmp_sim: snmp_config} ->
         case validate_snmp_config(snmp_config) do
           :ok -> {:ok, config}
           {:error, reason} -> {:error, reason}
         end
       _ ->
-        {:error, "Configuration must contain a 'snmp_sim_ex' key"}
+        {:error, "Configuration must contain a 'snmp_sim' key"}
     end
   end
   
@@ -251,7 +251,7 @@ defmodule SnmpSim.Config do
       error -> error
     end
   end
-  defp validate_snmp_config(_), do: {:error, "snmp_sim_ex configuration must be a map"}
+  defp validate_snmp_config(_), do: {:error, "snmp_sim configuration must be a map"}
   
   defp validate_global_settings(nil), do: :ok
   defp validate_global_settings(settings) when is_map(settings) do
@@ -303,12 +303,12 @@ defmodule SnmpSim.Config do
   defp apply_global_settings(settings) do
     Enum.each(settings, fn {key, value} ->
       case key do
-        :max_devices -> Application.put_env(:snmp_sim_ex, :max_devices, value)
-        :max_memory_mb -> Application.put_env(:snmp_sim_ex, :max_memory_mb, value)
-        :enable_telemetry -> Application.put_env(:snmp_sim_ex, :enable_telemetry, value)
-        :enable_performance_monitoring -> Application.put_env(:snmp_sim_ex, :enable_performance_monitoring, value)
-        :worker_pool_size -> Application.put_env(:snmp_sim_ex, :worker_pool_size, value)
-        :socket_count -> Application.put_env(:snmp_sim_ex, :socket_count, value)
+        :max_devices -> Application.put_env(:snmp_sim, :max_devices, value)
+        :max_memory_mb -> Application.put_env(:snmp_sim, :max_memory_mb, value)
+        :enable_telemetry -> Application.put_env(:snmp_sim, :enable_telemetry, value)
+        :enable_performance_monitoring -> Application.put_env(:snmp_sim, :enable_performance_monitoring, value)
+        :worker_pool_size -> Application.put_env(:snmp_sim, :worker_pool_size, value)
+        :socket_count -> Application.put_env(:snmp_sim, :socket_count, value)
         _ -> :ok  # Ignore unknown settings
       end
     end)

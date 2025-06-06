@@ -2,7 +2,7 @@
 
 IO.puts("=== Device Only Debug ===")
 
-Application.ensure_all_started(:snmp_sim_ex)
+Application.ensure_all_started(:snmp_sim)
 Process.sleep(200)
 
 # Test device behavior directly

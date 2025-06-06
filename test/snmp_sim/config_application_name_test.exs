@@ -1,7 +1,7 @@
 defmodule SnmpSim.ConfigApplicationNameTest do
   @moduledoc """
   Tests to ensure configuration files use the correct application name.
-  
+
   This prevents the regression where config files used :snmp_sim_ex 
   instead of the correct :snmp_sim application name.
   """
@@ -15,6 +15,7 @@ defmodule SnmpSim.ConfigApplicationNameTest do
       
       # Should contain 'app: :snmp_sim'
       assert mix_content =~ ~r/app:\s*:snmp_sim/
+      # Should NOT contain the old incorrect name
       refute mix_content =~ ~r/app:\s*:snmp_sim_ex/
     end
     
@@ -45,7 +46,7 @@ defmodule SnmpSim.ConfigApplicationNameTest do
     
     test "application can start without configuration errors" do
       # This test ensures the application name mismatch doesn't cause startup errors
-      # The error was: "You have configured application :snmp_sim_ex in your configuration file, but the application is not available"
+      # The error was: "You have configured application :snmp_sim in your configuration file, but the application is not available"
       
       # Stop the application if it's running
       Application.stop(:snmp_sim)

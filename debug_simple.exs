@@ -5,7 +5,7 @@
 IO.puts("=== Simple Debug Script ===")
 
 # Start applications
-Application.ensure_all_started(:snmp_sim_ex)
+Application.ensure_all_started(:snmp_sim)
 Process.sleep(200)
 
 IO.puts("1. Testing SharedProfiles...")

@@ -12,7 +12,7 @@ defmodule SnmpSim.Performance.PerformanceMonitor do
   alias SnmpSim.Performance.OptimizedDevicePool
 
   # Telemetry event names
-  @telemetry_prefix [:snmp_sim_ex]
+  @telemetry_prefix [:snmp_sim]
   @device_events [:device, :created] ++ [:device, :destroyed] ++ [:device, :request]
   @performance_events [:performance, :metrics] ++ [:performance, :alert]
   @resource_events [:resource, :usage] ++ [:resource, :limit_exceeded]

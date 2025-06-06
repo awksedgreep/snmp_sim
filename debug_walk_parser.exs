@@ -4,7 +4,7 @@
 Mix.install([])
 
 # Load the application modules by compiling them first
-Code.compile_file("lib/snmp_sim_ex/walk_parser.ex")
+Code.compile_file("lib/snmp_sim/walk_parser.ex")
 
 # Test the walk parser
 line = "SNMPv2-MIB::sysDescr.0 = STRING: \"Motorola SB6141 DOCSIS 3.0 Cable Modem\""

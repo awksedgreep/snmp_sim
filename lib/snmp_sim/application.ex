@@ -84,7 +84,7 @@ defmodule SnmpSim.Application do
     
     if device_count > 0 do
       config = %{
-        snmp_sim_ex: %{
+        snmp_sim: %{
           global_settings: %{
             max_devices: device_count,
             host: "0.0.0.0",

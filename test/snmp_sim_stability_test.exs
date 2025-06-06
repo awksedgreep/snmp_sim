@@ -8,11 +8,11 @@ defmodule SnmpSimStabilityTest do
   
   Usage:
     # Run all stability tests (may take hours)
-    mix test test/snmp_sim_ex_stability_test.exs
+    mix test test/snmp_sim_stability_test.exs
     
     # Run specific stability tests
-    mix test test/snmp_sim_ex_stability_test.exs --include stability:memory
-    mix test test/snmp_sim_ex_stability_test.exs --include stability:load
+    mix test test/snmp_sim_stability_test.exs --include stability:memory
+    mix test test/snmp_sim_stability_test.exs --include stability:load
   """
   
   use ExUnit.Case, async: false
@@ -67,20 +67,20 @@ defmodule SnmpSimStabilityTest do
   
   setup_all do
     # Start application with stability test configuration
-    Application.put_env(:snmp_sim_ex, :max_devices, @stress_test_device_count)
-    Application.put_env(:snmp_sim_ex, :enable_performance_monitoring, true)
-    Application.put_env(:snmp_sim_ex, :enable_telemetry, true)
+    Application.put_env(:snmp_sim, :max_devices, @stress_test_device_count)
+    Application.put_env(:snmp_sim, :enable_performance_monitoring, true)
+    Application.put_env(:snmp_sim, :enable_telemetry, true)
     
     # Ensure clean startup
-    Application.stop(:snmp_sim_ex)
-    Application.start(:snmp_sim_ex)
+    Application.stop(:snmp_sim)
+    Application.start(:snmp_sim)
     
     # Wait for system to stabilize
     Process.sleep(5000)
     
     on_exit(fn ->
       StabilityTestHelper.cleanup_all()
-      Application.stop(:snmp_sim_ex)
+      Application.stop(:snmp_sim)
     end)
     
     :ok

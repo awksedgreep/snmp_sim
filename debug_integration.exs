@@ -3,12 +3,12 @@
 # Debug integration test issue
 Mix.install([])
 
-Application.put_env(:snmp_sim_ex, :application, [])
+Application.put_env(:snmp_sim, :application, [])
 Application.put_env(:snmp_lib, :application, [])
 
 # Start the applications
 Application.ensure_all_started(:snmp_lib)
-Application.ensure_all_started(:snmp_sim_ex)
+Application.ensure_all_started(:snmp_sim)
 
 # Initialize SharedProfiles
 IO.puts("=== Starting SharedProfiles ===")

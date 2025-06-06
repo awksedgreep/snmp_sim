@@ -5,12 +5,12 @@ System.cmd("pwd", [])
 Mix.install([])
 
 # Load the current application
-Code.prepend_path("_build/dev/lib/snmp_sim_ex/ebin")
+Code.prepend_path("_build/dev/lib/snmp_sim/ebin")
 Code.prepend_path("_build/dev/lib/snmp_lib/ebin")
 
 # Start the application
-Application.load(:snmp_sim_ex)
-Application.ensure_all_started(:snmp_sim_ex)
+Application.load(:snmp_sim)
+Application.ensure_all_started(:snmp_sim)
 
 defmodule SimulatorTest do
   def test_device() do

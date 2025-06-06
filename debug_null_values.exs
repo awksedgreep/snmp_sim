@@ -5,7 +5,7 @@
 IO.puts("=== Debugging NULL Values in SNMP Simulator ===")
 
 # Start dependencies
-Application.ensure_all_started(:snmp_sim_ex)
+Application.ensure_all_started(:snmp_sim)
 
 # Sleep to allow proper startup
 Process.sleep(200)

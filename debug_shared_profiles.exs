@@ -3,9 +3,9 @@
 # Debug script to test SharedProfiles
 Mix.install([])
 
-Code.compile_file("lib/snmp_sim_ex/walk_parser.ex")
-Code.compile_file("lib/snmp_sim_ex/mib/shared_profiles.ex")
-Code.compile_file("lib/snmp_sim_ex/value_simulator.ex")
+Code.compile_file("lib/snmp_sim/walk_parser.ex")
+Code.compile_file("lib/snmp_sim/mib/shared_profiles.ex")
+Code.compile_file("lib/snmp_sim/value_simulator.ex")
 
 # Test loading walk file directly
 IO.puts("=== Testing Walk Parser ===")

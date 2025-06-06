@@ -8,7 +8,7 @@ defmodule SnmpSimPhase4IntegrationTest do
   
   setup_all do
     # Start the application if not already started
-    Application.ensure_all_started(:snmp_sim_ex)
+    Application.ensure_all_started(:snmp_sim)
     :ok
   end
   

@@ -8,11 +8,11 @@ defmodule SnmpSimProductionValidationTest do
   
   Usage:
     # Run all production validation tests
-    mix test test/snmp_sim_ex_production_validation_test.exs
+    mix test test/snmp_sim_production_validation_test.exs
     
     # Run specific validation categories
-    mix test test/snmp_sim_ex_production_validation_test.exs --include validation:performance
-    mix test test/snmp_sim_ex_production_validation_test.exs --include validation:security
+    mix test test/snmp_sim_production_validation_test.exs --include validation:performance
+    mix test test/snmp_sim_production_validation_test.exs --include validation:security
   """
   
   use ExUnit.Case, async: false
@@ -32,20 +32,20 @@ defmodule SnmpSimProductionValidationTest do
   
   setup_all do
     # Configure for production-like testing
-    Application.put_env(:snmp_sim_ex, :max_devices, @min_device_capacity)
-    Application.put_env(:snmp_sim_ex, :enable_performance_monitoring, true)
-    Application.put_env(:snmp_sim_ex, :optimization_level, :aggressive)
+    Application.put_env(:snmp_sim, :max_devices, @min_device_capacity)
+    Application.put_env(:snmp_sim, :enable_performance_monitoring, true)
+    Application.put_env(:snmp_sim, :optimization_level, :aggressive)
     
     # Start application
-    Application.stop(:snmp_sim_ex)
-    Application.start(:snmp_sim_ex)
+    Application.stop(:snmp_sim)
+    Application.start(:snmp_sim)
     
     # Wait for system initialization
     Process.sleep(5000)
     
     on_exit(fn ->
       ProductionTestHelper.cleanup_all()
-      Application.stop(:snmp_sim_ex)
+      Application.stop(:snmp_sim)
     end)
     
     :ok

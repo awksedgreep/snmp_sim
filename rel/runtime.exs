@@ -5,7 +5,7 @@ import Config
 # based on environment variables and system state.
 
 # Basic application configuration
-config :snmp_sim_ex,
+config :snmp_sim,
   # Environment settings
   environment: System.get_env("MIX_ENV", "prod"),
   
@@ -64,7 +64,7 @@ config :logger, :console,
 
 # File logger configuration (if enabled)
 if System.get_env("SNMP_SIM_EX_ENABLE_FILE_LOGGING", "false") == "true" do
-  log_path = System.get_env("SNMP_SIM_EX_LOG_PATH", "/app/data/logs/snmp_sim_ex.log")
+  log_path = System.get_env("SNMP_SIM_EX_LOG_PATH", "/app/data/logs/snmp_sim.log")
   
   config :logger,
     backends: [:console, {LoggerFileBackend, :info_log}]
@@ -78,7 +78,7 @@ end
 
 # Performance monitoring configuration
 if System.get_env("SNMP_SIM_EX_ENABLE_PERFORMANCE_MONITORING", "true") == "true" do
-  config :snmp_sim_ex, :performance_monitor,
+  config :snmp_sim, :performance_monitor,
     enabled: true,
     collection_interval_ms: String.to_integer(System.get_env("SNMP_SIM_EX_PERF_COLLECTION_INTERVAL_MS", "30000")),
     alert_thresholds: %{
@@ -90,21 +90,21 @@ if System.get_env("SNMP_SIM_EX_ENABLE_PERFORMANCE_MONITORING", "true") == "true"
 end
 
 # Resource manager configuration
-config :snmp_sim_ex, :resource_manager,
+config :snmp_sim, :resource_manager,
   max_devices: String.to_integer(System.get_env("SNMP_SIM_EX_MAX_DEVICES", "10000")),
   max_memory_mb: String.to_integer(System.get_env("SNMP_SIM_EX_MAX_MEMORY_MB", "1024")),
   cleanup_threshold_percent: String.to_integer(System.get_env("SNMP_SIM_EX_CLEANUP_THRESHOLD_PERCENT", "80")),
   monitoring_interval_ms: String.to_integer(System.get_env("SNMP_SIM_EX_RESOURCE_MONITORING_INTERVAL_MS", "60000"))
 
 # Device pool configuration
-config :snmp_sim_ex, :device_pool,
+config :snmp_sim, :device_pool,
   tier_promotion_threshold: String.to_integer(System.get_env("SNMP_SIM_EX_TIER_PROMOTION_THRESHOLD", "100")),
   tier_demotion_threshold: String.to_integer(System.get_env("SNMP_SIM_EX_TIER_DEMOTION_THRESHOLD", "10")),
   cache_cleanup_interval_ms: String.to_integer(System.get_env("SNMP_SIM_EX_CACHE_CLEANUP_INTERVAL_MS", "300000"))
 
 # Development and testing configurations
 if config_env() == :dev do
-  config :snmp_sim_ex,
+  config :snmp_sim,
     max_devices: 100,
     max_memory_mb: 256,
     port_range_start: 30000,
@@ -112,7 +112,7 @@ if config_env() == :dev do
 end
 
 if config_env() == :test do
-  config :snmp_sim_ex,
+  config :snmp_sim,
     max_devices: 50,
     max_memory_mb: 128,
     port_range_start: 40000,
@@ -126,7 +126,7 @@ end
 
 # Health check endpoint configuration
 if System.get_env("SNMP_SIM_EX_ENABLE_HEALTH_ENDPOINT", "true") == "true" do
-  config :snmp_sim_ex, :health_check,
+  config :snmp_sim, :health_check,
     enabled: true,
     port: String.to_integer(System.get_env("SNMP_SIM_EX_HEALTH_PORT", "4000")),
     path: System.get_env("SNMP_SIM_EX_HEALTH_PATH", "/health")

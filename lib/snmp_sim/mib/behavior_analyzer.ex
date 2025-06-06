@@ -5,7 +5,10 @@ defmodule SnmpSim.MIB.BehaviorAnalyzer do
     {:nowarn_function, determine_final_behavior: 4},
     {:nowarn_function, determine_behavior_by_type: 2},
     {:nowarn_function, generate_behavior_config: 2},
-    {:nowarn_function, analyze_by_oid_pattern: 1}
+    {:nowarn_function, analyze_by_oid_pattern: 1},
+    {:nowarn_function, analyze_by_description: 1},
+    {:nowarn_function, analyze_by_name: 1},
+    {:nowarn_function, analyze_by_type: 1}
   ]
   @moduledoc """
   Automatically determine realistic behaviors from MIB object definitions.
@@ -180,7 +183,7 @@ defmodule SnmpSim.MIB.BehaviorAnalyzer do
         | :time_based
         | :timestamp_based
 
-  @spec analyze_by_description(map()) :: %{detected_description_patterns: [description_pattern()]}
+  @spec analyze_by_description(map()) :: map()
   defp analyze_by_description(oid_info) do
     description = String.downcase(oid_info.description || "")
     
