@@ -322,8 +322,9 @@ defmodule SnmpSim.Device do
           response = process_snmp_pdu(pdu, state)
           {:reply, response, state}
         catch
-          :error, _reason ->
-            Logger.error("SNMP PDU processing error")
+          :error, reason ->
+            Logger.error("SNMP PDU processing error: #{inspect(reason)}")
+            Logger.error("PDU: #{inspect(pdu)}")
             error_response = PDU.create_error_response(pdu, @gen_err, 0)
             {:reply, {:ok, error_response}, state}
         end
@@ -693,7 +694,7 @@ defmodule SnmpSim.Device do
     variable_bindings = process_get_request(Map.get(pdu, :varbinds, Map.get(pdu, :variable_bindings, [])), state)
 
     # Handle errors differently based on SNMP version for GET requests too
-    case pdu.version do
+    case Map.get(pdu, :version, 1) do
       0 ->  # SNMPv1 - use error responses for missing objects
         has_errors = Enum.any?(variable_bindings, fn
           {_oid, :no_such_object, _} -> true
@@ -745,7 +746,7 @@ defmodule SnmpSim.Device do
       variable_bindings = process_getnext_request(Map.get(pdu, :varbinds, Map.get(pdu, :variable_bindings, [])), state)
 
       # Handle errors differently based on SNMP version
-      case pdu.version do
+      case Map.get(pdu, :version, 1) do
         0 ->  # SNMPv1 - use error responses for missing objects
           has_errors = Enum.any?(variable_bindings, fn
             {_oid, :no_such_object, _} -> true
@@ -764,8 +765,9 @@ defmodule SnmpSim.Device do
           create_get_response_with_fields(pdu, variable_bindings)
       end
     catch
-      :error, _reason ->
-        Logger.error("Error in GETNEXT PDU processing")
+      :error, reason ->
+        Logger.error("Error in GETNEXT PDU processing: #{inspect(reason)}")
+        Logger.error("PDU: #{inspect(pdu)}")
         error_response = PDU.create_error_response(pdu, @gen_err, 1)
         {:ok, error_response}
     end
@@ -798,8 +800,9 @@ defmodule SnmpSim.Device do
           create_get_response_with_fields(pdu, variable_bindings)
       end
     catch
-      :error, _reason ->
-        Logger.error("Error in GETNEXT PDU processing")
+      :error, reason ->
+        Logger.error("Error in GETNEXT PDU processing: #{inspect(reason)}")
+        Logger.error("PDU: #{inspect(pdu)}")
         error_response = PDU.create_error_response(pdu, @gen_err, 1)
         {:ok, error_response}
     end
@@ -810,10 +813,13 @@ defmodule SnmpSim.Device do
     variable_bindings = process_getbulk_request(pdu, state)
 
     # Create PDU struct format expected by tests and encoding
-    # Start with the original PDU and modify only what we need
-    response_pdu = %{pdu |
+    # Build response PDU with required fields
+    response_pdu = %{
       type: :get_response,  # GET_RESPONSE
-      error_status: 0,  # Explicitly set to 0
+      version: Map.get(pdu, :version, 1),
+      community: Map.get(pdu, :community, "public"),
+      request_id: Map.get(pdu, :request_id, 0),
+      error_status: 0,  # Success
       error_index: 0,
       varbinds: variable_bindings
     }
@@ -887,9 +893,9 @@ defmodule SnmpSim.Device do
                 get_fallback_next_oid(oid_string, state)
             end
           :end_of_mib ->
-            {oid, :end_of_mib_view, nil}
+            {oid, :end_of_mib_view, {:end_of_mib_view, nil}}
           {:error, :end_of_mib} ->
-            {oid, :end_of_mib_view, nil}
+            {oid, :end_of_mib_view, {:end_of_mib_view, nil}}
           {:error, :device_type_not_found} ->
             # Fallback: try to get next from current OID pattern
             get_fallback_next_oid(oid_string, state)
@@ -907,8 +913,8 @@ defmodule SnmpSim.Device do
     end)
       result
     catch
-      :error, _reason ->
-        Logger.error("Error in process_getnext_request")
+      :error, reason ->
+        Logger.error("Error in process_getnext_request: #{inspect(reason)}")
         [{[1,3,6,1,2,1,1,1,1,0], :octet_string, "Error processing GETNEXT"}]
     end
   end
@@ -927,16 +933,36 @@ defmodule SnmpSim.Device do
         non_rep_results = Enum.map(non_rep_vars, fn {oid, _value} ->
           try do
             case SharedProfiles.get_next_oid(state.device_type, oid) do
-              {:ok, next_oid, value} -> {next_oid, value}
-              {:error, :end_of_mib} -> {oid, {:end_of_mib_view, nil}}
-              {:error, :device_type_not_found} -> get_fallback_next_oid(oid, state)
-              {:error, _reason} -> {oid, {:end_of_mib_view, nil}}
+              {:ok, next_oid, value} -> {next_oid, :octet_string, value}
+              {:error, :end_of_mib} -> {oid, :end_of_mib_view, {:end_of_mib_view, nil}}
+              {:error, :device_type_not_found} -> 
+                # Handle 3-tuple format from fallback
+                case get_fallback_next_oid(oid, state) do
+                  {next_oid_list, type, value} -> 
+                    next_oid_str = if is_list(next_oid_list), do: Enum.join(next_oid_list, "."), else: next_oid_list
+                    {next_oid_str, type, value}
+                  other -> other
+                end
+              {:error, _reason} -> {oid, :end_of_mib_view, {:end_of_mib_view, nil}}
             end
           catch
-            :exit, {:noproc, _} -> get_fallback_next_oid(oid, state)
+            :exit, {:noproc, _} -> 
+              # Handle 3-tuple format from fallback
+              case get_fallback_next_oid(oid, state) do
+                {next_oid_list, type, value} -> 
+                  next_oid_str = if is_list(next_oid_list), do: Enum.join(next_oid_list, "."), else: next_oid_list
+                  {next_oid_str, type, value}
+                other -> other
+              end
             :exit, reason ->
               Logger.debug("SharedProfiles unavailable (#{inspect(reason)}), using fallback for OID #{oid}")
-              get_fallback_next_oid(oid, state)
+              # Handle 3-tuple format from fallback
+              case get_fallback_next_oid(oid, state) do
+                {next_oid_list, type, value} -> 
+                  next_oid_str = if is_list(next_oid_list), do: Enum.join(next_oid_list, "."), else: next_oid_list
+                  {next_oid_str, type, value}
+                other -> other
+              end
           end
         end)
 
@@ -947,15 +973,59 @@ defmodule SnmpSim.Device do
             start_oid = elem(first_repeat, 0)
             try do
               case SharedProfiles.get_bulk_oids(state.device_type, start_oid, max_repetitions) do
-                {:ok, bulk_oids} -> bulk_oids
-                {:error, :device_type_not_found} -> get_fallback_bulk_oids(start_oid, max_repetitions, state)
+                {:ok, bulk_oids} -> 
+                  # Ensure bulk_oids are 3-tuples
+                  Enum.map(bulk_oids, fn
+                    {oid, type, value} -> {oid, type, value}
+                    {oid, value} -> {oid, :octet_string, value}
+                    other -> other
+                  end)
+                {:error, :device_type_not_found} -> 
+                  # Handle mixed format from fallback bulk function
+                  case get_fallback_bulk_oids(start_oid, max_repetitions, state) do
+                    bulk_list when is_list(bulk_list) ->
+                      # Convert any inconsistent formats to proper 3-tuples
+                      Enum.map(bulk_list, fn
+                        {oid_list, type, value} when is_list(oid_list) -> 
+                          {Enum.join(oid_list, "."), type, value}
+                        {oid, type, value} -> {oid, type, value}
+                        {oid, value} -> {oid, :octet_string, value}
+                        other -> other
+                      end)
+                    other -> other
+                  end
                 {:error, _reason} -> []
               end
             catch
-              :exit, {:noproc, _} -> get_fallback_bulk_oids(start_oid, max_repetitions, state)
+              :exit, {:noproc, _} -> 
+                # Handle mixed format from fallback bulk function
+                case get_fallback_bulk_oids(start_oid, max_repetitions, state) do
+                  bulk_list when is_list(bulk_list) ->
+                    # Convert any inconsistent formats to proper 3-tuples
+                    Enum.map(bulk_list, fn
+                      {oid_list, type, value} when is_list(oid_list) -> 
+                        {Enum.join(oid_list, "."), type, value}
+                      {oid, type, value} -> {oid, type, value}
+                      {oid, value} -> {oid, :octet_string, value}
+                      other -> other
+                    end)
+                  other -> other
+                end
               :exit, reason ->
                 Logger.debug("SharedProfiles unavailable (#{inspect(reason)}), using fallback for OID #{start_oid}")
-                get_fallback_bulk_oids(start_oid, max_repetitions, state)
+                # Handle mixed format from fallback bulk function
+                case get_fallback_bulk_oids(start_oid, max_repetitions, state) do
+                  bulk_list when is_list(bulk_list) ->
+                    # Convert any inconsistent formats to proper 3-tuples
+                    Enum.map(bulk_list, fn
+                      {oid_list, type, value} when is_list(oid_list) -> 
+                        {Enum.join(oid_list, "."), type, value}
+                      {oid, type, value} -> {oid, type, value}
+                      {oid, value} -> {oid, :octet_string, value}
+                      other -> other
+                    end)
+                  other -> other
+                end
             end
         end
 
@@ -1333,8 +1403,6 @@ defmodule SnmpSim.Device do
 
     # Add time-of-day variation
     time_factor = get_time_factor()
-
-    # Packet variation (more bursty than bytes)
     jitter = :rand.uniform(31) - 15  # -15% to +15%
     jitter_factor = 1.0 + (jitter / 100.0)
 
@@ -1664,11 +1732,11 @@ defmodule SnmpSim.Device do
       _ ->
         # For non-existent roots, return the special end of MIB value
         oid_list = case oid do
-          oid when is_binary(oid) -> string_to_oid_list(oid)
           oid when is_list(oid) -> oid
+          oid when is_binary(oid) -> string_to_oid_list(oid)
           _ -> oid
         end
-        {oid_list, :end_of_mib_view, nil}
+        {oid_list, :end_of_mib_view, {:end_of_mib_view, nil}}
     end
 
     result
@@ -1703,7 +1771,7 @@ defmodule SnmpSim.Device do
             {:ok, value} -> {:ok, {oid_to_string(next_oid), value}}
             {:error, _} ->
               case get_fallback_next_oid(oid, state) do
-                {_next_oid, :end_of_mib_view, nil} -> {:error, :end_of_mib_view}
+                {_next_oid, :end_of_mib_view, {:end_of_mib_view, nil}} -> {:error, :end_of_mib_view}
                 {next_oid, _type, value} -> {:ok, {oid_to_string(next_oid), value}}
               end
           end
@@ -1713,24 +1781,24 @@ defmodule SnmpSim.Device do
           {:error, :end_of_mib_view}
         {:error, :device_type_not_found} ->
           case get_fallback_next_oid(oid, state) do
-            {_next_oid, :end_of_mib_view, nil} -> {:error, :end_of_mib_view}
+            {_next_oid, :end_of_mib_view, {:end_of_mib_view, nil}} -> {:error, :end_of_mib_view}
             {next_oid, _type, value} -> {:ok, {oid_to_string(next_oid), value}}
           end
         {:error, _reason} ->
           case get_fallback_next_oid(oid, state) do
-            {_next_oid, :end_of_mib_view, nil} -> {:error, :end_of_mib_view}
+            {_next_oid, :end_of_mib_view, {:end_of_mib_view, nil}} -> {:error, :end_of_mib_view}
             {next_oid, _type, value} -> {:ok, {oid_to_string(next_oid), value}}
           end
       end
     catch
       :exit, {:noproc, _} ->
         case get_fallback_next_oid(oid, state) do
-          {_next_oid, :end_of_mib_view, nil} -> {:error, :end_of_mib_view}
+          {_next_oid, :end_of_mib_view, {:end_of_mib_view, nil}} -> {:error, :end_of_mib_view}
           {next_oid, _type, value} -> {:ok, {oid_to_string(next_oid), value}}
         end
       :exit, _reason ->
         case get_fallback_next_oid(oid, state) do
-          {_next_oid, :end_of_mib_view, nil} -> {:error, :end_of_mib_view}
+          {_next_oid, :end_of_mib_view, {:end_of_mib_view, nil}} -> {:error, :end_of_mib_view}
           {next_oid, _type, value} -> {:ok, {oid_to_string(next_oid), value}}
         end
     end
@@ -1813,13 +1881,21 @@ defmodule SnmpSim.Device do
         end
         result = {oid_list, :end_of_mib_view, {:end_of_mib_view, nil}}  # 3-tuple with exception value
         result
-      {oid, _type, {:no_such_object, _} = value} ->
+      {oid, :end_of_mib_view, _} ->
         oid_list = case oid do
           oid when is_list(oid) -> oid
           oid when is_binary(oid) -> string_to_oid_list(oid)
           _ -> oid
         end
-        {oid_list, :no_such_object, value}  # 3-tuple with exception value
+        result = {oid_list, :end_of_mib_view, {:end_of_mib_view, nil}}  # 3-tuple with exception value
+        result
+      {oid, :no_such_object, _} ->
+        oid_list = case oid do
+          oid when is_list(oid) -> oid
+          oid when is_binary(oid) -> string_to_oid_list(oid)
+          _ -> oid
+        end
+        {oid_list, :no_such_object, {:no_such_object, nil}}  # 3-tuple with exception value
       {oid, type, value} ->
         oid_list = case oid do
           oid when is_list(oid) -> oid
@@ -1840,10 +1916,14 @@ defmodule SnmpSim.Device do
 
 
     # Create response format expected by tests (with :type and :varbinds fields)
-    response_pdu = %{pdu |
+    response_pdu = %{
       type: :get_response,  # TEST format uses :type
+      version: Map.get(pdu, :version, 1),
+      community: Map.get(pdu, :community, "public"),
+      request_id: Map.get(pdu, :request_id, 0),
       varbinds: converted_bindings,  # TEST format uses :varbinds
-      error_status: @no_error
+      error_status: @no_error,
+      error_index: 0
     }
 
     {:ok, response_pdu}

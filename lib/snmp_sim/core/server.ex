@@ -400,7 +400,19 @@ defmodule SnmpSim.Core.Server do
 
         # Convert varbinds to :auto format for PDU.build_response
         auto_varbinds = Enum.map(varbinds, fn {oid_list, _type, value} ->
-          {oid_list, :auto, value}
+          # Ensure OID is an integer list for snmp_lib encoding
+          normalized_oid = case oid_list do
+            oid when is_list(oid) -> oid
+            oid when is_binary(oid) ->
+              case SnmpLib.OID.string_to_list(oid) do
+                {:ok, list} -> list
+                {:error, _} -> 
+                  # Fallback: manual string parsing
+                  String.split(oid, ".") |> Enum.map(&String.to_integer/1)
+              end
+            _ -> [1, 3, 6, 1]  # Safe default
+          end
+          {normalized_oid, :auto, value}
         end)
         pdu = PDU.build_response(request_id, error_status, error_index, auto_varbinds)
         PDU.build_message(pdu, community, version)
