@@ -1673,6 +1673,133 @@ defmodule SnmpSim.Device do
     result
   end
 
+  defp get_fallback_bulk_oids(start_oid, max_repetitions, state) do
+    # Simple fallback that generates a few basic interface OIDs
+    case start_oid do
+      "1.3.6.1.2.1.2.2.1.1" ->
+        # Generate interface indices
+        for i <- 1..min(max_repetitions, 3) do
+          {"1.3.6.1.2.1.2.2.1.1.#{i}", i}
+        end
+      "1.3.6.1.2.1.2.2.1.10" ->
+        # Generate interface octet counters
+        for i <- 1..min(max_repetitions, 3) do
+          {"1.3.6.1.2.1.2.2.1.10.#{i}", {:counter32, i * 1000}}
+        end
+      _ ->
+        # Just return one fallback OID
+        [get_fallback_next_oid(start_oid, state)]
+    end
+  end
+
+  defp get_next_oid_value(oid, state) do
+    try do
+      device_state = build_device_state(state)
+      case SharedProfiles.get_next_oid(oid, device_state) do
+        {:ok, next_oid} ->
+          # Get the value for the next OID
+          case SharedProfiles.get_oid_value(state.device_type, next_oid, device_state) do
+            {:ok, value} -> {:ok, {oid_to_string(next_oid), value}}
+            {:error, _} ->
+              case get_fallback_next_oid(oid, state) do
+                {_next_oid, :end_of_mib_view, nil} -> {:error, :end_of_mib_view}
+                {next_oid, _type, value} -> {:ok, {oid_to_string(next_oid), value}}
+              end
+          end
+        :end_of_mib ->
+          {:error, :end_of_mib_view}
+        {:error, :end_of_mib} ->
+          {:error, :end_of_mib_view}
+        {:error, :device_type_not_found} ->
+          case get_fallback_next_oid(oid, state) do
+            {_next_oid, :end_of_mib_view, nil} -> {:error, :end_of_mib_view}
+            {next_oid, _type, value} -> {:ok, {oid_to_string(next_oid), value}}
+          end
+        {:error, _reason} ->
+          case get_fallback_next_oid(oid, state) do
+            {_next_oid, :end_of_mib_view, nil} -> {:error, :end_of_mib_view}
+            {next_oid, _type, value} -> {:ok, {oid_to_string(next_oid), value}}
+          end
+      end
+    catch
+      :exit, {:noproc, _} ->
+        case get_fallback_next_oid(oid, state) do
+          {_next_oid, :end_of_mib_view, nil} -> {:error, :end_of_mib_view}
+          {next_oid, _type, value} -> {:ok, {oid_to_string(next_oid), value}}
+        end
+      :exit, _reason ->
+        case get_fallback_next_oid(oid, state) do
+          {_next_oid, :end_of_mib_view, nil} -> {:error, :end_of_mib_view}
+          {next_oid, _type, value} -> {:ok, {oid_to_string(next_oid), value}}
+        end
+    end
+  end
+
+  defp get_bulk_oid_values(oid, count, state) do
+    try do
+      device_state = build_device_state(state)
+      case SharedProfiles.get_bulk_oids(oid, count, device_state) do
+        {:ok, oid_values} -> {:ok, oid_values}
+        {:error, _reason} -> {:ok, get_fallback_bulk_oids(oid, count, state)}
+      end
+    catch
+      :exit, {:noproc, _} ->
+        {:ok, get_fallback_bulk_oids(oid, count, state)}
+      :exit, _reason ->
+        {:ok, get_fallback_bulk_oids(oid, count, state)}
+    end
+  end
+
+  defp walk_oid_values(oid, state) do
+    # Simple walk implementation - get next OIDs until end of MIB or subtree
+    walk_oid_recursive(oid, state, [])
+  end
+
+  defp walk_oid_recursive(oid, state, acc) when length(acc) < 100 do
+    case get_next_oid_value(oid, state) do
+      {:ok, {next_oid, value}} ->
+        # Convert both OIDs to strings for comparison
+        oid_str = oid_to_string(oid)
+        next_oid_str = oid_to_string(next_oid)
+
+        # Check if still in the same subtree
+        if String.starts_with?(next_oid_str, oid_str) do
+          walk_oid_recursive(next_oid_str, state, [{next_oid_str, value} | acc])
+        else
+          {:ok, Enum.reverse(acc)}
+        end
+      {:error, :end_of_mib_view} ->
+        {:ok, Enum.reverse(acc)}
+      {:error, _reason} ->
+        {:ok, Enum.reverse(acc)}
+    end
+  end
+
+  defp walk_oid_recursive(_oid, _state, acc) do
+    # Limit recursion depth to prevent infinite loops
+    {:ok, Enum.reverse(acc)}
+  end
+
+  defp oid_to_string(oid) when is_list(oid), do: Enum.join(oid, ".")
+  defp oid_to_string(oid) when is_binary(oid), do: oid
+  defp oid_to_string(oid), do: to_string(oid)
+
+  defp extract_type_and_value({type, value}) do
+    {type, value}
+  end
+
+  defp extract_type_and_value(value) when is_binary(value) do
+    {:octet_string, value}
+  end
+
+  defp extract_type_and_value(value) when is_integer(value) do
+    {:integer, value}
+  end
+
+  defp extract_type_and_value(value) do
+    {:unknown, value}
+  end
+
   defp create_get_response(pdu, variable_bindings) do
     # Convert 3-tuples to 2-tuples for test compatibility, but preserve important types
     # Also ensure OIDs are strings for test compatibility
@@ -1837,127 +1964,4 @@ defmodule SnmpSim.Device do
   defp string_to_oid_list(oid) when is_list(oid), do: oid
   defp string_to_oid_list(oid), do: oid
 
-  defp extract_type_and_value({type, value}) do
-    {type, value}
-  end
-
-  defp extract_type_and_value(value) when is_binary(value) do
-    {:octet_string, value}
-  end
-
-  defp extract_type_and_value(value) when is_integer(value) do
-    {:integer, value}
-  end
-
-  defp extract_type_and_value(value) do
-    {:unknown, value}
-  end
-
-  defp get_fallback_bulk_oids(start_oid, max_repetitions, state) do
-    # Simple fallback that generates a few basic interface OIDs
-    case start_oid do
-      "1.3.6.1.2.1.2.2.1.1" ->
-        # Generate interface indices
-        for i <- 1..min(max_repetitions, 3) do
-          {"1.3.6.1.2.1.2.2.1.1.#{i}", i}
-        end
-      "1.3.6.1.2.1.2.2.1.10" ->
-        # Generate interface octet counters
-        for i <- 1..min(max_repetitions, 3) do
-          {"1.3.6.1.2.1.2.2.1.10.#{i}", {:counter32, i * 1000}}
-        end
-      _ ->
-        # Just return one fallback OID
-        [get_fallback_next_oid(start_oid, state)]
-    end
-  end
-
-  # Helper functions for new testing APIs
-
-  defp get_next_oid_value(oid, state) do
-    try do
-      device_state = build_device_state(state)
-      case SharedProfiles.get_next_oid(oid, device_state) do
-        {:ok, next_oid} ->
-          # Get the value for the next OID
-          case SharedProfiles.get_oid_value(state.device_type, next_oid, device_state) do
-            {:ok, value} -> {:ok, {oid_to_string(next_oid), value}}
-            {:error, _} ->
-              case get_fallback_next_oid(oid, state) do
-                {_next_oid, :end_of_mib_view, nil} -> {:error, :end_of_mib_view}
-                {next_oid, _type, value} -> {:ok, {oid_to_string(next_oid), value}}
-              end
-          end
-        :end_of_mib ->
-          {oid, :end_of_mib_view, nil}
-        {:error, :end_of_mib} ->
-          {oid, :end_of_mib_view, nil}
-        {:error, :device_type_not_found} ->
-          # Fallback: try to get next from current OID pattern
-          get_fallback_next_oid(oid, state)
-        {:error, _reason} ->
-          get_fallback_next_oid(oid, state)
-      end
-    catch
-      :exit, {:noproc, _} ->
-        case get_fallback_next_oid(oid, state) do
-          {_next_oid, :end_of_mib_view, nil} -> {:error, :end_of_mib_view}
-          {next_oid, _type, value} -> {:ok, {oid_to_string(next_oid), value}}
-        end
-      :exit, _reason ->
-        case get_fallback_next_oid(oid, state) do
-          {_next_oid, :end_of_mib_view, nil} -> {:error, :end_of_mib_view}
-          {next_oid, _type, value} -> {:ok, {oid_to_string(next_oid), value}}
-        end
-    end
-  end
-
-  defp get_bulk_oid_values(oid, count, state) do
-    try do
-      device_state = build_device_state(state)
-      case SharedProfiles.get_bulk_oids(oid, count, device_state) do
-        {:ok, oid_values} -> {:ok, oid_values}
-        {:error, _reason} -> {:ok, get_fallback_bulk_oids(oid, count, state)}
-      end
-    catch
-      :exit, {:noproc, _} ->
-        {:ok, get_fallback_bulk_oids(oid, count, state)}
-      :exit, _reason ->
-        {:ok, get_fallback_bulk_oids(oid, count, state)}
-    end
-  end
-
-  defp walk_oid_values(oid, state) do
-    # Simple walk implementation - get next OIDs until end of MIB or subtree
-    walk_oid_recursive(oid, state, [])
-  end
-
-  defp walk_oid_recursive(oid, state, acc) when length(acc) < 100 do
-    case get_next_oid_value(oid, state) do
-      {:ok, {next_oid, value}} ->
-        # Convert both OIDs to strings for comparison
-        oid_str = oid_to_string(oid)
-        next_oid_str = oid_to_string(next_oid)
-
-        # Check if still in the same subtree
-        if String.starts_with?(next_oid_str, oid_str) do
-          walk_oid_recursive(next_oid_str, state, [{next_oid_str, value} | acc])
-        else
-          {:ok, Enum.reverse(acc)}
-        end
-      {:error, :end_of_mib_view} ->
-        {:ok, Enum.reverse(acc)}
-      {:error, _reason} ->
-        {:ok, Enum.reverse(acc)}
-    end
-  end
-
-  defp walk_oid_recursive(_oid, _state, acc) do
-    # Limit recursion depth to prevent infinite loops
-    {:ok, Enum.reverse(acc)}
-  end
-
-  defp oid_to_string(oid) when is_list(oid), do: Enum.join(oid, ".")
-  defp oid_to_string(oid) when is_binary(oid), do: oid
-  defp oid_to_string(oid), do: to_string(oid)
 end

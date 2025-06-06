@@ -4,7 +4,7 @@ defmodule SnmpSim.MixProject do
   def project do
     [
       app: :snmp_sim,
-      version: "1.0.2",
+      version: "1.0.3",
       elixir: "~> 1.15",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
@@ -43,7 +43,7 @@ defmodule SnmpSim.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:snmp_lib, git: "https://github.com/awksedgreep/snmp_lib", tag: "v1.0.1"},
+      {:snmp_lib, git: "https://github.com/awksedgreep/snmp_lib", tag: "v1.0.2"},
       {:jason, "~> 1.4"},
       {:yaml_elixir, "~> 2.9", optional: true},
       {:telemetry, "~> 1.0", optional: true},
@@ -56,7 +56,7 @@ defmodule SnmpSim.MixProject do
   defp releases do
     [
       snmp_sim: [
-        version: "1.0.1",
+        version: "1.0.2",
         applications: [snmp_sim: :permanent],
         steps: [:assemble, :tar],
         strip_beams: Mix.env() == :prod,
