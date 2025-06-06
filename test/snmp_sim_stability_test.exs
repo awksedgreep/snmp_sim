@@ -327,35 +327,36 @@ defmodule SnmpSimStabilityTest do
   
   # SNMP client functions
   defp send_snmp_get(port, oid, community \\ "public") do
-    request_pdu = %SnmpLib.PDU{
+    request_pdu = %{
       version: 1,
       community: community,
-      pdu_type: :get_request,
+      type: :get_request,
       request_id: :rand.uniform(65535),
       error_status: 0,
       error_index: 0,
-      variable_bindings: [{oid, nil}]
+      varbinds: [{oid, nil}]
     }
     
     send_snmp_request(port, request_pdu)
   end
 
   defp send_snmp_getnext(port, oid, community \\ "public") do
-    request_pdu = %SnmpLib.PDU{
+    request_pdu = %{
       version: 1,
       community: community,
-      pdu_type: :getnext_request,
+      type: :get_next_request,
       request_id: :rand.uniform(65535),
       error_status: 0,
       error_index: 0,
-      variable_bindings: [{oid, nil}]
+      varbinds: [{oid, nil}]
     }
     
     send_snmp_request(port, request_pdu)
   end
 
   defp send_snmp_request(port, pdu) do
-    case SnmpLib.PDU.encode(pdu) do
+    message = %{pdu: pdu}
+    case SnmpLib.PDU.encode(message) do
       {:ok, packet} ->
         {:ok, socket} = :gen_udp.open(0, [:binary, {:active, false}])
         

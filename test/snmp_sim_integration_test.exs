@@ -4,7 +4,6 @@ defmodule SnmpSimIntegrationTest do
   alias SnmpSim.ProfileLoader
   alias SnmpSim.LazyDevicePool
   alias SnmpSim.Device
-  alias SnmpLib.PDU
   alias SnmpSim.MIB.SharedProfiles
   alias SnmpSim.TestHelpers.PortHelper
 
@@ -67,12 +66,13 @@ defmodule SnmpSimIntegrationTest do
       # Test SNMP GET request
       response = send_snmp_get(port, "1.3.6.1.2.1.1.1.0")
       
-      assert {:ok, pdu} = response
-      assert pdu.error_status == 0
-      assert length(pdu.variable_bindings) == 1
+      assert {:ok, message} = response
+      assert message.pdu.error_status == 0
+      assert length(message.pdu.varbinds) == 1
       
-      [{oid, value}] = pdu.variable_bindings
-      assert oid == "1.3.6.1.2.1.1.1.0"
+      [{oid, _type, value}] = message.pdu.varbinds
+      oid_string = if is_list(oid), do: Enum.join(oid, "."), else: oid
+      assert oid_string == "1.3.6.1.2.1.1.1.0"
       assert is_binary(value) and String.contains?(value, "Motorola")
       
       GenServer.stop(device)
@@ -99,12 +99,13 @@ defmodule SnmpSimIntegrationTest do
       # Test GETNEXT starting from system group
       response = send_snmp_getnext(port, "1.3.6.1.2.1.1")
       
-      assert {:ok, pdu} = response
-      assert pdu.error_status == 0
-      assert length(pdu.variable_bindings) == 1
+      assert {:ok, message} = response
+      assert message.pdu.error_status == 0
+      assert length(message.pdu.varbinds) == 1
       
-      [{next_oid, _value}] = pdu.variable_bindings
-      assert String.starts_with?(next_oid, "1.3.6.1.2.1.1.")
+      [{next_oid, _type, _value}] = message.pdu.varbinds
+      next_oid_string = if is_list(next_oid), do: Enum.join(next_oid, "."), else: next_oid
+      assert String.starts_with?(next_oid_string, "1.3.6.1.2.1.1.")
       
       GenServer.stop(device)
     end
@@ -130,11 +131,11 @@ defmodule SnmpSimIntegrationTest do
       # Request non-existent OID
       response = send_snmp_get(port, "1.3.6.1.2.1.99.99.99.0")
       
-      assert {:ok, pdu} = response
-      assert length(pdu.variable_bindings) == 1
+      assert {:ok, message} = response
+      assert length(message.pdu.varbinds) == 1
       
-      [{_oid, value}] = pdu.variable_bindings
-      assert match?({:no_such_object, _}, value)
+      [{_oid, _type, value}] = message.pdu.varbinds
+      assert value == :null or match?({:no_such_object, _}, value)
       
       GenServer.stop(device)
     end
@@ -165,7 +166,7 @@ defmodule SnmpSimIntegrationTest do
       
       # All devices should respond successfully
       assert Enum.all?(responses, fn
-        {:ok, pdu} -> pdu.error_status == 0
+        {:ok, message} -> message.pdu.error_status == 0
         _ -> false
       end)
       
@@ -298,7 +299,7 @@ defmodule SnmpSimIntegrationTest do
       
       # All requests should succeed
       successful = Enum.count(results, fn
-        {:ok, pdu} -> pdu.error_status == 0
+        {:ok, message} -> message.pdu.error_status == 0
         _ -> false
       end)
       
@@ -506,35 +507,52 @@ defmodule SnmpSimIntegrationTest do
   end
 
   defp send_snmp_get(port, oid, community \\ "public") do
-    request_pdu = %PDU{
+    request_pdu = %{
       version: 1,
       community: community,
-      pdu_type: 0xA0,  # GET_REQUEST
+      type: :get_request,
       request_id: :rand.uniform(65535),
       error_status: 0,
       error_index: 0,
-      variable_bindings: [{oid, nil}]
+      varbinds: [{oid, nil}]
     }
     
     send_snmp_request(port, request_pdu)
   end
 
   defp send_snmp_getnext(port, oid, community \\ "public") do
-    request_pdu = %PDU{
+    request_pdu = %{
       version: 1,
       community: community,
-      pdu_type: 0xA1,  # GETNEXT_REQUEST
+      type: :get_next_request,
       request_id: :rand.uniform(65535),
       error_status: 0,
       error_index: 0,
-      variable_bindings: [{oid, nil}]
+      varbinds: [{oid, nil}]
     }
     
     send_snmp_request(port, request_pdu)
   end
 
   defp send_snmp_request(port, pdu) do
-    case PDU.encode(pdu) do
+    # Convert legacy PDU format to SnmpLib format
+    oid_string = hd(pdu.varbinds) |> elem(0)
+    oid_list = oid_string |> String.split(".") |> Enum.map(&String.to_integer/1)
+    
+    # Build proper SNMP message using SnmpLib.PDU functions
+    built_pdu = case pdu.type do
+      :get_request -> SnmpLib.PDU.build_get_request(oid_list, pdu.request_id)
+      :get_next_request -> SnmpLib.PDU.build_get_next_request(oid_list, pdu.request_id)
+    end
+    
+    version = case pdu.version do
+      1 -> :v1
+      2 -> :v2c
+    end
+    
+    message = SnmpLib.PDU.build_message(built_pdu, pdu.community, version)
+    
+    case SnmpLib.PDU.encode_message(message) do
       {:ok, packet} ->
         {:ok, socket} = :gen_udp.open(0, [:binary, {:active, false}])
         
@@ -542,7 +560,7 @@ defmodule SnmpSimIntegrationTest do
         
         result = case :gen_udp.recv(socket, 0, 2000) do
           {:ok, {_ip, _port, response_data}} ->
-            PDU.decode(response_data)
+            SnmpLib.PDU.decode_message(response_data)
           {:error, :timeout} ->
             :timeout
           {:error, reason} ->

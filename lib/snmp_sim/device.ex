@@ -642,32 +642,32 @@ defmodule SnmpSim.Device do
       :truncated ->
         # Create a truncated response by limiting variable bindings
         truncated_bindings = Enum.take(pdu.variable_bindings, 1)
-        %PDU{pdu |
-          pdu_type: @get_response,
-          variable_bindings: truncated_bindings,
+        %{pdu |
+          type: @get_response,
+          varbinds: truncated_bindings,
           error_status: @no_error
         }
 
       :invalid_ber ->
         # Create response with invalid BER encoding simulation
-        %PDU{pdu |
-          pdu_type: @get_response,
-          variable_bindings: [{<<0xFF, 0xFF>>, {:invalid_ber, nil}}],
+        %{pdu |
+          type: @get_response,
+          varbinds: [{<<0xFF, 0xFF>>, {:invalid_ber, nil}}],
           error_status: @gen_err
         }
 
       :wrong_community ->
         # Create response with wrong community string
-        %PDU{pdu |
+        %{pdu |
           community: "invalid_community",
-          pdu_type: @get_response,
+          type: @get_response,
           error_status: @gen_err
         }
 
       :invalid_pdu_type ->
         # Create response with invalid PDU type
-        %PDU{pdu |
-          pdu_type: 0xFF,  # Invalid PDU type
+        %{pdu |
+          type: 0xFF,  # Invalid PDU type
           error_status: @gen_err
         }
 
@@ -676,9 +676,9 @@ defmodule SnmpSim.Device do
         corrupted_bindings = Enum.map(pdu.variable_bindings, fn {oid, _} ->
           {oid <> ".invalid", {:corrupted, <<0x00, 0xFF, 0x00>>}}
         end)
-        %PDU{pdu |
-          pdu_type: @get_response,
-          variable_bindings: corrupted_bindings,
+        %{pdu |
+          type: @get_response,
+          varbinds: corrupted_bindings,
           error_status: @gen_err
         }
 
@@ -689,8 +689,8 @@ defmodule SnmpSim.Device do
   end
 
   # Handle PDU format from server (with pdu_type field)
-  defp process_snmp_pdu(%{pdu_type: pdu_type} = pdu, state) when pdu_type in [@get_request, :get_request, 0xA0] do
-    variable_bindings = process_get_request(pdu.variable_bindings, state)
+  defp process_snmp_pdu(%{type: pdu_type} = pdu, state) when pdu_type in [@get_request, :get_request, 0xA0] do
+    variable_bindings = process_get_request(Map.get(pdu, :varbinds, Map.get(pdu, :variable_bindings, [])), state)
 
     # Handle errors differently based on SNMP version for GET requests too
     case pdu.version do
@@ -705,11 +705,11 @@ defmodule SnmpSim.Device do
           error_response = PDU.create_error_response(pdu, @no_such_name, 1)
           {:ok, error_response}
         else
-          create_get_response(pdu, variable_bindings)
+          create_get_response_with_fields(pdu, variable_bindings)
         end
 
       _ ->  # SNMPv2c - use exception values in varbinds, no error response needed
-        create_get_response(pdu, variable_bindings)
+        create_get_response_with_fields(pdu, variable_bindings)
     end
   end
 
@@ -740,9 +740,9 @@ defmodule SnmpSim.Device do
     end
   end
 
-  defp process_snmp_pdu(%{pdu_type: pdu_type} = pdu, state) when pdu_type in [@getnext_request, @get_next_request, :get_next_request, 0xA1] do
+  defp process_snmp_pdu(%{type: pdu_type} = pdu, state) when pdu_type in [@getnext_request, @get_next_request, :get_next_request, 0xA1] do
     try do
-      variable_bindings = process_getnext_request(pdu.variable_bindings, state)
+      variable_bindings = process_getnext_request(Map.get(pdu, :varbinds, Map.get(pdu, :variable_bindings, [])), state)
 
       # Handle errors differently based on SNMP version
       case pdu.version do
@@ -757,11 +757,11 @@ defmodule SnmpSim.Device do
             error_response = PDU.create_error_response(pdu, @no_such_name, 1)
             {:ok, error_response}
           else
-            create_get_response(pdu, variable_bindings)
+            create_get_response_with_fields(pdu, variable_bindings)
           end
 
         _ ->  # SNMPv2c - use exception values in varbinds, no error response needed
-          create_get_response(pdu, variable_bindings)
+          create_get_response_with_fields(pdu, variable_bindings)
       end
     catch
       :error, _reason ->
@@ -805,22 +805,23 @@ defmodule SnmpSim.Device do
     end
   end
 
-  defp process_snmp_pdu(%{pdu_type: pdu_type} = pdu, state) when pdu_type in [@getbulk_request, @get_bulk_request, :get_bulk_request, 0xA5] do
+  defp process_snmp_pdu(%{type: pdu_type} = pdu, state) when pdu_type in [@getbulk_request, @get_bulk_request, :get_bulk_request, 0xA5] do
     # GETBULK support - simplified implementation
     variable_bindings = process_getbulk_request(pdu, state)
 
     # Create PDU struct format expected by tests and encoding
     # Start with the original PDU and modify only what we need
-    response_pdu = pdu
-    |> Map.put(:pdu_type, 0xA2)  # GET_RESPONSE
-    |> Map.put(:error_status, 0)  # Explicitly set to 0
-    |> Map.put(:error_index, 0)
-    |> Map.put(:variable_bindings, variable_bindings)
+    response_pdu = %{pdu |
+      type: :get_response,  # GET_RESPONSE
+      error_status: 0,  # Explicitly set to 0
+      error_index: 0,
+      varbinds: variable_bindings
+    }
 
     {:ok, response_pdu}
   end
 
-  defp process_snmp_pdu(%{pdu_type: pdu_type} = pdu, _state) when pdu_type in [@set_request, :set_request, 0xA3] do
+  defp process_snmp_pdu(%{type: pdu_type} = pdu, _state) when pdu_type in [@set_request, :set_request, 0xA3] do
     # SET operations not supported in this phase
     error_response = PDU.create_error_response(pdu, @read_only, 1)
     {:ok, error_response}
@@ -912,11 +913,11 @@ defmodule SnmpSim.Device do
     end
   end
 
-  defp process_getbulk_request(%PDU{} = pdu, state) do
+  defp process_getbulk_request(%{} = pdu, state) do
     non_repeaters = pdu.non_repeaters || 0
     max_repetitions = pdu.max_repetitions || 10
 
-    case pdu.variable_bindings do
+    case Map.get(pdu, :varbinds, Map.get(pdu, :variable_bindings, [])) do
       [] -> []
       variable_bindings ->
         # Process non-repeaters first
@@ -1800,100 +1801,6 @@ defmodule SnmpSim.Device do
     {:unknown, value}
   end
 
-  defp create_get_response(pdu, variable_bindings) do
-    # Convert 3-tuples to 2-tuples for test compatibility, but preserve important types
-    # Also ensure OIDs are strings for test compatibility
-    converted_bindings = Enum.map(variable_bindings, fn
-      {oid, :timeticks, value} ->
-        oid_string = case oid do
-          oid when is_list(oid) -> Enum.join(oid, ".")
-          oid when is_binary(oid) -> oid
-          _ -> to_string(oid)
-        end
-        {oid_string, {:timeticks, value}}  # Preserve timeticks as typed tuple
-      {oid, :object_identifier, value} ->
-        oid_string = case oid do
-          oid when is_list(oid) -> Enum.join(oid, ".")
-          oid when is_binary(oid) -> oid
-          _ -> to_string(oid)
-        end
-        {oid_string, {:object_identifier, value}}  # Preserve OID as typed tuple
-      {oid, :counter32, value} ->
-        oid_string = case oid do
-          oid when is_list(oid) -> Enum.join(oid, ".")
-          oid when is_binary(oid) -> oid
-          _ -> to_string(oid)
-        end
-        {oid_string, {:counter32, value}}  # Preserve counter32 as typed tuple
-      {oid, :counter64, value} ->
-        oid_string = case oid do
-          oid when is_list(oid) -> Enum.join(oid, ".")
-          oid when is_binary(oid) -> oid
-          _ -> to_string(oid)
-        end
-        {oid_string, {:counter64, value}}  # Preserve counter64 as typed tuple
-      {oid, :gauge32, value} ->
-        oid_string = case oid do
-          oid when is_list(oid) -> Enum.join(oid, ".")
-          oid when is_binary(oid) -> oid
-          _ -> to_string(oid)
-        end
-        {oid_string, {:gauge32, value}}      # Preserve gauge32 as typed tuple
-      {oid, :octet_string, value} ->
-        oid_string = case oid do
-          oid when is_list(oid) -> Enum.join(oid, ".")
-          oid when is_binary(oid) -> oid
-          _ -> to_string(oid)
-        end
-        {oid_string, value}             # Convert octet_string to raw value
-      {oid, :integer, value} ->
-        oid_string = case oid do
-          oid when is_list(oid) -> Enum.join(oid, ".")
-          oid when is_binary(oid) -> oid
-          _ -> to_string(oid)
-        end
-        {oid_string, value}                  # Convert integer to raw value
-      {oid, _type, {:end_of_mib_view, nil} = value} ->
-        oid_string = case oid do
-          oid when is_list(oid) -> Enum.join(oid, ".")
-          oid when is_binary(oid) -> oid
-          _ -> to_string(oid)
-        end
-        {oid_string, value}                     # Preserve SNMP exception values
-      {oid, _type, {:no_such_object, _} = value} ->
-        oid_string = case oid do
-          oid when is_list(oid) -> Enum.join(oid, ".")
-          oid when is_binary(oid) -> oid
-          _ -> to_string(oid)
-        end
-        {oid_string, value}                     # Preserve SNMP exception values
-      {oid, _type, value} ->
-        oid_string = case oid do
-          oid when is_list(oid) -> Enum.join(oid, ".")
-          oid when is_binary(oid) -> oid
-          _ -> to_string(oid)
-        end
-        {oid_string, value}                     # Convert other types to raw value
-      {oid, value} ->
-        oid_string = case oid do
-          oid when is_list(oid) -> Enum.join(oid, ".")
-          oid when is_binary(oid) -> oid
-          _ -> to_string(oid)
-        end
-        {oid_string, value}                            # Already 2-tuple, ensure string OID
-      other -> other                                          # Pass through anything else
-    end)
-
-    # Create PDU struct format expected by tests and encoding
-    response_pdu = pdu
-    |> Map.put(:pdu_type, 0xA2)  # GET_RESPONSE
-    |> Map.put(:error_status, 0)  # Explicitly set to 0
-    |> Map.put(:error_index, 0)
-    |> Map.put(:variable_bindings, converted_bindings)
-
-    {:ok, response_pdu}
-  end
-
   defp create_get_response_with_fields(pdu, variable_bindings) do
 
     # Convert to 3-tuple format expected by SnmpLib with list OIDs
@@ -1933,11 +1840,11 @@ defmodule SnmpSim.Device do
 
 
     # Create response format expected by tests (with :type and :varbinds fields)
-    response_pdu = pdu
-    |> Map.put(:type, :get_response)  # TEST format uses :type
-    |> Map.put(:error_status, 0)  # Explicitly set to 0
-    |> Map.put(:error_index, 0)
-    |> Map.put(:varbinds, converted_bindings)  # TEST format uses :varbinds
+    response_pdu = %{pdu |
+      type: :get_response,  # TEST format uses :type
+      varbinds: converted_bindings,  # TEST format uses :varbinds
+      error_status: @no_error
+    }
 
     {:ok, response_pdu}
   end
@@ -1955,9 +1862,13 @@ defmodule SnmpSim.Device do
     case oid_string do
       "" -> []
       _ ->
-        oid_string
-        |> String.split(".")
-        |> Enum.map(&String.to_integer/1)
+        try do
+          oid_string
+          |> String.split(".")
+          |> Enum.map(&String.to_integer/1)
+        rescue
+          _ -> []
+        end
     end
   end
 

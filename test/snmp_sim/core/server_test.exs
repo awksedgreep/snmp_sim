@@ -2,7 +2,6 @@ defmodule SnmpSim.Core.ServerTest do
   use ExUnit.Case, async: false  # UDP servers need unique ports
   
   alias SnmpSim.Core.Server
-  alias SnmpLib.PDU
   alias SnmpSim.TestHelpers.PortHelper
 
   describe "UDP Server" do
@@ -11,14 +10,14 @@ defmodule SnmpSim.Core.ServerTest do
       
       # Simple handler that just echoes the request
       handler = fn pdu, _context ->
-        response = %PDU{
+        response = %{
           version: pdu.version,
           community: pdu.community,
-          pdu_type: :get_response,
+          type: :get_response,
           request_id: pdu.request_id,
           error_status: 0,
           error_index: 0,
-          variable_bindings: [{"1.3.6.1.2.1.1.1.0", "Test Response"}]
+          varbinds: [{[1,3,6,1,2,1,1,1,0], :octet_string, "Test Response"}]
         }
         {:ok, response}
       end
@@ -48,14 +47,14 @@ defmodule SnmpSim.Core.ServerTest do
       port = find_free_port()
       
       handler = fn pdu, _context ->
-        response = %PDU{
+        response = %{
           version: pdu.version,
           community: pdu.community,
-          pdu_type: :get_response,
+          type: :get_response,
           request_id: pdu.request_id,
           error_status: 0,
           error_index: 0,
-          variable_bindings: [{"1.3.6.1.2.1.1.1.0", "Fast Response"}]
+          varbinds: [{"1.3.6.1.2.1.1.1.0", "Fast Response"}]
         }
         {:ok, response}
       end
@@ -135,7 +134,7 @@ defmodule SnmpSim.Core.ServerTest do
       result = send_test_snmp_request(port, "1.3.6.1.2.1.1.1.0", "wrong_community")
       
       # Should not get a proper response (server will ignore)
-      assert result == :timeout
+      assert result == {:error, :timeout}
       
       # Check auth failure stats
       stats = Server.get_stats(server)
@@ -151,14 +150,14 @@ defmodule SnmpSim.Core.ServerTest do
       
       # Set a new handler
       new_handler = fn pdu, _context ->
-        response = %PDU{
+        response = %{
           version: pdu.version,
           community: pdu.community,
-          pdu_type: :get_response,
+          type: :get_response,
           request_id: pdu.request_id,
           error_status: 0,
           error_index: 0,
-          variable_bindings: [{"1.3.6.1.2.1.1.1.0", "New Handler Response"}]
+          varbinds: [{"1.3.6.1.2.1.1.1.0", "New Handler Response"}]
         }
         {:ok, response}
       end
@@ -241,14 +240,14 @@ defmodule SnmpSim.Core.ServerTest do
         # Add small delay to measure
         Process.sleep(1)
         
-        response = %PDU{
+        response = %{
           version: pdu.version,
           community: pdu.community,
-          pdu_type: :get_response,
+          type: :get_response,
           request_id: pdu.request_id,
           error_status: 0,
           error_index: 0,
-          variable_bindings: [{"1.3.6.1.2.1.1.1.0", "Timed Response"}]
+          varbinds: [{"1.3.6.1.2.1.1.1.0", "Timed Response"}]
         }
         {:ok, response}
       end
@@ -293,40 +292,32 @@ defmodule SnmpSim.Core.ServerTest do
         oid
     end
     
-    # Build PDU and message using new API
+    # Build PDU and message using SnmpLib.PDU build functions
     pdu = SnmpLib.PDU.build_get_request(oid_list, request_id)
     message = SnmpLib.PDU.build_message(pdu, community, :v1)
     
     case SnmpLib.PDU.encode_message(message) do
       {:ok, packet} ->
-        case :gen_udp.open(0, [:binary, {:active, false}]) do
-          {:ok, socket} ->
-            case :gen_udp.send(socket, {127, 0, 0, 1}, port, packet) do
-              :ok ->
-                case :gen_udp.recv(socket, 0, 5000) do
-                  {:ok, {_ip, _port, response_packet}} ->
-                    :gen_udp.close(socket)
-                    # Decode response using new API
-                    case SnmpLib.PDU.decode_message(response_packet) do
-                      {:ok, response_message} ->
-                        {:ok, response_message}
-                      error ->
-                        error
-                    end
-                  {:error, :timeout} ->
-                    :gen_udp.close(socket)
-                    :timeout
-                  error ->
-                    :gen_udp.close(socket)
-                    error
-                end
+        {:ok, socket} = :gen_udp.open(0, [:binary, {:active, false}])
+        :gen_udp.send(socket, {127, 0, 0, 1}, port, packet)
+        
+        result = case :gen_udp.recv(socket, 0, 1000) do
+          {:ok, {_ip, _port, response_data}} ->
+            case SnmpLib.PDU.decode_message(response_data) do
+              {:ok, response_message} ->
+                {:ok, response_message.pdu}
               error ->
-                :gen_udp.close(socket)
                 error
             end
+          {:error, :timeout} ->
+            {:error, :timeout}
           error ->
             error
         end
+        
+        :gen_udp.close(socket)
+        result
+        
       error ->
         error
     end

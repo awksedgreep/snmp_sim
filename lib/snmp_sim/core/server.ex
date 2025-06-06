@@ -181,14 +181,14 @@ defmodule SnmpSim.Core.Server do
                 end)
             end
 
-            complete_pdu = %PDU{
+            complete_pdu = %{
               version: message.version,
               community: message.community,
-              pdu_type: message.pdu.type,
+              type: message.pdu.type,
               request_id: message.pdu.request_id,
               error_status: message.pdu[:error_status] || 0,
               error_index: message.pdu[:error_index] || 0,
-              variable_bindings: variable_bindings,
+              varbinds: variable_bindings,
               max_repetitions: message.pdu[:max_repetitions] || 0,
               non_repeaters: message.pdu[:non_repeaters] || 0
             }
@@ -316,15 +316,17 @@ defmodule SnmpSim.Core.Server do
   defp send_response_async(state, client_ip, client_port, response_pdu) do
     # Create message with PDU and community string
     community = to_string(state.community || "public")
-    Logger.debug("Sending response PDU: #{inspect(response_pdu)}")
 
     # Convert response PDU to proper message format
     response_message = case response_pdu do
       # Handle SnmpLib.PDU struct format (returned by Device module)
-      %SnmpLib.PDU{request_id: request_id, error_status: error_status, error_index: error_index, variable_bindings: variable_bindings} ->
+      %{version: version, request_id: request_id, error_status: error_status, error_index: error_index, varbinds: varbinds} ->
         # Convert variable_bindings from Device format to snmp_lib varbinds format
-        varbinds = Enum.map(variable_bindings, fn varbind ->
+        varbinds = Enum.map(varbinds, fn varbind ->
           case varbind do
+            {oid_list, type, value} when is_list(oid_list) ->
+              # Device returns proper 3-tuple format - use as is
+              {oid_list, type, value}
             {oid_string, value} when is_binary(oid_string) ->
               oid_list = String.split(oid_string, ".") |> Enum.map(&String.to_integer/1)
               # Determine type based on value
@@ -357,7 +359,6 @@ defmodule SnmpSim.Core.Server do
                 {:end_of_mib_view, _} -> :end_of_mib_view
                 other -> other
               end
-              Logger.debug("Converting varbind: OID=#{oid_string}, Value=#{inspect(value)}, Type=#{type}, ActualValue=#{inspect(actual_value)}")
               {oid_list, type, actual_value}
             {oid_list, value} when is_list(oid_list) ->
               # Determine type based on value
@@ -390,7 +391,6 @@ defmodule SnmpSim.Core.Server do
                 {:end_of_mib_view, _} -> :end_of_mib_view
                 other -> other
               end
-              Logger.debug("Converting varbind: OID=#{inspect(oid_list)}, Value=#{inspect(value)}, Type=#{type}, ActualValue=#{inspect(actual_value)}")
               {oid_list, type, actual_value}
             other ->
               Logger.warning("Unexpected varbind format: #{inspect(other)}")
@@ -398,38 +398,28 @@ defmodule SnmpSim.Core.Server do
           end
         end)
 
-        # Create response PDU manually
-        response_pdu = %{
-          type: :get_response,
-          request_id: request_id,
-          error_status: error_status,
-          error_index: error_index,
-          varbinds: varbinds
-        }
-
-        Logger.debug("Built response PDU: #{inspect(response_pdu)}")
-        pdu = PDU.build_response(request_id, error_status, error_index, varbinds)
-        message = PDU.build_message(pdu, community, :v1)
-        Logger.debug("Built message: #{inspect(message)}")
-        message
+        # Convert varbinds to :auto format for PDU.build_response
+        auto_varbinds = Enum.map(varbinds, fn {oid_list, _type, value} ->
+          {oid_list, :auto, value}
+        end)
+        pdu = PDU.build_response(request_id, error_status, error_index, auto_varbinds)
+        PDU.build_message(pdu, community, version)
 
       # Handle map format (legacy)
       %{type: _pdu_type, request_id: request_id, error_status: error_status, error_index: error_index, varbinds: varbinds} ->
         pdu = PDU.build_response(request_id, error_status, error_index, varbinds)
-        PDU.build_message(pdu, community, :v1)
+        PDU.build_message(pdu, community, :v1)  # Legacy format defaults to v1
 
       other ->
         Logger.warning("Unexpected PDU format: #{inspect(other)}")
         # Create error response
         pdu = PDU.build_response(0, 5, 0, [])  # genErr
-        PDU.build_message(pdu, community, :v1)
+        PDU.build_message(pdu, community, :v1)  # Default to v1 for errors
     end
 
     case PDU.encode_message(response_message) do
       {:ok, encoded_packet} ->
-        Logger.debug("Encoded response packet (#{byte_size(encoded_packet)} bytes): #{Base.encode16(encoded_packet)}")
         :gen_udp.send(state.socket, client_ip, client_port, encoded_packet)
-        Logger.debug("Response sent to #{:inet.ntoa(client_ip)}:#{client_port}")
 
       {:error, reason} ->
         Logger.error("Failed to encode SNMP response: #{inspect(reason)}")
