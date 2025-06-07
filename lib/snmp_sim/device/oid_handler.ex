@@ -153,7 +153,11 @@ defmodule SnmpSim.Device.OidHandler do
           device_state = build_device_state(state)
 
           case SharedProfiles.get_oid_value(state.device_type, oid_string, device_state) do
+            {:ok, {type, value}} ->
+              {:ok, {type, value}}
+
             {:ok, value} ->
+              # Handle legacy format for backward compatibility
               {:ok, value}
 
             {:error, :no_such_object} ->
@@ -163,6 +167,9 @@ defmodule SnmpSim.Device.OidHandler do
             {:error, :no_such_name} ->
               # OID not found in SharedProfiles, fallback to dynamic OIDs
               get_dynamic_oid_value(oid_string, new_state)
+
+            {:error, :end_of_mib} ->
+              {:error, :end_of_mib}
 
             {:error, :device_type_not_found} ->
               # Device type not loaded in SharedProfiles, fallback to dynamic OIDs
@@ -315,8 +322,26 @@ defmodule SnmpSim.Device.OidHandler do
                 {next_oid, _type, value} ->
                   {:ok, {oid_to_string(next_oid), type, value}}
               end
-          end
 
+            {:ok, value} ->
+              # Handle legacy format for backward compatibility
+              {:ok, {oid_to_string(next_oid), :unknown, value}}
+
+            {:error, :end_of_mib} ->
+              {:error, :end_of_mib_view}
+
+            {:error, :device_type_not_found} ->
+              case get_fallback_next_oid(oid, state) do
+                {_next_oid, :end_of_mib_view, {:end_of_mib_view, nil}} -> {:error, :end_of_mib_view}
+                {next_oid, type, value} -> {:ok, {next_oid, type, value}}
+              end
+
+            {:error, _reason} ->
+              case get_fallback_next_oid(oid, state) do
+                {_next_oid, :end_of_mib_view, {:end_of_mib_view, nil}} -> {:error, :end_of_mib_view}
+                {next_oid, type, value} -> {:ok, {next_oid, type, value}}
+              end
+          end
         :end_of_mib ->
           {:error, :end_of_mib_view}
 
@@ -337,6 +362,10 @@ defmodule SnmpSim.Device.OidHandler do
       end
     catch
       :exit, {:noproc, _} ->
+        Logger.debug(
+          "SharedProfiles unavailable, using fallback for OID #{oid}"
+        )
+
         case get_fallback_next_oid(oid, state) do
           {_next_oid, :end_of_mib_view, {:end_of_mib_view, nil}} -> {:error, :end_of_mib_view}
           {next_oid, type, value} -> {:ok, {next_oid, type, value}}
@@ -345,6 +374,15 @@ defmodule SnmpSim.Device.OidHandler do
       :exit, reason ->
         Logger.debug(
           "SharedProfiles unavailable (#{inspect(reason)}), using fallback for OID #{oid}"
+        )
+
+        case get_fallback_next_oid(oid, state) do
+          {_next_oid, :end_of_mib_view, {:end_of_mib_view, nil}} -> {:error, :end_of_mib_view}
+          {next_oid, type, value} -> {:ok, {next_oid, type, value}}
+        end
+      :error, reason ->
+        Logger.debug(
+          "Error in SharedProfiles for OID #{oid}: #{inspect(reason)}"
         )
 
         case get_fallback_next_oid(oid, state) do
@@ -375,11 +413,21 @@ defmodule SnmpSim.Device.OidHandler do
       end
     catch
       :exit, {:noproc, _} ->
+        Logger.debug(
+          "SharedProfiles unavailable, using fallback for OID #{oid}"
+        )
+
         {:ok, get_fallback_bulk_oids(oid, count, state)}
 
       :exit, reason ->
         Logger.debug(
           "SharedProfiles unavailable (#{inspect(reason)}), using fallback for OID #{oid}"
+        )
+
+        {:ok, get_fallback_bulk_oids(oid, count, state)}
+      :error, reason ->
+        Logger.debug(
+          "Error in SharedProfiles for OID #{oid}: #{inspect(reason)}"
         )
 
         {:ok, get_fallback_bulk_oids(oid, count, state)}

@@ -367,7 +367,7 @@ defmodule SnmpSim.MIB.SharedProfiles do
               device_state
             )
 
-          {:ok, current_value}
+          {:ok, {profile_data.type, current_value}}
 
         [] ->
           {:error, :no_such_name}

@@ -446,9 +446,9 @@ defmodule SnmpSim.Core.Server do
               end
             end)
 
-          # Convert varbinds to :auto format for PDU.build_response
-          auto_varbinds =
-            Enum.map(varbinds, fn {oid_list, _type, value} ->
+          # Convert varbinds to proper SNMP types for PDU.build_response
+          typed_varbinds =
+            Enum.map(varbinds, fn {oid_list, type, value} ->
               # Ensure OID is an integer list for snmp_lib encoding
               normalized_oid =
                 case oid_list do
@@ -470,10 +470,12 @@ defmodule SnmpSim.Core.Server do
                     [1, 3, 6, 1]
                 end
 
-              {normalized_oid, :auto, value}
+              # Convert walk file type to SnmpLib atom, fallback to :auto
+              snmp_type = convert_walk_type_to_snmp_atom(type)
+              {normalized_oid, snmp_type, value}
             end)
 
-          pdu = PDU.build_response(request_id, error_status, error_index, auto_varbinds)
+          pdu = PDU.build_response(request_id, error_status, error_index, typed_varbinds)
           PDU.build_message(pdu, community, version)
 
         # Handle map format (legacy)
@@ -549,4 +551,23 @@ defmodule SnmpSim.Core.Server do
   defp update_stats(stats, counter_key) when is_atom(counter_key) do
     Map.update(stats, counter_key, 1, &(&1 + 1))
   end
+
+  # Convert walk file SNMP types to SnmpLib atoms
+  defp convert_walk_type_to_snmp_atom(type) when is_binary(type) do
+    case String.downcase(type) do
+      "counter32" -> :counter32
+      "counter64" -> :counter64
+      "gauge32" -> :gauge32
+      "gauge" -> :gauge32
+      "timeticks" -> :timeticks
+      "integer" -> :integer
+      "string" -> :string
+      "octet" -> :string
+      "oid" -> :objectid
+      "ipaddress" -> :ipaddress
+      _ -> :auto  # Fallback to auto for unknown types
+    end
+  end
+
+  defp convert_walk_type_to_snmp_atom(_type), do: :auto
 end
