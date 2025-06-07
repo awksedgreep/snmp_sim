@@ -4,7 +4,7 @@ defmodule SnmpSim.MixProject do
   def project do
     [
       app: :snmp_sim,
-      version: "1.0.10",
+      version: "1.0.11",
       elixir: "~> 1.15",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,

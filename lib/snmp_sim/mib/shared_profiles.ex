@@ -395,9 +395,32 @@ defmodule SnmpSim.MIB.SharedProfiles do
   defp get_bulk_oids_impl(device_type, start_oid, max_repetitions, state) do
     case get_next_oid_impl(device_type, start_oid, state) do
       {:ok, first_oid} ->
-        collect_bulk_oids(device_type, first_oid, max_repetitions - 1, [first_oid], state)
+        collect_bulk_oids_with_values(device_type, first_oid, max_repetitions - 1, [first_oid], state)
       :end_of_mib ->
         {:ok, []}
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp collect_bulk_oids_with_values(_device_type, _current_oid, 0, acc, _state) do
+    # Convert OID list to 3-tuples with values
+    oid_tuples = Enum.map(Enum.reverse(acc), fn oid ->
+      {oid, :octet_string, "Bulk value for #{oid}"}
+    end)
+    {:ok, oid_tuples}
+  end
+
+  defp collect_bulk_oids_with_values(device_type, current_oid, remaining, acc, state) do
+    case get_next_oid_impl(device_type, current_oid, state) do
+      {:ok, next_oid} ->
+        collect_bulk_oids_with_values(device_type, next_oid, remaining - 1, [next_oid | acc], state)
+      :end_of_mib ->
+        # Convert OID list to 3-tuples with values
+        oid_tuples = Enum.map(Enum.reverse(acc), fn oid ->
+          {oid, :octet_string, "Bulk value for #{oid}"}
+        end)
+        {:ok, oid_tuples}
       {:error, reason} ->
         {:error, reason}
     end
