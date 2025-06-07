@@ -1487,9 +1487,16 @@ defmodule SnmpSim.Device do
   end
 
   defp get_fallback_next_oid(oid, state) do
-    # Get next OID with device-specific values when possible
-    # Return 3-tuples {oid_string, type, value} for consistency with test expectations
-    result = case oid do
+    # Convert OID to string format for pattern matching
+    oid_string = case oid do
+      oid when is_list(oid) -> oid_to_string(oid)
+      oid when is_binary(oid) -> oid
+      _ -> to_string(oid)
+    end
+    
+    Logger.debug("get_fallback_next_oid called with OID: #{inspect(oid)} -> string: #{oid_string}")
+    
+    result = case oid_string do
       "1.3.6.1.2.1.1.1.0" ->
         {"1.3.6.1.2.1.1.2.0", :object_identifier, "1.3.6.1.4.1.4491.2.4.1"}
       "1.3.6.1.2.1.1.2.0" ->
@@ -1516,7 +1523,7 @@ defmodule SnmpSim.Device do
       "1.3.6.1.2.1.2.2.1.4.1" ->
         {"1.3.6.1.2.1.2.2.1.4.1", :gauge32, 100000000}
       # Handle various starting points for SNMP walk - all redirect to first system OID
-      oid when oid in ["1.3.6.1.2.1", "1.3.6.1.2.1.1", "1.3.6.1.2.1.1.1", "1.3.6.1", "1.3.6", "1.3", "1"] ->
+      oid_string when oid_string in ["1.3.6.1", "1.3.6", "1.3", "1", "1.3.6.1.2", "1.3.6.1.2.1", "1.3.6.1.2.1.1"] ->
         # Starting from various root points - go to first system OID
         device_type_str = case state.device_type do
           :cable_modem -> "Motorola SB6141 DOCSIS 3.0 Cable Modem"
