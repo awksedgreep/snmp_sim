@@ -24,6 +24,7 @@ defmodule SnmpSim.Device do
   alias SnmpSim.Core.Server
   alias SnmpLib.PDU
   alias SnmpSim.MIB.SharedProfiles
+  alias SnmpSim.Device.ErrorInjector
 
   defstruct [
     :device_id,
@@ -313,21 +314,15 @@ defmodule SnmpSim.Device do
 
   @impl true
   def handle_call({:handle_snmp, pdu, _context}, _from, state) do
-    # Check for error conditions before processing the request
-    case check_error_conditions(pdu, state) do
-      {:error, error_response} ->
-        {:reply, error_response, state}
+    # Check for error injection conditions first
+    case ErrorInjector.check_error_conditions(pdu, state) do
       :continue ->
-        try do
-          response = process_snmp_pdu(pdu, state)
-          {:reply, response, state}
-        catch
-          :error, reason ->
-            Logger.error("SNMP PDU processing error: #{inspect(reason)}")
-            Logger.error("PDU: #{inspect(pdu)}")
-            error_response = PDU.create_error_response(pdu, @gen_err, 0)
-            {:reply, {:ok, error_response}, state}
-        end
+        # Process the PDU normally
+        response = process_snmp_pdu(pdu, state)
+        {:reply, response, state}
+      {:error, error_type} ->
+        # Handle error injection
+        {:reply, {:error, error_type}, state}
     end
   end
 
@@ -536,160 +531,6 @@ defmodule SnmpSim.Device do
 
   # Private functions
 
-  defp check_error_conditions(pdu, state) do
-    # Check device failure conditions first
-    if device_failure_active?(state) do
-      {:error, {:error, :device_unreachable}}
-    else
-      # Check other error conditions in order of priority
-      check_timeout_conditions(pdu, state) ||
-      check_packet_loss_conditions(pdu, state) ||
-      check_snmp_error_conditions(pdu, state) ||
-      check_malformed_conditions(pdu, state) ||
-      :continue
-    end
-  end
-
-  defp device_failure_active?(state) do
-    case Map.get(state.error_conditions, :device_failure) do
-      %{failure_type: :power_failure} -> true
-      %{failure_type: :network_disconnect} -> true
-      _ -> false
-    end
-  end
-
-  defp check_timeout_conditions(pdu, state) do
-    case Map.get(state.error_conditions, :timeout) do
-      nil -> false
-      config ->
-        if should_apply_error?(config.probability) and oid_matches_target?(pdu, config.target_oids) do
-          # Simulate timeout by not responding (let the client timeout)
-          Process.sleep(config.duration_ms)
-          {:error, {:error, :timeout}}
-        else
-          false
-        end
-    end
-  end
-
-  defp check_packet_loss_conditions(pdu, state) do
-    case Map.get(state.error_conditions, :packet_loss) do
-      nil -> false
-      config ->
-        if should_apply_error?(config.loss_rate) and oid_matches_target?(pdu, config.target_oids) do
-          # Simulate packet loss by dropping the request silently
-          {:error, {:error, :packet_lost}}
-        else
-          false
-        end
-    end
-  end
-
-  defp check_snmp_error_conditions(pdu, state) do
-    case Map.get(state.error_conditions, :snmp_error) do
-      nil -> false
-      config ->
-        if should_apply_error?(config.probability) and oid_matches_target?(pdu, config.target_oids) do
-          error_status = case config.error_type do
-            :noSuchName -> @no_such_name
-            :genErr -> @gen_err
-            :tooBig -> @too_big
-            :badValue -> @bad_value
-            :readOnly -> @read_only
-            _ -> @gen_err
-          end
-
-          error_response = PDU.create_error_response(pdu, error_status, config[:error_index] || 1)
-          {:error, {:ok, error_response}}
-        else
-          false
-        end
-    end
-  end
-
-  defp check_malformed_conditions(pdu, state) do
-    case Map.get(state.error_conditions, :malformed) do
-      nil -> false
-      config ->
-        if should_apply_error?(config.probability) and oid_matches_target?(pdu, config.target_oids) do
-          # Create a malformed response based on corruption type
-          malformed_response = create_malformed_response(pdu, config)
-          {:error, {:ok, malformed_response}}
-        else
-          false
-        end
-    end
-  end
-
-  defp should_apply_error?(probability) do
-    :rand.uniform() < probability
-  end
-
-  defp oid_matches_target?(pdu, target_oids) do
-    case target_oids do
-      :all -> true
-      [] -> true
-      oids when is_list(oids) ->
-        requested_oids = Enum.map(pdu.variable_bindings, fn {oid, _} -> oid end)
-        Enum.any?(requested_oids, fn oid ->
-          Enum.any?(oids, fn target -> String.starts_with?(oid, target) end)
-        end)
-      _ -> true
-    end
-  end
-
-  defp create_malformed_response(pdu, config) do
-    case config.corruption_type do
-      :truncated ->
-        # Create a truncated response by limiting variable bindings
-        truncated_bindings = Enum.take(pdu.variable_bindings, 1)
-        %{pdu |
-          type: @get_response,
-          varbinds: truncated_bindings,
-          error_status: @no_error
-        }
-
-      :invalid_ber ->
-        # Create response with invalid BER encoding simulation
-        %{pdu |
-          type: @get_response,
-          varbinds: [{<<0xFF, 0xFF>>, {:invalid_ber, nil}}],
-          error_status: @gen_err
-        }
-
-      :wrong_community ->
-        # Create response with wrong community string
-        %{pdu |
-          community: "invalid_community",
-          type: @get_response,
-          error_status: @gen_err
-        }
-
-      :invalid_pdu_type ->
-        # Create response with invalid PDU type
-        %{pdu |
-          type: 0xFF,  # Invalid PDU type
-          error_status: @gen_err
-        }
-
-      :corrupted_varbinds ->
-        # Create response with corrupted variable bindings
-        corrupted_bindings = Enum.map(pdu.variable_bindings, fn {oid, _} ->
-          {oid <> ".invalid", {:corrupted, <<0x00, 0xFF, 0x00>>}}
-        end)
-        %{pdu |
-          type: @get_response,
-          varbinds: corrupted_bindings,
-          error_status: @gen_err
-        }
-
-      _ ->
-        # Default to general error
-        PDU.create_error_response(pdu, @gen_err, 1)
-    end
-  end
-
-  # Handle PDU format from server (with pdu_type field)
   defp process_snmp_pdu(%{type: pdu_type} = pdu, state) when pdu_type in [@get_request, :get_request, 0xA0] do
     variable_bindings = process_get_request(Map.get(pdu, :varbinds, Map.get(pdu, :variable_bindings, [])), state)
 
@@ -933,27 +774,34 @@ defmodule SnmpSim.Device do
         non_rep_results = Enum.map(non_rep_vars, fn {oid, _value} ->
           try do
             case SharedProfiles.get_next_oid(state.device_type, oid) do
-              {:ok, next_oid, value} -> {next_oid, :octet_string, value}
-              {:error, :end_of_mib} -> {oid, :end_of_mib_view, {:end_of_mib_view, nil}}
-              {:error, :device_type_not_found} -> 
-                # Handle 3-tuple format from fallback
-                case get_fallback_next_oid(oid, state) do
-                  {next_oid_list, type, value} -> 
-                    next_oid_str = if is_list(next_oid_list), do: Enum.join(next_oid_list, "."), else: next_oid_list
-                    {next_oid_str, type, value}
-                  other -> other
+              {:ok, next_oid} ->
+                # Get the value for the next OID
+                device_state = build_device_state(state)
+                case SharedProfiles.get_oid_value(state.device_type, next_oid, device_state) do
+                  {:ok, value} ->
+                    # Convert next_oid string to list format for test compatibility
+                    next_oid_list = string_to_oid_list(next_oid)
+                    # Convert value to 3-tuple format {oid, type, value}
+                    {type, actual_value} = extract_type_and_value(value)
+                    {next_oid_list, type, actual_value}
+                  {:error, _} ->
+                    # If we can't get the value, try our fallback
+                    get_fallback_next_oid(oid, state)
                 end
-              {:error, _reason} -> {oid, :end_of_mib_view, {:end_of_mib_view, nil}}
+              :end_of_mib ->
+                {oid, :end_of_mib_view, {:end_of_mib_view, nil}}
+              {:error, :end_of_mib} ->
+                {oid, :end_of_mib_view, {:end_of_mib_view, nil}}
+              {:error, :device_type_not_found} ->
+                # Fallback: try to get next from current OID pattern
+                get_fallback_next_oid(oid, state)
+              {:error, _reason} ->
+                get_fallback_next_oid(oid, state)
             end
           catch
-            :exit, {:noproc, _} -> 
-              # Handle 3-tuple format from fallback
-              case get_fallback_next_oid(oid, state) do
-                {next_oid_list, type, value} -> 
-                  next_oid_str = if is_list(next_oid_list), do: Enum.join(next_oid_list, "."), else: next_oid_list
-                  {next_oid_str, type, value}
-                other -> other
-              end
+            :exit, {:noproc, _} ->
+              # SharedProfiles not available, use fallback directly
+              get_fallback_next_oid(oid, state)
             :exit, reason ->
               Logger.debug("SharedProfiles unavailable (#{inspect(reason)}), using fallback for OID #{oid}")
               # Handle 3-tuple format from fallback
