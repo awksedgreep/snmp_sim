@@ -16,10 +16,10 @@ defmodule SnmpSim.Device.OidHandler do
 
   @doc """
   Extracts OID from SNMP PDU variable binding.
-  
+
   ## Parameters
   - `varbind` - SNMP variable binding containing OID and value
-  
+
   ## Returns
   - `oid` - Successfully extracted OID
   """
@@ -38,10 +38,10 @@ defmodule SnmpSim.Device.OidHandler do
 
   @doc """
   Converts OID list to string representation.
-  
+
   ## Parameters
   - `oid` - List of integers representing OID
-  
+
   ## Returns
   - String representation of OID (e.g., "1.3.6.1.2.1.1.1.0")
   """
@@ -51,10 +51,10 @@ defmodule SnmpSim.Device.OidHandler do
 
   @doc """
   Converts string OID to list of integers.
-  
+
   ## Parameters
   - `oid_string` - String representation of OID
-  
+
   ## Returns
   - List of integers representing OID
   """
@@ -79,10 +79,10 @@ defmodule SnmpSim.Device.OidHandler do
 
   @doc """
   Extracts type and value from SNMP variable binding.
-  
+
   ## Parameters
   - `varbind` - SNMP variable binding
-  
+
   ## Returns
   - `{type, value}` - Tuple containing SNMP type and value
   """
@@ -104,11 +104,11 @@ defmodule SnmpSim.Device.OidHandler do
 
   @doc """
   Gets OID value based on device state and OID.
-  
+
   ## Parameters
   - `oid` - OID as list of integers
   - `state` - Device state containing configuration and counters
-  
+
   ## Returns
   - `{:ok, value}` - Successfully retrieved OID value
   - `{:error, reason}` - Failed to retrieve OID value
@@ -185,11 +185,11 @@ defmodule SnmpSim.Device.OidHandler do
 
   @doc """
   Gets dynamic OID value based on device state and OID.
-  
+
   ## Parameters
   - `oid` - OID as string
   - `state` - Device state containing configuration and counters
-  
+
   ## Returns
   - `{:ok, {type, value}}` - Successfully retrieved OID value with type
   - `{:error, reason}` - Failed to retrieve OID value
@@ -290,11 +290,11 @@ defmodule SnmpSim.Device.OidHandler do
 
   @doc """
   Finds the next OID in lexicographic order for SNMP GetNext operations.
-  
+
   ## Parameters
   - `oid` - Starting OID as list of integers
   - `state` - Device state
-  
+
   ## Returns
   - `{:ok, {next_oid, type, value}}` - Next OID with its type and value
   - `{:error, :end_of_mib}` - No more OIDs available
@@ -356,12 +356,12 @@ defmodule SnmpSim.Device.OidHandler do
 
   @doc """
   Retrieves multiple OIDs for SNMP GetBulk operations.
-  
+
   ## Parameters
   - `oid` - Starting OID
   - `count` - Maximum number of OIDs to retrieve
   - `state` - Device state
-  
+
   ## Returns
   - List of `{oid, type, value}` tuples
   """
@@ -388,11 +388,11 @@ defmodule SnmpSim.Device.OidHandler do
 
   @doc """
   Walks OID values for SNMP MIB walking.
-  
+
   ## Parameters
   - `oid` - Starting OID as list of integers
   - `state` - Device state
-  
+
   ## Returns
   - `{:ok, oid_values}` - List of OID values
   """
@@ -430,11 +430,11 @@ defmodule SnmpSim.Device.OidHandler do
 
   @doc """
   Gets fallback next OID for SNMP GetNext operations.
-  
+
   ## Parameters
   - `oid` - Starting OID as list of integers
   - `state` - Device state
-  
+
   ## Returns
   - `{next_oid, type, value}` - Next OID with its type and value
   """
@@ -529,12 +529,12 @@ defmodule SnmpSim.Device.OidHandler do
 
   @doc """
   Gets fallback bulk OIDs for SNMP GetBulk operations.
-  
+
   ## Parameters
   - `oid` - Starting OID
   - `count` - Maximum number of OIDs to retrieve
   - `state` - Device state
-  
+
   ## Returns
   - List of `{oid, type, value}` tuples
   """
@@ -554,18 +554,34 @@ defmodule SnmpSim.Device.OidHandler do
         end
 
       _ ->
-        # Just return one fallback OID as 3-tuple
-        [get_fallback_next_oid(start_oid, state)]
+        # For other OIDs, iterate through get_fallback_next_oid to get bulk results
+        get_bulk_oids_iteratively(start_oid, max_repetitions, state, [])
+    end
+  end
+
+  # Helper function to iteratively get bulk OIDs
+  defp get_bulk_oids_iteratively(_current_oid, 0, _state, acc), do: Enum.reverse(acc)
+  
+  defp get_bulk_oids_iteratively(current_oid, remaining_count, state, acc) do
+    case get_fallback_next_oid(current_oid, state) do
+      {next_oid, :end_of_mib_view, value} ->
+        # Hit end of MIB, add this and stop
+        Enum.reverse([{next_oid, :end_of_mib_view, value} | acc])
+      
+      {next_oid, type, value} ->
+        # Got a valid OID, add it and continue
+        new_acc = [{next_oid, type, value} | acc]
+        get_bulk_oids_iteratively(next_oid, remaining_count - 1, state, new_acc)
     end
   end
 
   @doc """
   Handles interface OID.
-  
+
   ## Parameters
   - `oid` - Interface OID as string
   - `state` - Device state
-  
+
   ## Returns
   - `{:ok, value}` - Successfully retrieved OID value
   - `{:error, reason}` - Failed to retrieve OID value
@@ -668,11 +684,11 @@ defmodule SnmpSim.Device.OidHandler do
 
   @doc """
   Handles high capacity interface OID.
-  
+
   ## Parameters
   - `oid` - High capacity interface OID as string
   - `state` - Device state
-  
+
   ## Returns
   - `{:ok, value}` - Successfully retrieved OID value
   - `{:error, reason}` - Failed to retrieve OID value
@@ -707,11 +723,11 @@ defmodule SnmpSim.Device.OidHandler do
 
   @doc """
   Handles DOCSIS SNR OID.
-  
+
   ## Parameters
   - `oid` - DOCSIS SNR OID as string
   - `state` - Device state
-  
+
   ## Returns
   - `{:ok, value}` - Successfully retrieved OID value
   - `{:error, reason}` - Failed to retrieve OID value
@@ -737,11 +753,11 @@ defmodule SnmpSim.Device.OidHandler do
 
   @doc """
   Handles Host Resources processor OID.
-  
+
   ## Parameters
   - `oid` - Host Resources processor OID as string
   - `state` - Device state
-  
+
   ## Returns
   - `{:ok, value}` - Successfully retrieved OID value
   - `{:error, reason}` - Failed to retrieve OID value
@@ -767,11 +783,11 @@ defmodule SnmpSim.Device.OidHandler do
 
   @doc """
   Handles Host Resources storage OID.
-  
+
   ## Parameters
   - `oid` - Host Resources storage OID as string
   - `state` - Device state
-  
+
   ## Returns
   - `{:ok, value}` - Successfully retrieved OID value
   - `{:error, reason}` - Failed to retrieve OID value
@@ -797,10 +813,10 @@ defmodule SnmpSim.Device.OidHandler do
 
   @doc """
   Calculates device uptime in milliseconds.
-  
+
   ## Parameters
   - `state` - Device state containing uptime_start timestamp
-  
+
   ## Returns
   - Integer representing uptime in milliseconds
   """
@@ -816,10 +832,10 @@ defmodule SnmpSim.Device.OidHandler do
 
   @doc """
   Calculates device uptime in SNMP TimeTicks (centiseconds).
-  
+
   ## Parameters
   - `state` - Device state
-  
+
   ## Returns
   - Integer representing uptime in centiseconds (1/100th of a second)
   """
@@ -832,10 +848,10 @@ defmodule SnmpSim.Device.OidHandler do
 
   @doc """
   Builds comprehensive device state for monitoring and OID responses.
-  
+
   ## Parameters
   - `state` - Current device state
-  
+
   ## Returns
   - Map containing calculated device metrics and status information
   """
@@ -858,10 +874,10 @@ defmodule SnmpSim.Device.OidHandler do
 
   @doc """
   Gets interface description based on device type.
-  
+
   ## Parameters
   - `state` - Device state containing device_type
-  
+
   ## Returns
   - String description of the interface
   """
@@ -876,11 +892,11 @@ defmodule SnmpSim.Device.OidHandler do
 
   @doc """
   Calculates traffic increment for counters based on device type and time.
-  
+
   ## Parameters
   - `state` - Device state
   - `counter_type` - Type of traffic counter (:in_octets, :out_octets, etc.)
-  
+
   ## Returns
   - Integer representing traffic increment since device start
   """
@@ -937,11 +953,11 @@ defmodule SnmpSim.Device.OidHandler do
 
   @doc """
   Calculates packet increment for packet counters.
-  
+
   ## Parameters
   - `state` - Device state
   - `counter_type` - Type of packet counter (:in_ucast_pkts, :out_ucast_pkts, etc.)
-  
+
   ## Returns
   - Integer representing packet count increment since device start
   """
@@ -984,11 +1000,11 @@ defmodule SnmpSim.Device.OidHandler do
 
   @doc """
   Calculates error increment for error counters with environmental factors.
-  
+
   ## Parameters
   - `state` - Device state
   - `counter_type` - Type of error counter (:in_errors, :out_errors, etc.)
-  
+
   ## Returns
   - Integer representing error count increment since device start
   """
@@ -1029,7 +1045,7 @@ defmodule SnmpSim.Device.OidHandler do
     total_errors = trunc(effective_rate * uptime_seconds)
 
     # Add burst errors occasionally
-    # 5% chance of error burst
+    # 5% chance
     burst_probability = 0.05
 
     if :rand.uniform() < burst_probability do
@@ -1043,10 +1059,10 @@ defmodule SnmpSim.Device.OidHandler do
 
   @doc """
   Calculates Signal-to-Noise Ratio (SNR) gauge value for cable modems.
-  
+
   ## Parameters
   - `state` - Device state containing device_type
-  
+
   ## Returns
   - Integer representing SNR in dB (15-45 range for cable modems)
   """
@@ -1078,10 +1094,10 @@ defmodule SnmpSim.Device.OidHandler do
 
   @doc """
   Calculates CPU utilization gauge with realistic load patterns.
-  
+
   ## Parameters
   - `state` - Device state containing device_type
-  
+
   ## Returns
   - Integer representing CPU utilization percentage (0-100)
   """
@@ -1138,10 +1154,10 @@ defmodule SnmpSim.Device.OidHandler do
 
   @doc """
   Calculates storage usage gauge in allocation units (typically KB).
-  
+
   ## Parameters
   - `state` - Device state containing device_type
-  
+
   ## Returns
   - Integer representing storage usage in allocation units
   """
@@ -1192,10 +1208,10 @@ defmodule SnmpSim.Device.OidHandler do
 
   @doc """
   Gets time-of-day factor for simulating traffic patterns.
-  
+
   Peak traffic occurs during evening hours (8-10 PM) with lower
   utilization during overnight and early morning hours.
-  
+
   ## Returns
   - Float representing traffic multiplier (0.6 to 1.5)
   """
@@ -1219,10 +1235,10 @@ defmodule SnmpSim.Device.OidHandler do
 
   @doc """
   Calculates interface utilization as a percentage.
-  
+
   ## Parameters
   - `state` - Device state (currently unused)
-  
+
   ## Returns
   - Float representing interface utilization (0.1 to 0.8)
   """
@@ -1234,10 +1250,10 @@ defmodule SnmpSim.Device.OidHandler do
 
   @doc """
   Calculates signal quality metric.
-  
+
   ## Parameters
   - `state` - Device state (currently unused)
-  
+
   ## Returns
   - Float representing signal quality (0.0 to 1.0)
   """
@@ -1251,10 +1267,10 @@ defmodule SnmpSim.Device.OidHandler do
 
   @doc """
   Calculates CPU utilization correlated with network activity.
-  
+
   ## Parameters
   - `state` - Device state
-  
+
   ## Returns
   - Float representing CPU utilization (0.0 to 1.0)
   """
@@ -1268,12 +1284,12 @@ defmodule SnmpSim.Device.OidHandler do
 
   @doc """
   Calculates device temperature in Celsius.
-  
+
   Temperature is affected by CPU load and ambient conditions.
-  
+
   ## Parameters
   - `state` - Device state
-  
+
   ## Returns
   - Float representing temperature in Celsius
   """
@@ -1291,10 +1307,10 @@ defmodule SnmpSim.Device.OidHandler do
 
   @doc """
   Calculates error rate as a percentage based on signal quality.
-  
+
   ## Parameters
   - `state` - Device state
-  
+
   ## Returns
   - Float representing error rate percentage (0.0 to 0.05)
   """
@@ -1308,12 +1324,12 @@ defmodule SnmpSim.Device.OidHandler do
 
   @doc """
   Calculates overall device health score.
-  
+
   Health score is based on signal quality, error rate, and uptime stability.
-  
+
   ## Parameters
   - `state` - Device state
-  
+
   ## Returns
   - Float representing health score (0.0 to 1.0)
   """
@@ -1332,12 +1348,12 @@ defmodule SnmpSim.Device.OidHandler do
 
   @doc """
   Builds correlation factors for related OIDs.
-  
+
   This can be expanded to track relationships between different metrics.
-  
+
   ## Parameters
   - `state` - Device state (currently unused)
-  
+
   ## Returns
   - Map of correlation factors (currently empty)
   """
@@ -1346,5 +1362,4 @@ defmodule SnmpSim.Device.OidHandler do
     # This could be expanded to track actual relationships
     %{}
   end
-
 end

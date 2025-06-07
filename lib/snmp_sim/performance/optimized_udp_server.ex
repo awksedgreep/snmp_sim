@@ -4,7 +4,7 @@ defmodule SnmpSim.Performance.OptimizedUdpServer do
 
   Features:
   - Multi-socket architecture for load distribution
-  - Worker pool for concurrent packet processing  
+  - Worker pool for concurrent packet processing
   - Ring buffer for packet queuing
   - Socket-level optimizations for minimal latency
   - Adaptive backpressure management
@@ -373,11 +373,11 @@ defmodule SnmpSim.Performance.OptimizedUdpServer do
 
                           PDU.build_message(pdu, message.community, message.version)
 
-                        other ->
-                          # Create error response
-                          # genErr
-                          pdu = PDU.build_response(0, 5, 0, [])
-                          PDU.build_message(pdu, message.community, message.version)
+                        # other ->
+                        #   # Create error response
+                        #   # genErr
+                        #   pdu = PDU.build_response(0, 5, 0, [])
+                        #   PDU.build_message(pdu, message.community, message.version)
                       end
 
                     # Encode and send response

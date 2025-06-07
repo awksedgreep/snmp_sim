@@ -298,11 +298,13 @@ defmodule SnmpSim.UdpServerIntegrationTest do
     end
 
     test "server handles GETBULK with mixed valid and invalid OIDs", %{test_port: test_port} do
-      # Test GETBULK with a valid OID (since build_get_bulk_request only accepts single OID)
-      valid_oid = [1, 3, 6, 1, 2, 1, 1, 1, 0]
+      # Test GETBULK with a valid OID that will eventually lead to end_of_mib_view
+      # Use an OID near the end of our known OID space to trigger end_of_mib_view
+      valid_oid = [1, 3, 6, 1, 2, 1, 1, 7, 0]  # sysServices - last in system group
 
-      # Create request with single OID
-      pdu = SnmpLib.PDU.build_get_bulk_request(valid_oid, 56793, 1, 2)
+      # Create request with non_repeaters = 0 so the OID gets repeated
+      # This will cause the system to walk beyond the last known OID
+      pdu = SnmpLib.PDU.build_get_bulk_request(valid_oid, 56793, 0, 3)
       message = SnmpLib.PDU.build_message(pdu, "public", :v2c)
 
       {:ok, encoded_packet} = SnmpLib.PDU.encode_message(message)
@@ -426,6 +428,90 @@ defmodule SnmpSim.UdpServerIntegrationTest do
 
         {:error, reason} ->
           flunk("Unexpected error: #{inspect(reason)}")
+      end
+
+      :gen_udp.close(socket)
+    end
+
+    test "server handles GETBULK with no_such_name in non-repeaters", %{test_port: test_port} do
+      # Test GETBULK with valid OIDs and an invalid OID in the middle of non-repeaters
+      # This tests how the simulator handles error conditions in bulk operations
+      
+      # Create a multi-varbind request with:
+      # - Valid OID (sysDescr)
+      # - Invalid OID (should return no_such_name)  
+      # - Valid OID (sysUpTime)
+      # - Repeater OID (interfaces subtree)
+      valid_oid1 = [1, 3, 6, 1, 2, 1, 1, 1, 0]    # sysDescr
+      invalid_oid = [1, 3, 6, 1, 2, 1, 99, 99, 0]  # Non-existent OID
+      valid_oid2 = [1, 3, 6, 1, 2, 1, 1, 3, 0]    # sysUpTime  
+      repeater_oid = [1, 3, 6, 1, 2, 1, 2]        # interfaces subtree
+      
+      # Build varbinds list - first 3 are non-repeaters, last is repeater
+      varbinds = [
+        {valid_oid1, :null, nil},
+        {invalid_oid, :null, nil}, 
+        {valid_oid2, :null, nil},
+        {repeater_oid, :null, nil}
+      ]
+      
+      # Start with a basic GETBULK request and then modify it to have multiple varbinds
+      # non_repeaters = 3 (first 3 varbinds), max_repetitions = 2 for the repeater
+      base_pdu = SnmpLib.PDU.build_get_bulk_request(valid_oid1, 56795, 3, 2)
+      
+      # Modify the PDU to include all our varbinds
+      pdu = %{base_pdu | varbinds: varbinds}
+      
+      message = SnmpLib.PDU.build_message(pdu, "public", :v2c)
+      {:ok, encoded_packet} = SnmpLib.PDU.encode_message(message)
+
+      {:ok, socket} = :gen_udp.open(0, [:binary, {:active, false}])
+      :ok = :gen_udp.send(socket, {127, 0, 0, 1}, test_port, encoded_packet)
+
+      case :gen_udp.recv(socket, 0, 5000) do
+        {:ok, {_ip, _port, response_packet}} ->
+          {:ok, response_message} = SnmpLib.PDU.decode_message(response_packet)
+
+          assert response_message.version == 1
+          assert response_message.pdu.type == :get_response
+          assert response_message.pdu.request_id == 56795
+          assert response_message.pdu.error_status == 0
+
+          # Should get responses for all varbinds
+          varbinds = response_message.pdu.varbinds
+          assert length(varbinds) >= 4, "Expected at least 4 varbinds (3 non-repeaters + repeaters)"
+
+          # First varbind should be the next OID after sysDescr (which is sysObjectID)
+          {first_oid, first_type, first_value} = Enum.at(varbinds, 0)
+          assert first_oid == [1, 3, 6, 1, 2, 1, 1, 2, 0]  # sysObjectID (next after sysDescr)
+          assert first_type == :auto  # Simulator uses :auto type
+          assert is_binary(first_value) or is_list(first_value)
+
+          # Second varbind should be no_such_name for invalid OID (or next valid OID)
+          {_second_oid, second_type, _second_value} = Enum.at(varbinds, 1)
+          # The invalid OID [1, 3, 6, 1, 2, 1, 99, 99, 0] should result in an error or next valid OID
+          assert second_type in [:no_such_name, :no_such_object, :no_such_instance, :auto] or 
+                 (is_atom(second_type) and second_type != :null)
+
+          # Third varbind should be the next OID after sysUpTime 
+          {third_oid, third_type, third_value} = Enum.at(varbinds, 2)
+          # sysUpTime [1, 3, 6, 1, 2, 1, 1, 3, 0] -> next should be sysContact [1, 3, 6, 1, 2, 1, 1, 4, 0]
+          assert third_oid == [1, 3, 6, 1, 2, 1, 1, 4, 0]  # sysContact (next after sysUpTime)
+          assert third_type == :auto  # Simulator uses :auto type
+          assert is_binary(third_value)
+
+          # Remaining varbinds should be from the interfaces subtree (repeaters)
+          repeater_varbinds = Enum.drop(varbinds, 3)
+          assert length(repeater_varbinds) > 0, "Expected repeater varbinds from interfaces subtree"
+          
+          # All repeater OIDs should start with [1, 3, 6, 1, 2, 1, 2] (interfaces)
+          Enum.each(repeater_varbinds, fn {oid, _type, _value} ->
+            assert List.starts_with?(oid, [1, 3, 6, 1, 2, 1, 2]), 
+                   "Repeater OID #{inspect(oid)} should be in interfaces subtree"
+          end)
+
+        {:error, reason} ->
+          flunk("Failed to receive UDP response: #{inspect(reason)}")
       end
 
       :gen_udp.close(socket)

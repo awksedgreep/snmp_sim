@@ -31,7 +31,7 @@ defmodule SnmpSim.MIB.SharedProfiles do
   ## Examples
 
       :ok = SnmpSim.MIB.SharedProfiles.init_profiles()
-      
+
   """
   def init_profiles do
     GenServer.call(__MODULE__, :init_profiles)
@@ -46,7 +46,7 @@ defmodule SnmpSim.MIB.SharedProfiles do
         :cable_modem,
         ["DOCS-CABLE-DEVICE-MIB", "IF-MIB"]
       )
-      
+
   """
   def load_mib_profile(device_type, mib_files, opts \\ []) do
     GenServer.call(__MODULE__, {:load_mib_profile, device_type, mib_files, opts}, 30_000)
@@ -62,7 +62,7 @@ defmodule SnmpSim.MIB.SharedProfiles do
         "priv/walks/cable_modem.walk",
         behaviors: [:realistic_counters, :daily_patterns]
       )
-      
+
   """
   def load_walk_profile(device_type, walk_file, opts \\ []) do
     GenServer.call(__MODULE__, {:load_walk_profile, device_type, walk_file, opts}, 30_000)
@@ -78,7 +78,7 @@ defmodule SnmpSim.MIB.SharedProfiles do
         "1.3.6.1.2.1.2.2.1.10.1",
         %{device_id: "cm_001", uptime: 3600}
       )
-      
+
   """
   def get_oid_value(device_type, oid, device_state) do
     GenServer.call(__MODULE__, {:get_oid_value, device_type, oid, device_state})
@@ -299,7 +299,7 @@ defmodule SnmpSim.MIB.SharedProfiles do
   end
 
   defp load_walk_profile_impl(device_type, walk_file, opts, state) do
-    # Ensure tables exist for this device type  
+    # Ensure tables exist for this device type
     {prof_table, behav_table, new_state} = ensure_device_tables(device_type, state)
 
     try do
@@ -450,22 +450,22 @@ defmodule SnmpSim.MIB.SharedProfiles do
     end
   end
 
-  defp collect_bulk_oids(_device_type, _current_oid, 0, acc, _state) do
-    {:ok, Enum.reverse(acc)}
-  end
+  # defp collect_bulk_oids(_device_type, _current_oid, 0, acc, _state) do
+  #   {:ok, Enum.reverse(acc)}
+  # end
 
-  defp collect_bulk_oids(device_type, current_oid, remaining, acc, state) do
-    case get_next_oid_impl(device_type, current_oid, state) do
-      {:ok, next_oid} ->
-        collect_bulk_oids(device_type, next_oid, remaining - 1, [next_oid | acc], state)
+  # defp collect_bulk_oids(device_type, current_oid, remaining, acc, state) do
+  #   case get_next_oid_impl(device_type, current_oid, state) do
+  #     {:ok, next_oid} ->
+  #       collect_bulk_oids(device_type, next_oid, remaining - 1, [next_oid | acc], state)
 
-      :end_of_mib ->
-        {:ok, Enum.reverse(acc)}
+  #     :end_of_mib ->
+  #       {:ok, Enum.reverse(acc)}
 
-      {:error, reason} ->
-        {:error, reason}
-    end
-  end
+  #     {:error, reason} ->
+  #       {:error, reason}
+  #   end
+  # end
 
   # Helper Functions
 

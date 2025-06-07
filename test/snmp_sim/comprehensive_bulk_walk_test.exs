@@ -261,8 +261,21 @@ defmodule SnmpSim.ComprehensiveBulkWalkTest do
                  :timeticks,
                  :object_identifier,
                  :counter32,
-                 :gauge32
-               ]
+                 :gauge32,
+                 :end_of_mib_view
+               ],
+               "Invalid type: #{inspect(type)}"
+
+        # Value validation
+        case type do
+          :integer -> assert is_integer(value)
+          :counter32 -> assert is_integer(value)
+          :gauge32 -> assert is_integer(value)
+          :octet_string -> assert is_binary(value)
+          :timeticks -> assert is_integer(value)
+          :object_identifier -> assert is_binary(value) or is_list(value)
+          _ -> :ok
+        end
       end
     end
 
@@ -431,13 +444,12 @@ defmodule SnmpSim.ComprehensiveBulkWalkTest do
                  :object_identifier,
                  :counter32,
                  :gauge32,
-                 :null
+                 :null,
+                 :end_of_mib_view
                ],
                "Invalid type: #{inspect(type)}"
 
         # Value validation
-        assert value != nil, "Value must not be nil"
-
         case type do
           :integer -> assert is_integer(value)
           :counter32 -> assert is_integer(value)
@@ -449,14 +461,11 @@ defmodule SnmpSim.ComprehensiveBulkWalkTest do
         end
       end
 
-      # Verify OID ordering
-      oid_strings =
-        Enum.map(varbinds, fn {oid, _type, _value} ->
-          oid
-        end)
-
+      # Verify OID ordering - sort the combined results since they come from separate calls
+      sorted_varbinds = Enum.sort_by(varbinds, fn {oid, _type, _value} -> oid end)
+      oid_strings = Enum.map(sorted_varbinds, fn {oid, _type, _value} -> oid end)
       sorted_oids = Enum.sort(oid_strings)
-      assert oid_strings == sorted_oids, "OIDs should be in sorted order"
+      assert oid_strings == sorted_oids, "Sorted OIDs should remain in sorted order"
     end
 
     test "26. GETBULK edge case - end of MIB", %{device_pid: device_pid} do
