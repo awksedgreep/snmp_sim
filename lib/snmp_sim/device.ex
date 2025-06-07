@@ -716,42 +716,48 @@ defmodule SnmpSim.Device do
           _ -> to_string(oid)
         end
 
-
-      try do
-        case SharedProfiles.get_next_oid(state.device_type, oid_string) do
-          {:ok, next_oid} ->
-            # Get the value for the next OID
-            device_state = build_device_state(state)
-            case SharedProfiles.get_oid_value(state.device_type, next_oid, device_state) do
-              {:ok, value} ->
-                # Convert next_oid string to list format for test compatibility
-                next_oid_list = string_to_oid_list(next_oid)
-                # Convert value to 3-tuple format {oid, type, value}
-                {type, actual_value} = extract_type_and_value(value)
-                {next_oid_list, type, actual_value}
-              {:error, _} ->
-                # If we can't get the value, try our fallback
-                get_fallback_next_oid(oid_string, state)
+        try do
+          case SharedProfiles.get_next_oid(state.device_type, oid_string) do
+            {:ok, next_oid} ->
+              # Get the value for the next OID
+              device_state = build_device_state(state)
+              case SharedProfiles.get_oid_value(state.device_type, next_oid, device_state) do
+                {:ok, value} ->
+                  # Convert next_oid string to list format for test compatibility
+                  next_oid_list = string_to_oid_list(next_oid)
+                  # Convert value to 3-tuple format {oid, type, value}
+                  {type, actual_value} = extract_type_and_value(value)
+                  {next_oid_list, type, actual_value}
+                {:error, _} ->
+                  # If we can't get the value, try our fallback
+                  get_fallback_next_oid(oid_string, state)
+              end
+            :end_of_mib ->
+              {oid, :end_of_mib_view, {:end_of_mib_view, nil}}
+            {:error, :end_of_mib} ->
+              {oid, :end_of_mib_view, {:end_of_mib_view, nil}}
+            {:error, :device_type_not_found} ->
+              # Fallback: try to get next from current OID pattern
+              get_fallback_next_oid(oid_string, state)
+            {:error, _reason} ->
+              get_fallback_next_oid(oid_string, state)
+          end
+        catch
+          :exit, {:noproc, _} ->
+            # SharedProfiles not available, use fallback directly
+            get_fallback_next_oid(oid_string, state)
+          :exit, reason ->
+            Logger.debug("SharedProfiles unavailable (#{inspect(reason)}), using fallback for OID #{oid}")
+            # Handle 3-tuple format from fallback
+            case get_fallback_next_oid(oid_string, state) do
+              {next_oid_list, type, value} -> 
+                next_oid_str = if is_list(next_oid_list), do: Enum.join(next_oid_list, "."), else: next_oid_list
+                {next_oid_str, type, value}
+              other -> other
             end
-          :end_of_mib ->
-            {oid, :end_of_mib_view, {:end_of_mib_view, nil}}
-          {:error, :end_of_mib} ->
-            {oid, :end_of_mib_view, {:end_of_mib_view, nil}}
-          {:error, :device_type_not_found} ->
-            # Fallback: try to get next from current OID pattern
-            get_fallback_next_oid(oid_string, state)
-          {:error, _reason} ->
-            get_fallback_next_oid(oid_string, state)
         end
-      catch
-        :exit, {:noproc, _} ->
-          # SharedProfiles not available, use fallback directly
-          get_fallback_next_oid(oid_string, state)
-        :exit, _reason ->
-          # SharedProfiles unavailable, use fallback
-          get_fallback_next_oid(oid_string, state)
-      end
-    end)
+      end)
+      
       result
     catch
       :error, reason ->
@@ -835,7 +841,7 @@ defmodule SnmpSim.Device do
                       # Convert any inconsistent formats to proper 3-tuples
                       Enum.map(bulk_list, fn
                         {oid_list, type, value} when is_list(oid_list) -> 
-                          {Enum.join(oid_list, "."), type, value}
+                          {oid_list, type, value}
                         {oid, type, value} -> {oid, type, value}
                         {oid, value} -> {oid, :octet_string, value}
                         other -> other
@@ -852,7 +858,7 @@ defmodule SnmpSim.Device do
                     # Convert any inconsistent formats to proper 3-tuples
                     Enum.map(bulk_list, fn
                       {oid_list, type, value} when is_list(oid_list) -> 
-                        {Enum.join(oid_list, "."), type, value}
+                        {oid_list, type, value}
                       {oid, type, value} -> {oid, type, value}
                       {oid, value} -> {oid, :octet_string, value}
                       other -> other
@@ -867,7 +873,7 @@ defmodule SnmpSim.Device do
                     # Convert any inconsistent formats to proper 3-tuples
                     Enum.map(bulk_list, fn
                       {oid_list, type, value} when is_list(oid_list) -> 
-                        {Enum.join(oid_list, "."), type, value}
+                        {oid_list, type, value}
                       {oid, type, value} -> {oid, type, value}
                       {oid, value} -> {oid, :octet_string, value}
                       other -> other
@@ -911,7 +917,7 @@ defmodule SnmpSim.Device do
       true ->
         # Try to get value from SharedProfiles first (if available)
         try do
-          device_state = build_device_state(new_state)
+          device_state = build_device_state(state)
           case SharedProfiles.get_oid_value(state.device_type, oid_string, device_state) do
             {:ok, value} -> {:ok, value}
             {:error, :no_such_object} ->
@@ -1554,7 +1560,7 @@ defmodule SnmpSim.Device do
       "1.3.6.1.2.1.1.5.0" ->
         {[1, 3, 6, 1, 2, 1, 1, 6, 0], :octet_string, "Customer Premises"}
       "1.3.6.1.2.1.1.6.0" ->
-        {[1, 3, 6, 1, 2, 1, 1, 7, 0], :integer, 2}
+        {[1, 3, 6, 1, 2, 1, 1, 7, 0], :integer, 72}
       "1.3.6.1.2.1.2.1.0" ->
         {[1, 3, 6, 1, 2, 1, 2, 2, 1, 1, 1], :integer, 1}
       "1.3.6.1.2.1.2.2.1.1" ->
@@ -1565,14 +1571,30 @@ defmodule SnmpSim.Device do
         {[1, 3, 6, 1, 2, 1, 2, 2, 1, 2, 1], :octet_string, get_interface_description(state)}
       "1.3.6.1.2.1.2.2.1.3.1" ->
         {[1, 3, 6, 1, 2, 1, 2, 2, 1, 3, 1], :integer, 6}
-      "1.3.6.1.2.1.2.2.1.4.1" ->
-        {[1, 3, 6, 1, 2, 1, 2, 2, 1, 4, 1], :gauge32, 100000000}
+      "1.3.6.1.2.1.2.2.1.5.1" ->
+        {[1, 3, 6, 1, 2, 1, 2, 2, 1, 5, 1], :gauge32, 100000000}
+      "1.3.6.1.2.1.2.2.1.8.1" ->
+        {[1, 3, 6, 1, 2, 1, 2, 2, 1, 8, 1], :integer, 1}
+      "1.3.6.1.2.1.2.2.1.10.1" ->
+        {[1, 3, 6, 1, 2, 1, 2, 2, 1, 10, 1], :counter32, 2320569}
+      "1.3.6.1.2.1.2.2.1.16.1" ->
+        {[1, 3, 6, 1, 2, 1, 2, 2, 1, 16, 1], :counter32, 2512272}
+      "1.3.6.1.2.1.31.1.1.1.6.1" ->
+        {[1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 6, 1], :counter64, 50000000000}
+      "1.3.6.1.2.1.31.1.1.1.10.1" ->
+        {[1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 10, 1], :counter64, 35000000000}
+      "1.3.6.1.2.1.10.127.1.1.4.1.5.3" ->
+        {[1, 3, 6, 1, 2, 1, 10, 127, 1, 1, 4, 1, 5, 3], :gauge32, 32}
+      "1.3.6.1.2.1.25.3.3.1.2.1" ->
+        {[1, 3, 6, 1, 2, 1, 25, 3, 3, 1, 2, 1], :gauge32, 15}
+      "1.3.6.1.2.1.25.2.3.1.6.1" ->
+        {[1, 3, 6, 1, 2, 1, 25, 2, 3, 1, 6, 1], :gauge32, 65536}
       # Handle various starting points for SNMP walk - all redirect to first system OID
-      oid when oid in ["1.3.6.1.2.1", "1.3.6.1.2.1.1", "1.3.6.1", "1.3.6", "1.3", "1"] ->
+      oid when oid in ["1", "1.3", "1.3.6", "1.3.6.1", "1.3.6.1.2", "1.3.6.1.2.1", "1.3.6.1.2.1.1"] ->
         # Starting from various root points - go to first system OID
         device_type_str = case state.device_type do
           :cable_modem -> "Motorola SB6141 DOCSIS 3.0 Cable Modem"
-          :cmts -> "Cisco CMTS Cable Modem Termination System"
+          :cmts -> "Cisco CMTS Cable Modem Termination System" 
           :router -> "Cisco Router"
           _ -> "SNMP Simulator Device"
         end
@@ -1591,63 +1613,118 @@ defmodule SnmpSim.Device do
   end
 
   defp get_fallback_bulk_oids(start_oid, max_repetitions, state) do
-    # Simple fallback that generates a few basic interface OIDs
-    case start_oid do
-      "1.3.6.1.2.1.2.2.1.1" ->
-        # Generate interface indices
-        for i <- 1..min(max_repetitions, 3) do
-          {"1.3.6.1.2.1.2.2.1.1.#{i}", i}
-        end
-      "1.3.6.1.2.1.2.2.1.10" ->
-        # Generate interface octet counters
-        for i <- 1..min(max_repetitions, 3) do
-          {"1.3.6.1.2.1.2.2.1.10.#{i}", {:counter32, i * 1000}}
-        end
-      _ ->
-        # Just return one fallback OID
-        [get_fallback_next_oid(start_oid, state)]
+    # Return empty list for invalid counts
+    if max_repetitions <= 0 do
+      []
+    else
+      # Convert list OID to string format if needed
+      start_oid_str = case start_oid do
+        oid when is_list(oid) -> oid_to_string(oid)
+        oid when is_binary(oid) -> oid
+        _ -> to_string(start_oid)
+      end
+      
+      # Simple fallback that generates a few basic interface OIDs
+      case start_oid_str do
+        "1.3.6.1.2.1.2.2.1.1" ->
+          # Generate interface indices
+          for i <- 1..min(max_repetitions, 3) do
+            {[1, 3, 6, 1, 2, 1, 2, 2, 1, 1, i], i}
+          end
+        "1.3.6.1.2.1.2.2.1.10" ->
+          # Generate interface octet counters
+          for i <- 1..min(max_repetitions, 3) do
+            {[1, 3, 6, 1, 2, 1, 2, 2, 1, 10, i], {:counter32, i * 1000}}
+          end
+        oid when oid in ["1", "1.3", "1.3.6", "1.3.6.1", "1.3.6.1.2", "1.3.6.1.2.1", "1.3.6.1.2.1.1"] ->
+          # Generate a sequence of system OIDs for bulk walking
+          system_oids = [
+            {[1, 3, 6, 1, 2, 1, 1, 1, 0], :octet_string, case state.device_type do
+              :cable_modem -> "Motorola SB6141 DOCSIS 3.0 Cable Modem"
+              :cmts -> "Cisco CMTS Cable Modem Termination System" 
+              :router -> "Cisco Router"
+              _ -> "SNMP Simulator Device"
+            end},
+            {[1, 3, 6, 1, 2, 1, 1, 2, 0], :oid, [1, 3, 6, 1, 4, 1, 4491, 2, 1, 21, 1, 1]},
+            {[1, 3, 6, 1, 2, 1, 1, 3, 0], :timeticks, calculate_uptime_ticks(state)},
+            {[1, 3, 6, 1, 2, 1, 1, 4, 0], :octet_string, "System Contact"},
+            {[1, 3, 6, 1, 2, 1, 1, 5, 0], :octet_string, "snmp-sim-device"},
+            {[1, 3, 6, 1, 2, 1, 1, 6, 0], :octet_string, "SNMP Simulator Location"},
+            {[1, 3, 6, 1, 2, 1, 1, 7, 0], :integer, 72},
+            {[1, 3, 6, 1, 2, 1, 2, 1, 0], :integer, 2},
+            {[1, 3, 6, 1, 2, 1, 2, 2, 1, 1, 1], :integer, 1},
+            {[1, 3, 6, 1, 2, 1, 2, 2, 1, 1, 2], :integer, 2},
+            {[1, 3, 6, 1, 2, 1, 2, 2, 1, 2, 1], :octet_string, "eth0"},
+            {[1, 3, 6, 1, 2, 1, 2, 2, 1, 2, 2], :octet_string, "eth1"},
+            {[1, 3, 6, 1, 2, 1, 2, 2, 1, 3, 1], :integer, 6},
+            {[1, 3, 6, 1, 2, 1, 2, 2, 1, 3, 2], :integer, 6},
+            {[1, 3, 6, 1, 2, 1, 2, 2, 1, 5, 1], :gauge32, 100000000},
+            {[1, 3, 6, 1, 2, 1, 2, 2, 1, 5, 2], :gauge32, 100000000},
+            {[1, 3, 6, 1, 2, 1, 2, 2, 1, 8, 1], :integer, 1},
+            {[1, 3, 6, 1, 2, 1, 2, 2, 1, 8, 2], :integer, 1},
+            {[1, 3, 6, 1, 2, 1, 2, 2, 1, 10, 1], :counter32, 2320569},
+            {[1, 3, 6, 1, 2, 1, 2, 2, 1, 10, 2], :counter32, 1845123},
+            {[1, 3, 6, 1, 2, 1, 2, 2, 1, 16, 1], :counter32, 2512272},
+            {[1, 3, 6, 1, 2, 1, 2, 2, 1, 16, 2], :counter32, 1923456}
+          ]
+          
+          # Filter OIDs that come after start_oid and limit to max_repetitions
+          filtered_oids = Enum.filter(system_oids, fn {oid, _, _} ->
+            compare_oids_lexicographically(start_oid_str, oid_to_string(oid))
+          end)
+          
+          Enum.take(filtered_oids, max_repetitions)
+        _ ->
+          # For other OIDs, try to generate next OID in sequence
+          case get_fallback_next_oid(start_oid_str, state) do
+            {_oid_list, :end_of_mib_view, _} -> 
+              # Return proper end_of_mib_view varbinds instead of empty list
+              for _i <- 1..max_repetitions do
+                {start_oid_str, :end_of_mib_view, nil}
+              end
+            single_result -> [single_result]
+          end
+      end
     end
   end
 
   defp get_next_oid_value(oid, state) do
     try do
       device_state = build_device_state(state)
-      case SharedProfiles.get_next_oid(oid, device_state) do
+      case SharedProfiles.get_next_oid(state.device_type, oid) do
         {:ok, next_oid} ->
           # Get the value for the next OID
           case SharedProfiles.get_oid_value(state.device_type, next_oid, device_state) do
-            {:ok, value} -> {:ok, {oid_to_string(next_oid), value}}
+            {:ok, value} ->
+              # Convert next_oid string to list format for test compatibility
+              next_oid_list = string_to_oid_list(next_oid)
+              # Convert value to 3-tuple format {oid, type, value}
+              {type, actual_value} = extract_type_and_value(value)
+              {:ok, {next_oid_list, actual_value}}
             {:error, _} ->
-              case get_fallback_next_oid(oid, state) do
-                {_next_oid, :end_of_mib_view, {:end_of_mib_view, nil}} -> {:error, :end_of_mib_view}
-                {next_oid, _type, value} -> {:ok, {oid_to_string(next_oid), value}}
-              end
+              # If we can't get the value, try our fallback
+              get_fallback_next_oid(oid, state)
           end
         :end_of_mib ->
           {:error, :end_of_mib_view}
         {:error, :end_of_mib} ->
           {:error, :end_of_mib_view}
         {:error, :device_type_not_found} ->
-          case get_fallback_next_oid(oid, state) do
-            {_next_oid, :end_of_mib_view, {:end_of_mib_view, nil}} -> {:error, :end_of_mib_view}
-            {next_oid, _type, value} -> {:ok, {oid_to_string(next_oid), value}}
-          end
+          # Fallback: try to get next from current OID pattern
+          get_fallback_next_oid(oid, state)
         {:error, _reason} ->
-          case get_fallback_next_oid(oid, state) do
-            {_next_oid, :end_of_mib_view, {:end_of_mib_view, nil}} -> {:error, :end_of_mib_view}
-            {next_oid, _type, value} -> {:ok, {oid_to_string(next_oid), value}}
-          end
+          get_fallback_next_oid(oid, state)
       end
     catch
       :exit, {:noproc, _} ->
         case get_fallback_next_oid(oid, state) do
-          {_next_oid, :end_of_mib_view, {:end_of_mib_view, nil}} -> {:error, :end_of_mib_view}
-          {next_oid, _type, value} -> {:ok, {oid_to_string(next_oid), value}}
+          {_next_oid, :end_of_mib_view, _} -> {:error, :end_of_mib_view}
+          {next_oid, _type, value} -> {:ok, {next_oid, value}}
         end
-      :exit, _reason ->
+      :exit, reason ->
         case get_fallback_next_oid(oid, state) do
-          {_next_oid, :end_of_mib_view, {:end_of_mib_view, nil}} -> {:error, :end_of_mib_view}
-          {next_oid, _type, value} -> {:ok, {oid_to_string(next_oid), value}}
+          {_next_oid, :end_of_mib_view, _} -> {:error, :end_of_mib_view}
+          {next_oid, _type, value} -> {:ok, {next_oid, value}}
         end
     end
   end
@@ -1655,14 +1732,14 @@ defmodule SnmpSim.Device do
   defp get_bulk_oid_values(oid, count, state) do
     try do
       device_state = build_device_state(state)
-      case SharedProfiles.get_bulk_oids(oid, count, device_state) do
+      case SharedProfiles.get_bulk_oids(state.device_type, oid, count) do
         {:ok, oid_values} -> {:ok, oid_values}
         {:error, _reason} -> {:ok, get_fallback_bulk_oids(oid, count, state)}
       end
     catch
       :exit, {:noproc, _} ->
         {:ok, get_fallback_bulk_oids(oid, count, state)}
-      :exit, _reason ->
+      :exit, reason ->
         {:ok, get_fallback_bulk_oids(oid, count, state)}
     end
   end
@@ -1674,20 +1751,34 @@ defmodule SnmpSim.Device do
 
   defp walk_oid_recursive(oid, state, acc) when length(acc) < 100 do
     case get_next_oid_value(oid, state) do
-      {:ok, {next_oid, value}} ->
+      {next_oid_list, type, value} when is_list(next_oid_list) and type != :end_of_mib_view ->
         # Convert both OIDs to strings for comparison
         oid_str = oid_to_string(oid)
-        next_oid_str = oid_to_string(next_oid)
+        next_oid_str = oid_to_string(next_oid_list)
 
         # Check if still in the same subtree
         if String.starts_with?(next_oid_str, oid_str) do
-          walk_oid_recursive(next_oid_str, state, [{next_oid_str, value} | acc])
+          walk_oid_recursive(next_oid_str, state, [{next_oid_list, value} | acc])
+        else
+          {:ok, Enum.reverse(acc)}
+        end
+      {:ok, {next_oid, value}} ->
+        # Legacy format support
+        oid_str = oid_to_string(oid)
+        next_oid_str = oid_to_string(next_oid)
+
+        if String.starts_with?(next_oid_str, oid_str) do
+          walk_oid_recursive(next_oid_str, state, [{next_oid, value} | acc])
         else
           {:ok, Enum.reverse(acc)}
         end
       {:error, :end_of_mib_view} ->
         {:ok, Enum.reverse(acc)}
       {:error, _reason} ->
+        {:ok, Enum.reverse(acc)}
+      {_oid_list, :end_of_mib_view, _} ->
+        {:ok, Enum.reverse(acc)}
+      _ ->
         {:ok, Enum.reverse(acc)}
     end
   end
@@ -1722,43 +1813,18 @@ defmodule SnmpSim.Device do
     # Convert to 3-tuple format expected by SnmpLib with list OIDs
     converted_bindings = Enum.map(variable_bindings, fn
       {oid, :end_of_mib_view, nil} ->
-        oid_list = case oid do
-          oid when is_list(oid) -> oid
-          oid when is_binary(oid) -> string_to_oid_list(oid)
-          _ -> oid
-        end
-        result = {oid_list, :end_of_mib_view, {:end_of_mib_view, nil}}  # 3-tuple with exception value
+        result = {oid, :end_of_mib_view, {:end_of_mib_view, nil}}  # 3-tuple with exception value
         result
       {oid, :end_of_mib_view, _} ->
-        oid_list = case oid do
-          oid when is_list(oid) -> oid
-          oid when is_binary(oid) -> string_to_oid_list(oid)
-          _ -> oid
-        end
-        result = {oid_list, :end_of_mib_view, {:end_of_mib_view, nil}}  # 3-tuple with exception value
+        result = {oid, :end_of_mib_view, {:end_of_mib_view, nil}}  # 3-tuple with exception value
         result
       {oid, :no_such_object, _} ->
-        oid_list = case oid do
-          oid when is_list(oid) -> oid
-          oid when is_binary(oid) -> string_to_oid_list(oid)
-          _ -> oid
-        end
-        {oid_list, :no_such_object, {:no_such_object, nil}}  # 3-tuple with exception value
+        {oid, :no_such_object, {:no_such_object, nil}}  # 3-tuple with exception value
       {oid, type, value} ->
-        oid_list = case oid do
-          oid when is_list(oid) -> oid
-          oid when is_binary(oid) -> string_to_oid_list(oid)
-          _ -> oid
-        end
-        result = {oid_list, type, value}  # Keep as 3-tuple with list OID
+        result = {oid, type, value}  # Keep as 3-tuple with list OID
         result
       {oid, value} ->
-        oid_list = case oid do
-          oid when is_list(oid) -> oid
-          oid when is_binary(oid) -> string_to_oid_list(oid)
-          _ -> oid
-        end
-        {oid_list, :unknown, value}  # Convert 2-tuple to 3-tuple with list OID
+        {oid, :unknown, value}  # Convert 2-tuple to 3-tuple with list OID
       other -> other         # Pass through anything else
     end)
 
@@ -1803,4 +1869,20 @@ defmodule SnmpSim.Device do
   defp string_to_oid_list(oid) when is_list(oid), do: oid
   defp string_to_oid_list(oid), do: oid
 
+  defp compare_oids_lexicographically(oid1, oid2) do
+    # Convert both OIDs to lists for comparison
+    list1 = case oid1 do
+      oid when is_binary(oid) -> string_to_oid_list(oid)
+      oid when is_list(oid) -> oid
+      _ -> []
+    end
+    
+    list2 = case oid2 do
+      oid when is_binary(oid) -> string_to_oid_list(oid)
+      oid when is_list(oid) -> oid
+      _ -> []
+    end
+    
+    list1 < list2
+  end
 end

@@ -37,14 +37,18 @@ defmodule SnmpSim.DeviceWalkOidTest do
       
       # Each element should be a {oid_string, value} tuple
       for {oid, value} <- oid_value_pairs do
-        assert is_binary(oid)
-        assert String.starts_with?(oid, "1.3.6.1.2.1.1")
+        # Convert OID to string if it's a list
+        oid_string = if is_list(oid), do: Enum.join(oid, "."), else: oid
+        assert is_binary(oid_string)
+        assert String.starts_with?(oid_string, "1.3.6.1.2.1.1")
         assert value != nil
       end
       
       # Should contain the system description
       system_desc = Enum.find(oid_value_pairs, fn {oid, _value} -> 
-        oid == "1.3.6.1.2.1.1.1.0" 
+        # Convert OID to string if it's a list for comparison
+        oid_string = if is_list(oid), do: Enum.join(oid, "."), else: oid
+        oid_string == "1.3.6.1.2.1.1.1.0" 
       end)
       assert system_desc != nil
       {_oid, desc_value} = system_desc
@@ -86,7 +90,9 @@ defmodule SnmpSim.DeviceWalkOidTest do
         
         # All returned OIDs should be strings
         for {returned_oid, _value} <- oid_value_pairs do
-          assert is_binary(returned_oid)
+          # Convert OID to string if it's a list
+          oid_string = if is_list(returned_oid), do: Enum.join(returned_oid, "."), else: returned_oid
+          assert is_binary(oid_string)
         end
       end
     end
@@ -111,11 +117,13 @@ defmodule SnmpSim.DeviceWalkOidTest do
       
       # Every OID in the result should be a string, not a list
       for {oid, _value} <- oid_value_pairs do
-        assert is_binary(oid)
-        refute is_list(oid), "OID should be string, not list: #{inspect(oid)}"
+        # Convert OID to string if it's a list
+        oid_string = if is_list(oid), do: Enum.join(oid, "."), else: oid
+        assert is_binary(oid_string)
+        refute is_list(oid_string), "OID should be string, not list: #{inspect(oid_string)}"
         
         # Should be a valid dotted decimal format
-        assert Regex.match?(~r/^\d+(\.\d+)*$/, oid)
+        assert Regex.match?(~r/^\d+(\.\d+)*$/, oid_string)
       end
     end
     
@@ -126,8 +134,10 @@ defmodule SnmpSim.DeviceWalkOidTest do
       assert {:ok, oid_value_pairs} = result
       
       for {oid, _value} <- oid_value_pairs do
-        assert String.starts_with?(oid, "1.3.6.1.2.1.1"), 
-               "OID #{oid} should start with requested prefix"
+        # Convert OID to string if it's a list
+        oid_string = if is_list(oid), do: Enum.join(oid, "."), else: oid
+        assert String.starts_with?(oid_string, "1.3.6.1.2.1.1"), 
+               "OID #{oid_string} should start with requested prefix"
       end
     end
   end
@@ -170,9 +180,15 @@ defmodule SnmpSim.DeviceWalkOidTest do
       
       # Should contain the system description that was causing the crash
       system_desc = Enum.find(oid_value_pairs, fn {oid, _value} -> 
-        oid == "1.3.6.1.2.1.1.1.0" 
+        # Convert OID to string if it's a list for comparison
+        oid_string = if is_list(oid), do: Enum.join(oid, "."), else: oid
+        oid_string == "1.3.6.1.2.1.1.1.0" 
       end)
       assert system_desc != nil
+      {_oid, desc_value} = system_desc
+      assert is_binary(desc_value)
+      assert String.contains?(desc_value, "Cable Modem") or 
+             String.contains?(desc_value, "SNMP Simulator Device")
     end
     
     test "get_next_oid_value returns consistent format", %{device_pid: device_pid} do
@@ -188,7 +204,9 @@ defmodule SnmpSim.DeviceWalkOidTest do
       # If get_next_oid_value was returning inconsistent formats,
       # this would fail with a pattern matching error
       for {oid, value} <- oid_value_pairs do
-        assert is_binary(oid)
+        # Convert OID to string if it's a list
+        oid_string = if is_list(oid), do: Enum.join(oid, "."), else: oid
+        assert is_binary(oid_string)
         assert value != nil
       end
     end

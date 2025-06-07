@@ -360,17 +360,41 @@ defmodule SnmpSim.LazyDevicePool do
   end
   
   defp count_configured_ports(port_assignments) do
-    Enum.reduce(port_assignments, 0, fn {_type, ranges}, acc ->
-      acc + count_ports_in_ranges(ranges)
-    end)
+    try do
+      Enum.reduce(port_assignments, 0, fn {_type, ranges}, acc ->
+        acc + count_ports_in_ranges(ranges)
+      end)
+    rescue
+      e ->
+        require Logger
+        Logger.error("Error in count_configured_ports: #{inspect(e)}")
+        Logger.error("port_assignments: #{inspect(port_assignments)}")
+        reraise e, __STACKTRACE__
+    end
   end
   
   defp count_ports_in_ranges(ranges) when is_list(ranges) do
-    Enum.reduce(ranges, 0, fn range, acc -> acc + Enum.count(range) end)
+    try do
+      Enum.reduce(ranges, 0, fn range, acc -> acc + Enum.count(range) end)
+    rescue
+      e ->
+        require Logger
+        Logger.error("Error in count_ports_in_ranges (list): #{inspect(e)}")
+        Logger.error("ranges: #{inspect(ranges)}")
+        reraise e, __STACKTRACE__
+    end
   end
   
   defp count_ports_in_ranges(range) do
-    Enum.count(range)
+    try do
+      Enum.count(range)
+    rescue
+      e ->
+        require Logger
+        Logger.error("Error in count_ports_in_ranges (single): #{inspect(e)}")
+        Logger.error("range: #{inspect(range)}")
+        reraise e, __STACKTRACE__
+    end
   end
   
   defp build_port_assignments(device_configs, port_range) do

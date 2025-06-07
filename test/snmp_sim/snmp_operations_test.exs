@@ -242,7 +242,18 @@ defmodule SnmpSim.SNMPOperationsTest do
           assert is_integer(value2), "sysUpTime should be integer, got: #{inspect(value2)}"
           
           # Verify the response can be encoded (this was the original problem)
-          test_message = SnmpLib.PDU.build_message(response_pdu, "public", :v1)
+          # Convert OIDs back to integer lists for encoding
+          normalized_varbinds = Enum.map(response_pdu.varbinds, fn {oid, type, value} ->
+            oid_list = if is_binary(oid) do
+              oid |> String.split(".") |> Enum.map(&String.to_integer/1)
+            else
+              oid
+            end
+            {oid_list, type, value}
+          end)
+          
+          normalized_pdu = %{response_pdu | varbinds: normalized_varbinds}
+          test_message = SnmpLib.PDU.build_message(normalized_pdu, "public", :v1)
           {:ok, encoded_response} = SnmpLib.PDU.encode_message(test_message)
           assert is_binary(encoded_response), "Response PDU should encode to binary"
           

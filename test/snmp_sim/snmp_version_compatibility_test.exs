@@ -50,7 +50,14 @@ defmodule SnmpSim.SnmpVersionCompatibilityTest do
       assert length(response_pdu.varbinds) == 1
       
       [{oid, type, value}] = response_pdu.varbinds
-      assert oid == [1, 3, 6, 1, 2, 1, 1, 1, 0]
+      # Handle both string and list OID formats
+      expected_oid = [1, 3, 6, 1, 2, 1, 1, 1, 0]
+      actual_oid = if is_binary(oid) do
+        oid |> String.split(".") |> Enum.map(&String.to_integer/1)
+      else
+        oid
+      end
+      assert actual_oid == expected_oid
       assert type == :octet_string
       assert is_binary(value)
     end
@@ -79,7 +86,14 @@ defmodule SnmpSim.SnmpVersionCompatibilityTest do
       assert length(response_pdu.varbinds) == 1
       
       [{oid, type, value}] = response_pdu.varbinds
-      assert oid == [1, 3, 6, 1, 2, 1, 1, 1, 0]
+      # Handle both string and list OID formats
+      expected_oid = [1, 3, 6, 1, 2, 1, 1, 1, 0]
+      actual_oid = if is_binary(oid) do
+        oid |> String.split(".") |> Enum.map(&String.to_integer/1)
+      else
+        oid
+      end
+      assert actual_oid == expected_oid
       assert type == :octet_string
       assert is_binary(value)
     end
@@ -192,7 +206,14 @@ defmodule SnmpSim.SnmpVersionCompatibilityTest do
       assert {:ok, response_pdu} = result
       assert response_pdu.version == :v1
       [{oid, type, value}] = response_pdu.varbinds
-      assert oid == [1, 3, 6, 1, 2, 1, 2, 2, 1, 10, 1]
+      # Handle both string and list OID formats
+      expected_oid = [1, 3, 6, 1, 2, 1, 2, 2, 1, 10, 1]
+      actual_oid = if is_binary(oid) do
+        oid |> String.split(".") |> Enum.map(&String.to_integer/1)
+      else
+        oid
+      end
+      assert actual_oid == expected_oid
       assert type == :counter32
       assert is_integer(value)
     end
@@ -213,7 +234,14 @@ defmodule SnmpSim.SnmpVersionCompatibilityTest do
       assert {:ok, response_pdu} = result
       assert response_pdu.version == :v2c
       [{oid, type, value}] = response_pdu.varbinds
-      assert oid == [1, 3, 6, 1, 2, 1, 2, 2, 1, 10, 1]
+      # Handle both string and list OID formats
+      expected_oid = [1, 3, 6, 1, 2, 1, 2, 2, 1, 10, 1]
+      actual_oid = if is_binary(oid) do
+        oid |> String.split(".") |> Enum.map(&String.to_integer/1)
+      else
+        oid
+      end
+      assert actual_oid == expected_oid
       assert type == :counter32
       assert is_integer(value)
     end

@@ -46,30 +46,40 @@ defmodule SnmpSim.MultiDeviceStartup do
   @spec start_device_population([device_spec()], startup_opts()) :: 
     {:ok, map()} | {:error, term()}
   def start_device_population(device_specs, opts \\ []) do
+    require Logger
+    Logger.info("start_device_population called with device_specs: #{inspect(device_specs)}, opts: #{inspect(opts)}")
+    
     port_range = Keyword.get(opts, :port_range, 30_000..39_999)
+    progress_callback = Keyword.get(opts, :progress_callback)
     parallel_workers = Keyword.get(opts, :parallel_workers, @default_parallel_workers)
     timeout_ms = Keyword.get(opts, :timeout_ms, @default_timeout_ms)
-    progress_callback = Keyword.get(opts, :progress_callback)
     
-    Logger.info("Starting device population: #{inspect(device_specs)}")
+    Logger.info("Using port_range: #{inspect(port_range)}")
     
-    with :ok <- validate_device_specs(device_specs, port_range),
-         {:ok, port_assignments} <- build_port_assignments(device_specs, port_range),
-         :ok <- configure_lazy_pool(port_assignments),
-         {:ok, startup_plan} <- create_startup_plan(device_specs, port_assignments),
-         {:ok, results} <- execute_startup_plan(startup_plan, parallel_workers, timeout_ms, progress_callback) do
-      
-      Logger.info("Device population startup completed successfully")
-      {:ok, %{
-        total_devices: calculate_total_devices(device_specs),
-        port_assignments: port_assignments,
-        startup_results: results,
-        pool_stats: LazyDevicePool.get_stats()
-      }}
-    else
-      {:error, reason} ->
-        Logger.error("Device population startup failed: #{inspect(reason)}")
-        {:error, reason}
+    try do
+      with :ok <- validate_device_specs(device_specs, port_range),
+           {:ok, port_assignments} <- build_port_assignments(device_specs, port_range),
+           :ok <- configure_lazy_pool(port_assignments),
+           {:ok, startup_plan} <- create_startup_plan(device_specs, port_assignments),
+           {:ok, results} <- execute_startup_plan(startup_plan, parallel_workers, timeout_ms, progress_callback) do
+        
+        Logger.info("Device population started successfully")
+        {:ok, %{
+          total_devices: calculate_total_devices(device_specs),
+          port_assignments: port_assignments,
+          startup_results: results,
+          pool_stats: LazyDevicePool.get_stats()
+        }}
+      else
+        {:error, reason} -> 
+          Logger.error("Error in start_device_population: #{inspect(reason)}")
+          {:error, reason}
+      end
+    rescue
+      e ->
+        Logger.error("Exception in start_device_population: #{inspect(e)}")
+        Logger.error("Stacktrace: #{inspect(__STACKTRACE__)}")
+        reraise e, __STACKTRACE__
     end
   end
   
@@ -116,15 +126,35 @@ defmodule SnmpSim.MultiDeviceStartup do
   
   @spec get_startup_status() :: startup_status()
   def get_startup_status do
-    pool_stats = LazyDevicePool.get_stats()
+    require Logger
+    Logger.info("get_startup_status called")
     
-    %{
-      active_devices: pool_stats.active_count,
-      peak_devices: pool_stats.peak_count,
-      devices_created: pool_stats.devices_created,
-      devices_cleaned_up: pool_stats.devices_cleaned_up,
-      total_ports_configured: pool_stats.total_ports_configured
-    }
+    case Process.whereis(LazyDevicePool) do
+      nil ->
+        Logger.error("LazyDevicePool process not found!")
+        {:error, :pool_not_running}
+      
+      pid ->
+        Logger.info("LazyDevicePool process found: #{inspect(pid)}")
+        
+        try do
+          pool_stats = LazyDevicePool.get_stats()
+          Logger.info("Got pool_stats: #{inspect(pool_stats)}")
+          
+          %{
+            active_devices: pool_stats.active_count,
+            peak_devices: pool_stats.peak_count,
+            devices_created: pool_stats.devices_created,
+            devices_cleaned_up: pool_stats.devices_cleaned_up,
+            total_ports_configured: pool_stats.total_ports_configured
+          }
+        rescue
+          e ->
+            Logger.error("Error getting pool stats: #{inspect(e)}")
+            Logger.error("Stacktrace: #{inspect(__STACKTRACE__)}")
+            reraise e, __STACKTRACE__
+        end
+    end
   end
   
   @doc """
@@ -171,24 +201,37 @@ defmodule SnmpSim.MultiDeviceStartup do
   end
   
   defp build_port_assignments(device_specs, port_range) do
+    Logger.info("Building port assignments for device_specs: #{inspect(device_specs)}, port_range: #{inspect(port_range)}")
     try do
       device_mix = Enum.into(device_specs, %{})
+      Logger.info("Device mix: #{inspect(device_mix)}")
       port_assignments = DeviceDistribution.build_port_assignments(device_mix, port_range)
+      Logger.info("Built port assignments: #{inspect(port_assignments)}")
       
       case DeviceDistribution.validate_port_assignments(port_assignments) do
-        :ok -> {:ok, port_assignments}
-        {:error, reason} -> {:error, {:invalid_port_assignments, reason}}
+        :ok -> 
+          Logger.info("Port assignments validated successfully")
+          {:ok, port_assignments}
+        {:error, reason} -> 
+          Logger.error("Port assignments validation failed: #{inspect(reason)}")
+          {:error, {:invalid_port_assignments, reason}}
       end
     rescue
       e in ArgumentError ->
+        Logger.error("ArgumentError in build_port_assignments: #{inspect(e)}")
         {:error, {:port_assignment_failed, e.message}}
     end
   end
   
   defp configure_lazy_pool(port_assignments) do
+    Logger.info("Configuring lazy pool with port assignments: #{inspect(port_assignments)}")
     case LazyDevicePool.configure_port_assignments(port_assignments) do
-      :ok -> :ok
-      {:error, reason} -> {:error, {:pool_configuration_failed, reason}}
+      :ok -> 
+        Logger.info("Lazy pool configured successfully")
+        :ok
+      {:error, reason} -> 
+        Logger.error("Lazy pool configuration failed: #{inspect(reason)}")
+        {:error, {:pool_configuration_failed, reason}}
     end
   end
   
@@ -221,6 +264,7 @@ defmodule SnmpSim.MultiDeviceStartup do
   defp execute_startup_plan(startup_tasks, parallel_workers, timeout_ms, progress_callback) do
     total_tasks = length(startup_tasks)
     Logger.info("Executing startup plan: #{total_tasks} devices with #{parallel_workers} workers")
+    Logger.info("Startup tasks: #{inspect(startup_tasks)}")
     
     # Start progress tracking if callback provided
     _tracker_pid = if progress_callback do
@@ -228,17 +272,25 @@ defmodule SnmpSim.MultiDeviceStartup do
     end
     
     # Execute tasks in parallel batches
-    startup_tasks
-    |> Enum.chunk_every(parallel_workers)
-    |> Enum.reduce({:ok, %{}}, fn batch, acc ->
-      case acc do
-        {:error, _} = error -> error
-        {:ok, results} ->
-          # execute_batch always returns {:ok, batch_results}
-          {:ok, batch_results} = execute_batch(batch, timeout_ms)
-          {:ok, Map.merge(results, batch_results)}
-      end
-    end)
+    try do
+      startup_tasks
+      |> Enum.chunk_every(parallel_workers)
+      |> Enum.reduce({:ok, %{}}, fn batch, acc ->
+        Logger.info("Processing batch: #{inspect(batch)}")
+        case acc do
+          {:error, _} = error -> error
+          {:ok, results} ->
+            # execute_batch always returns {:ok, batch_results}
+            {:ok, batch_results} = execute_batch(batch, timeout_ms)
+            {:ok, Map.merge(results, batch_results)}
+        end
+      end)
+    rescue
+      e ->
+        Logger.error("Exception in execute_startup_plan: #{inspect(e)}")
+        Logger.error("Stacktrace: #{inspect(__STACKTRACE__)}")
+        reraise e, __STACKTRACE__
+    end
   end
   
   defp execute_batch(tasks, timeout_ms) do
@@ -258,10 +310,13 @@ defmodule SnmpSim.MultiDeviceStartup do
   end
   
   defp start_single_device(%{port: port} = task) do
+    Logger.info("Starting single device: #{inspect(task)}")
     case LazyDevicePool.get_or_create_device(port) do
       {:ok, device_pid} ->
+        Logger.info("Device started successfully: #{inspect(device_pid)}")
         {:ok, task |> Map.put(:device_pid, device_pid) |> Map.put(:status, :started)}
       {:error, reason} ->
+        Logger.error("Error starting device: #{inspect(reason)}")
         {:error, task |> Map.put(:status, :failed) |> Map.put(:reason, reason)}
     end
   end

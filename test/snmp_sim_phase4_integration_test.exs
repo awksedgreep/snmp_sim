@@ -211,8 +211,8 @@ defmodule SnmpSimPhase4IntegrationTest do
     end
     
     test "concurrent device access patterns" do
-      # Configure for high concurrency
-      port_range = PortHelper.get_port_range(1000)
+      # Configure for high concurrency with deterministic port allocation
+      port_range = PortHelper.get_port_range("phase4_concurrent_access", 1000)
       port_assignments = %{
         cable_modem: port_range
       }

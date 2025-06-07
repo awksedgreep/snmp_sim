@@ -5,8 +5,10 @@ defmodule SnmpSim.MultiDeviceStartupTest do
   alias SnmpSim.TestHelpers.PortHelper
   
   # Helper function to get unique port range for each test using PortHelper
-  defp get_port_range(_test_name, size \\ 20) do
-    PortHelper.get_port_range(size)
+  defp get_port_range(test_name, size \\ 20) do
+    # Convert atom test name to string for deterministic hashing
+    test_name_str = if is_atom(test_name), do: Atom.to_string(test_name), else: test_name
+    PortHelper.get_port_range(test_name_str, size)
   end
   
   setup %{test: test_name} do
@@ -17,7 +19,7 @@ defmodule SnmpSim.MultiDeviceStartupTest do
       {:ok, _} = LazyDevicePool.start_link()
     end
     
-    # Reset to default port assignments
+    # Reset to default port assignments - use the correct module
     default_assignments = DeviceDistribution.default_port_assignments()
     LazyDevicePool.configure_port_assignments(default_assignments)
     

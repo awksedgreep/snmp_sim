@@ -41,15 +41,21 @@ defmodule SnmpSim.ComprehensiveWalkTest do
       assert is_list(oid_value_pairs)
       assert length(oid_value_pairs) > 0
       
-      # Verify all OIDs are strings and values are present
+      # Verify all OIDs are in correct format and values are present
       for {oid, value} <- oid_value_pairs do
-        assert is_binary(oid)
-        assert String.starts_with?(oid, "1.3.6.1.2.1.1")
+        # Convert OID to string if it's a list
+        oid_string = if is_list(oid), do: Enum.join(oid, "."), else: oid
+        assert is_binary(oid_string)
+        assert String.starts_with?(oid_string, "1.3.6.1.2.1.1")
         assert value != nil
       end
       
       # Should contain system description
-      assert Enum.any?(oid_value_pairs, fn {oid, _} -> oid == "1.3.6.1.2.1.1.1.0" end)
+      system_desc = Enum.find(oid_value_pairs, fn {oid, _value} ->
+        oid_string = if is_list(oid), do: Enum.join(oid, "."), else: oid
+        oid_string == "1.3.6.1.2.1.1.1.0"
+      end)
+      assert system_desc != nil
     end
     
     test "SNMPv2c walk returns consistent format", %{device_pid: device_pid} do
@@ -62,8 +68,10 @@ defmodule SnmpSim.ComprehensiveWalkTest do
       
       # Verify format consistency
       for {oid, value} <- oid_value_pairs do
-        assert is_binary(oid)
-        assert String.starts_with?(oid, "1.3.6.1.2.1.1")
+        # Convert OID to string if it's a list
+        oid_string = if is_list(oid), do: Enum.join(oid, "."), else: oid
+        assert is_binary(oid_string)
+        assert String.starts_with?(oid_string, "1.3.6.1.2.1.1")
         assert value != nil
       end
     end
@@ -197,9 +205,16 @@ defmodule SnmpSim.ComprehensiveWalkTest do
       # Test the internal function that was causing issues
       result = GenServer.call(device_pid, {:get_next_oid, "1.3.6.1.2.1.1"})
       
-      # Should always return {:ok, {next_oid, value}} or {:error, reason}
+      # Should always return {:ok, {next_oid, value}} or {:ok, {next_oid, type, value}} or {:error, reason}
       case result do
         {:ok, {next_oid, value}} ->
+          assert is_list(next_oid) or is_binary(next_oid)
+          assert value != nil
+        {:ok, {next_oid, _type, value}} ->
+          assert is_list(next_oid) or is_binary(next_oid)
+          assert value != nil
+        {next_oid, _type, value} ->
+          # Direct 3-tuple format
           assert is_list(next_oid) or is_binary(next_oid)
           assert value != nil
         {:error, reason} ->

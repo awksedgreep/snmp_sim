@@ -275,8 +275,8 @@ defmodule SnmpSim.UdpServerIntegrationTest do
           assert length(varbinds) > 0
           
           # At least one varbind should have end_of_mib_view
-          has_end_of_mib = Enum.any?(varbinds, fn {_oid, _type, value} ->
-            match?({:end_of_mib_view, _}, value)
+          has_end_of_mib = Enum.any?(varbinds, fn {_oid, type, value} ->
+            type == :end_of_mib_view or match?({:end_of_mib_view, _}, value)
           end)
           assert has_end_of_mib, "Expected at least one end_of_mib_view varbind, got: #{inspect(varbinds)}"
           
@@ -314,8 +314,8 @@ defmodule SnmpSim.UdpServerIntegrationTest do
           assert length(varbinds) > 0
           
           # At least one varbind should have end_of_mib_view
-          has_end_of_mib = Enum.any?(varbinds, fn {_oid, _type, value} ->
-            match?({:end_of_mib_view, _}, value)
+          has_end_of_mib = Enum.any?(varbinds, fn {_oid, type, value} ->
+            type == :end_of_mib_view or match?({:end_of_mib_view, _}, value)
           end)
           assert has_end_of_mib, "Expected at least one end_of_mib_view varbind, got: #{inspect(varbinds)}"
           
