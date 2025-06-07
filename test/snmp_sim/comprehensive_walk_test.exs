@@ -197,10 +197,11 @@ defmodule SnmpSim.ComprehensiveWalkTest do
       # Test the internal function that was causing issues
       result = GenServer.call(device_pid, {:get_next_oid, "1.3.6.1.2.1.1"})
       
-      # Should always return {:ok, {next_oid, value}} or {:error, reason}
+      # Should always return {:ok, {next_oid, type, value}} or {:error, reason}
       case result do
-        {:ok, {next_oid, value}} ->
+        {:ok, {next_oid, type, value}} ->
           assert is_list(next_oid) or is_binary(next_oid)
+          assert is_atom(type)
           assert value != nil
         {:error, reason} ->
           assert reason in [:end_of_mib_view, :no_such_object, :no_such_instance]
