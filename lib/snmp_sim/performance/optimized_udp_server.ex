@@ -298,42 +298,76 @@ end
 
   defp process_packet_optimized(socket, ip, port, packet, device_handler, community, start_time) do
     try do
-      case PDU.decode_snmp_packet(packet) do
-        {:ok, pdu} ->
+      case PDU.decode_message(packet) do
+        {:ok, message} ->
           # Validate community
-          if pdu.community == community do
+          if message.community == community do
             # Get device for this port (optimized lookup)
             case OptimizedDevicePool.get_device(port) do
               {:ok, device_pid} ->
+                # Create complete PDU structure for device handler
+                variable_bindings = case message.pdu.varbinds do
+                  varbinds when is_list(varbinds) ->
+                    Enum.map(varbinds, fn
+                      {oid, _type, value} -> {oid, value}
+                      {oid, value} -> {oid, value}
+                    end)
+                end
+
+                complete_pdu = %{
+                  version: message.version,
+                  community: message.community,
+                  type: message.pdu.type,
+                  request_id: message.pdu.request_id,
+                  error_status: message.pdu[:error_status] || 0,
+                  error_index: message.pdu[:error_index] || 0,
+                  varbinds: variable_bindings,
+                  max_repetitions: message.pdu[:max_repetitions] || 0,
+                  non_repeaters: message.pdu[:non_repeaters] || 0
+                }
+
                 # Process request
-                case device_handler.(device_pid, pdu, %{ip: ip, port: port}) do
+                case device_handler.(device_pid, complete_pdu, %{ip: ip, port: port}) do
                   {:ok, response_pdu} ->
+                    # Build response message
+                    response_message = case response_pdu do
+                      %{type: _pdu_type, request_id: request_id, error_status: error_status, error_index: error_index, varbinds: varbinds} ->
+                        pdu = PDU.build_response(request_id, error_status, error_index, varbinds)
+                        PDU.build_message(pdu, message.community, message.version)
+                      other ->
+                        # Create error response
+                        pdu = PDU.build_response(0, 5, 0, [])  # genErr
+                        PDU.build_message(pdu, message.community, message.version)
+                    end
+
                     # Encode and send response
-                    {:ok, response_packet} = PDU.encode_snmp_packet(response_pdu)
+                    {:ok, response_packet} = PDU.encode_message(response_message)
                     :gen_udp.send(socket, ip, port, response_packet)
                     
                     # Record performance metrics
                     processing_time = System.monotonic_time(:microsecond) - start_time
-                    PerformanceMonitor.record_request_timing(port, hd(pdu.variable_bindings).oid, processing_time, true)
+                    PerformanceMonitor.record_request_timing(port, hd(variable_bindings).oid, processing_time, true)
                     
                     processing_time
                   
                   {:error, error_code} ->
                     # Send error response
-                    error_pdu = PDU.create_error_response(pdu, error_code)
-                    {:ok, error_packet} = PDU.encode_snmp_packet(error_pdu)
+                    error_pdu = PDU.build_response(complete_pdu.request_id, error_code, 0, [])
+                    error_message = PDU.build_message(error_pdu, message.community, message.version)
+                    {:ok, error_packet} = PDU.encode_message(error_message)
                     :gen_udp.send(socket, ip, port, error_packet)
                     
                     processing_time = System.monotonic_time(:microsecond) - start_time
-                    PerformanceMonitor.record_request_timing(port, hd(pdu.variable_bindings).oid, processing_time, false)
+                    PerformanceMonitor.record_request_timing(port, hd(variable_bindings).oid, processing_time, false)
                     
                     processing_time
                 end
               
               {:error, :resource_limit_exceeded} ->
                 # Send resource error
-                error_pdu = PDU.create_error_response(pdu, :resourceUnavailable)
-                {:ok, error_packet} = PDU.encode_snmp_packet(error_pdu)
+                error_pdu = PDU.build_response(message.pdu.request_id, :resourceUnavailable, 0, [])
+                error_message = PDU.build_message(error_pdu, message.community, message.version)
+                {:ok, error_packet} = PDU.encode_message(error_message)
                 :gen_udp.send(socket, ip, port, error_packet)
                 
                 System.monotonic_time(:microsecond) - start_time
