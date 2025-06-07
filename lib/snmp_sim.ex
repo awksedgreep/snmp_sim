@@ -1,7 +1,7 @@
 defmodule SnmpSim do
   @moduledoc """
   SNMP Simulator for Elixir - Production-ready SNMP device simulation.
-  
+
   Provides high-performance SNMP device simulation supporting walk files,
   realistic behaviors, and large-scale testing scenarios.
   """
@@ -10,9 +10,9 @@ defmodule SnmpSim do
 
   @doc """
   Start a single SNMP device with the given profile.
-  
+
   ## Examples
-  
+
       # Start device with walk file profile
       profile = SnmpSim.ProfileLoader.load_profile(
         :cable_modem, 
@@ -25,7 +25,7 @@ defmodule SnmpSim do
     port = Keyword.fetch!(opts, :port)
     device_type = profile.device_type
     device_id = Keyword.get(opts, :device_id, "#{device_type}_#{port}")
-    
+
     device_config = %{
       port: port,
       device_type: device_type,
@@ -33,15 +33,15 @@ defmodule SnmpSim do
       profile: profile,
       community: Keyword.get(opts, :community, "public")
     }
-    
+
     Device.start_link(device_config)
   end
 
   @doc """
   Start a population of devices with mixed types and configurations.
-  
+
   ## Examples
-  
+
       device_configs = [
         {:cable_modem, {:walk_file, "priv/walks/cm.walk"}, count: 1000},
         {:switch, {:oid_walk, "priv/walks/switch.walk"}, count: 50}

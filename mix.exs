@@ -61,7 +61,7 @@ defmodule SnmpSim.MixProject do
         steps: [:assemble, :tar],
         strip_beams: Mix.env() == :prod,
         include_executables_for: [:unix],
-        include_erts: true,
+        include_erts: true
       ]
     ]
   end

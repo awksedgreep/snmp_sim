@@ -3,12 +3,12 @@ defmodule SnmpSimSnmpExIntegrationTest do
   True integration tests using the snmp_ex library to validate our SNMP simulator
   against a real SNMP client implementation. This ensures protocol compliance
   and real-world compatibility.
-  
+
   DISABLED: Excluded for now, will use snmp_mgr for testing once integration is complete.
   """
 
   use ExUnit.Case, async: false
-  
+
   @moduletag :snmp_ex_integration
 
   alias SnmpSim.ProfileLoader
@@ -23,11 +23,12 @@ defmodule SnmpSimSnmpExIntegrationTest do
       oid_list = oid_string |> String.split(".") |> Enum.map(&String.to_integer/1)
 
       # Recreate credential if community changed
-      credential = if agent.community != "public" do
-        SNMP.credential(%{community: agent.community, version: :v2})
-      else
-        agent.credential
-      end
+      credential =
+        if agent.community != "public" do
+          SNMP.credential(%{community: agent.community, version: :v2})
+        else
+          agent.credential
+        end
 
       request = %{
         uri: agent.uri,
@@ -41,12 +42,15 @@ defmodule SnmpSimSnmpExIntegrationTest do
           [varbind] = response
           oid_string = Enum.join(varbind.oid, ".")
           {:ok, [{oid_string, varbind.value}]}
+
         {:ok, %{varbinds: varbinds}} ->
           # Response is a map with varbinds key
           [varbind] = varbinds
           oid_string = Enum.join(varbind.oid, ".")
           {:ok, [{oid_string, varbind.value}]}
-        error -> error
+
+        error ->
+          error
       end
     end
 
@@ -71,6 +75,7 @@ defmodule SnmpSimSnmpExIntegrationTest do
           else
             {:ok, [{oid_string, varbind.value}]}
           end
+
         {:ok, %{varbinds: varbinds}} ->
           # Response is a map with varbinds key
           [varbind] = varbinds
@@ -81,7 +86,9 @@ defmodule SnmpSimSnmpExIntegrationTest do
           else
             {:ok, [{oid_string, varbind.value}]}
           end
-        error -> error
+
+        error ->
+          error
       end
     end
 
@@ -93,7 +100,10 @@ defmodule SnmpSimSnmpExIntegrationTest do
       max_repetitions = Keyword.get(opts, :max_repetitions, 10)
 
       # Always use the fallback implementation which correctly handles GETBULK semantics
-      fallback_bulk_walk(agent, oids, non_repeaters: non_repeaters, max_repetitions: max_repetitions)
+      fallback_bulk_walk(agent, oids,
+        non_repeaters: non_repeaters,
+        max_repetitions: max_repetitions
+      )
     end
 
     # Fallback implementation using regular GET NEXT operations
@@ -104,17 +114,19 @@ defmodule SnmpSimSnmpExIntegrationTest do
       {non_repeat_oids, repeat_oids} = Enum.split(oids, non_repeaters)
 
       # Process non-repeaters: perform one get_next operation each
-      non_repeat_results = Enum.flat_map(non_repeat_oids, fn start_oid ->
-        case get_next(agent, [start_oid]) do
-          {:ok, [{next_oid, value}]} -> [{next_oid, value}]
-          {:error, _} -> []
-        end
-      end)
+      non_repeat_results =
+        Enum.flat_map(non_repeat_oids, fn start_oid ->
+          case get_next(agent, [start_oid]) do
+            {:ok, [{next_oid, value}]} -> [{next_oid, value}]
+            {:error, _} -> []
+          end
+        end)
 
       # Process repeaters: perform up to max_repetitions get_next operations each
-      repeat_results = Enum.flat_map(repeat_oids, fn start_oid ->
-        perform_walk_sequence(agent, start_oid, max_repetitions, [])
-      end)
+      repeat_results =
+        Enum.flat_map(repeat_oids, fn start_oid ->
+          perform_walk_sequence(agent, start_oid, max_repetitions, [])
+        end)
 
       all_results = non_repeat_results ++ repeat_results
       {:ok, all_results}
@@ -122,6 +134,7 @@ defmodule SnmpSimSnmpExIntegrationTest do
 
     # Helper to perform a sequence of get_next operations for GETBULK repeaters
     defp perform_walk_sequence(_agent, _current_oid, 0, acc), do: Enum.reverse(acc)
+
     defp perform_walk_sequence(agent, current_oid, remaining, acc) do
       case get_next(agent, [current_oid]) do
         {:ok, [{next_oid, value}]} ->
@@ -148,10 +161,11 @@ defmodule SnmpSimSnmpExIntegrationTest do
       {:ok, _} = Application.ensure_all_started(:snmp_ex)
 
       # Load a test profile into SharedProfiles
-      :ok = SharedProfiles.load_walk_profile(
-        :cable_modem,
-        "priv/walks/cable_modem.walk"
-      )
+      :ok =
+        SharedProfiles.load_walk_profile(
+          :cable_modem,
+          "priv/walks/cable_modem.walk"
+        )
 
       port = PortHelper.get_port()
 
@@ -164,7 +178,8 @@ defmodule SnmpSimSnmpExIntegrationTest do
 
       {:ok, device} = Device.start_link(device_config)
 
-      Process.sleep(200)  # Give device time to fully initialize
+      # Give device time to fully initialize
+      Process.sleep(200)
 
       # Configure snmp_ex agent that works with compatibility wrapper
       uri = URI.parse("snmp://127.0.0.1:#{port}")
@@ -187,7 +202,8 @@ defmodule SnmpSimSnmpExIntegrationTest do
             GenServer.stop(device, :normal, 1000)
           end
         catch
-          :exit, _ -> :ok  # Process already stopped or killed
+          # Process already stopped or killed
+          :exit, _ -> :ok
         end
       end)
 
@@ -200,7 +216,8 @@ defmodule SnmpSimSnmpExIntegrationTest do
         {:ok, [{oid, value}]} ->
           assert oid == "1.3.6.1.2.1.1.1.0"
           assert is_binary(value)
-          assert String.contains?(value, "Motorola")  # Expected in cable modem walk
+          # Expected in cable modem walk
+          assert String.contains?(value, "Motorola")
 
         {:error, reason} ->
           flunk("snmp_ex GET failed: #{inspect(reason)}")
@@ -221,15 +238,18 @@ defmodule SnmpSimSnmpExIntegrationTest do
 
     test "snmp_ex can perform GETBULK operations", %{agent: agent} do
       # Test GETBULK on interface table
-      case SNMPCompat.get_bulk(agent, ["1.3.6.1.2.1.2.2.1.1"], non_repeaters: 0, max_repetitions: 5) do
+      case SNMPCompat.get_bulk(agent, ["1.3.6.1.2.1.2.2.1.1"],
+             non_repeaters: 0,
+             max_repetitions: 5
+           ) do
         {:ok, results} when is_list(results) ->
           assert length(results) > 0
           assert length(results) <= 5
 
           # Verify all results are OID/value pairs
           assert Enum.all?(results, fn {oid, _value} ->
-            is_binary(oid) and String.starts_with?(oid, "1.3.6.1.2.1.2.2.1")
-          end)
+                   is_binary(oid) and String.starts_with?(oid, "1.3.6.1.2.1.2.2.1")
+                 end)
 
         {:error, reason} ->
           flunk("snmp_ex GETBULK failed: #{inspect(reason)}")
@@ -239,14 +259,18 @@ defmodule SnmpSimSnmpExIntegrationTest do
     test "snmp_ex GETBULK with non-repeaters", %{agent: agent} do
       # Test GETBULK with mixed non-repeating and repeating variables
       oids = [
-        "1.3.6.1.2.1.1.1.0",      # sysDescr (non-repeater)
-        "1.3.6.1.2.1.2.2.1.1"     # ifIndex table (repeater)
+        # sysDescr (non-repeater)
+        "1.3.6.1.2.1.1.1.0",
+        # ifIndex table (repeater)
+        "1.3.6.1.2.1.2.2.1.1"
       ]
 
       case SNMPCompat.get_bulk(agent, oids, non_repeaters: 1, max_repetitions: 3) do
         {:ok, results} ->
-          assert length(results) >= 1  # At least the non-repeater
-          assert length(results) <= 4  # 1 non-repeater + 3 repetitions max
+          # At least the non-repeater
+          assert length(results) >= 1
+          # 1 non-repeater + 3 repetitions max
+          assert length(results) <= 4
 
           # First result should be from sysDescr area (non-repeater)
           [{first_oid, _}] = Enum.take(results, 1)
@@ -263,19 +287,20 @@ defmodule SnmpSimSnmpExIntegrationTest do
       current_oid = start_oid
       walked_oids = []
 
-      {final_oids, _} = Enum.reduce_while(1..10, {[], current_oid}, fn _i, {acc_oids, oid} ->
-        case SNMPCompat.get_next(agent, [oid]) do
-          {:ok, [{next_oid, _value}]} ->
-            if String.starts_with?(next_oid, start_oid) do
-              {:cont, {[next_oid | acc_oids], next_oid}}
-            else
-              {:halt, {acc_oids, oid}}
-            end
+      {final_oids, _} =
+        Enum.reduce_while(1..10, {[], current_oid}, fn _i, {acc_oids, oid} ->
+          case SNMPCompat.get_next(agent, [oid]) do
+            {:ok, [{next_oid, _value}]} ->
+              if String.starts_with?(next_oid, start_oid) do
+                {:cont, {[next_oid | acc_oids], next_oid}}
+              else
+                {:halt, {acc_oids, oid}}
+              end
 
-          {:error, _} ->
-            {:halt, {acc_oids, oid}}
-        end
-      end)
+            {:error, _} ->
+              {:halt, {acc_oids, oid}}
+          end
+        end)
 
       walked_oids = Enum.reverse(final_oids)
 
@@ -284,8 +309,9 @@ defmodule SnmpSimSnmpExIntegrationTest do
         ordered_pairs = Enum.zip(walked_oids, tl(walked_oids))
 
         assert Enum.all?(ordered_pairs, fn {oid1, oid2} ->
-          compare_oids(oid1, oid2) == :lt
-        end), "OIDs not in lexicographic order: #{inspect(walked_oids)}"
+                 compare_oids(oid1, oid2) == :lt
+               end),
+               "OIDs not in lexicographic order: #{inspect(walked_oids)}"
       end
     end
 
@@ -293,7 +319,10 @@ defmodule SnmpSimSnmpExIntegrationTest do
       # Test performance with larger requests
       start_time = :erlang.monotonic_time(:millisecond)
 
-      case SNMPCompat.get_bulk(agent, ["1.3.6.1.2.1.2.2.1"], non_repeaters: 0, max_repetitions: 20) do
+      case SNMPCompat.get_bulk(agent, ["1.3.6.1.2.1.2.2.1"],
+             non_repeaters: 0,
+             max_repetitions: 20
+           ) do
         {:ok, results} ->
           end_time = :erlang.monotonic_time(:millisecond)
           response_time = end_time - start_time
@@ -312,9 +341,10 @@ defmodule SnmpSimSnmpExIntegrationTest do
       case SNMPCompat.get_next(agent, ["1.3.6.1.9.9.9.9.9"]) do
         {:ok, results} ->
           # Should get empty results or endOfMibView
+          # Also accept empty result list
           assert results == [] or
-                 Enum.any?(results, fn {_oid, value} -> value == :endOfMibView end) or
-                 length(results) == 0  # Also accept empty result list
+                   Enum.any?(results, fn {_oid, value} -> value == :endOfMibView end) or
+                   length(results) == 0
 
         {:error, :endOfMibView} ->
           # This is also acceptable
@@ -348,30 +378,35 @@ defmodule SnmpSimSnmpExIntegrationTest do
 
     test "snmp_ex concurrent requests work properly", %{agent: agent} do
       # Test multiple concurrent requests
-      tasks = for i <- 1..5 do
-        Task.async(fn ->
-          oid = "1.3.6.1.2.1.2.2.1.#{i}.1"  # Different interface columns
-          SNMPCompat.get(agent, [oid])
-        end)
-      end
+      tasks =
+        for i <- 1..5 do
+          Task.async(fn ->
+            # Different interface columns
+            oid = "1.3.6.1.2.1.2.2.1.#{i}.1"
+            SNMPCompat.get(agent, [oid])
+          end)
+        end
 
       results = Task.await_many(tasks, 5000)
 
       # Most requests should succeed (some might fail if OID doesn't exist)
-      successful_count = Enum.count(results, fn
-        {:ok, _} -> true
-        _ -> false
-      end)
+      successful_count =
+        Enum.count(results, fn
+          {:ok, _} -> true
+          _ -> false
+        end)
 
       assert successful_count >= 2, "Only #{successful_count}/5 concurrent requests succeeded"
     end
 
     test "snmp_ex handles counter values correctly", %{agent: agent} do
       # Test counter-type OIDs (should be numeric)
-      case SNMPCompat.get(agent, ["1.3.6.1.2.1.2.2.1.10.1"]) do  # ifInOctets
+      # ifInOctets
+      case SNMPCompat.get(agent, ["1.3.6.1.2.1.2.2.1.10.1"]) do
         {:ok, [{_oid, value}]} ->
           # Counter values should be integers or counter-typed values
-          assert is_integer(value) or (is_tuple(value) and elem(value, 0) in [:counter32, :counter64])
+          assert is_integer(value) or
+                   (is_tuple(value) and elem(value, 0) in [:counter32, :counter64])
 
         {:error, :noSuchName} ->
           # OID might not exist in this walk file, that's ok
@@ -385,8 +420,10 @@ defmodule SnmpSimSnmpExIntegrationTest do
     test "snmp_ex can retrieve string values correctly", %{agent: agent} do
       # Test string-type OIDs
       string_oids = [
-        "1.3.6.1.2.1.1.1.0",     # sysDescr
-        "1.3.6.1.2.1.2.2.1.2.1"  # ifDescr (if exists)
+        # sysDescr
+        "1.3.6.1.2.1.1.1.0",
+        # ifDescr (if exists)
+        "1.3.6.1.2.1.2.2.1.2.1"
       ]
 
       for oid <- string_oids do
@@ -417,10 +454,11 @@ defmodule SnmpSimSnmpExIntegrationTest do
       end
 
       # Load a test profile into SharedProfiles
-      :ok = SharedProfiles.load_walk_profile(
-        :cable_modem,
-        "priv/walks/cable_modem.walk"
-      )
+      :ok =
+        SharedProfiles.load_walk_profile(
+          :cable_modem,
+          "priv/walks/cable_modem.walk"
+        )
 
       port = PortHelper.get_port()
 
@@ -445,7 +483,8 @@ defmodule SnmpSimSnmpExIntegrationTest do
         port: port,
         community: "public",
         version: :v2c,
-        timeout: 2000,  # Shorter timeout for error tests
+        # Shorter timeout for error tests
+        timeout: 2000,
         retries: 1
       }
 
@@ -455,7 +494,8 @@ defmodule SnmpSimSnmpExIntegrationTest do
             GenServer.stop(device, :normal, 1000)
           end
         catch
-          :exit, _ -> :ok  # Process already stopped or killed
+          # Process already stopped or killed
+          :exit, _ -> :ok
         end
       end)
 
@@ -514,9 +554,11 @@ defmodule SnmpSimSnmpExIntegrationTest do
   defp compare_oid_parts([], []), do: :eq
   defp compare_oid_parts([], _), do: :lt
   defp compare_oid_parts(_, []), do: :gt
+
   defp compare_oid_parts([a | rest_a], [b | rest_b]) when a == b do
     compare_oid_parts(rest_a, rest_b)
   end
+
   defp compare_oid_parts([a | _], [b | _]) when a < b, do: :lt
   defp compare_oid_parts([a | _], [b | _]) when a > b, do: :gt
 end

@@ -35,6 +35,7 @@ defmodule SnmpSim.MIB.Compiler do
         {:ok, _} = ok ->
           Logger.info("Compiled MIB: #{mib_file}")
           {mib_file, ok}
+
         {:error, reason} = err ->
           Logger.error("Failed to compile #{mib_file}: #{inspect(reason)}")
           {mib_file, err}
@@ -46,6 +47,7 @@ defmodule SnmpSim.MIB.Compiler do
     erl_outdir = :binary.bin_to_list(Path.dirname(mib_file))
     erl_mib_file = :binary.bin_to_list(mib_file)
     erl_include_paths = Enum.map(include_dirs, &:binary.bin_to_list("#{&1}/"))
+
     options = [
       :relaxed_row_name_assign_check,
       warnings: false,
@@ -54,6 +56,7 @@ defmodule SnmpSim.MIB.Compiler do
       i: erl_include_paths,
       outdir: erl_outdir
     ]
+
     case :snmpc.compile(erl_mib_file, options) do
       {:ok, _bin_file} = ok -> ok
       {:error, _reason} = err -> err
@@ -76,12 +79,14 @@ defmodule SnmpSim.MIB.Compiler do
       mib_import =
         ~r/\s?FROM\s+([^\s;]+)/
         |> Regex.run(line, capture: :all_but_first)
+
       mib_import || []
     end)
     |> Enum.to_list()
   end
 
   defp _get_imports([], acc), do: acc
+
   defp _get_imports([mib_file | rest], acc) do
     imports =
       try do
@@ -97,8 +102,10 @@ defmodule SnmpSim.MIB.Compiler do
           Logger.debug("Unable to find MIB file: #{inspect(mib_file)}")
           [{mib_file, []}]
       end
+
     _get_imports(rest, Enum.concat(imports, acc))
   end
+
   defp get_imports(mib_files) when is_list(mib_files), do: _get_imports(mib_files, [])
 
   defp convert_imports_to_adjacencies(imports),
@@ -108,9 +115,12 @@ defmodule SnmpSim.MIB.Compiler do
     # Simple DFS-based topological sort
     visited = MapSet.new()
     result = []
-    {sorted, _} = Enum.reduce(Map.keys(adjacency_map), {result, visited}, fn node, {acc, v} ->
-      _topo_visit(node, adjacency_map, acc, v)
-    end)
+
+    {sorted, _} =
+      Enum.reduce(Map.keys(adjacency_map), {result, visited}, fn node, {acc, v} ->
+        _topo_visit(node, adjacency_map, acc, v)
+      end)
+
     Enum.reverse(sorted)
   end
 
@@ -119,11 +129,13 @@ defmodule SnmpSim.MIB.Compiler do
       {acc, visited}
     else
       neighbors = Map.get(adjacency_map, node, [])
-      {acc, visited} = Enum.reduce(neighbors, {acc, MapSet.put(visited, node)}, fn n, {a, v} ->
-        _topo_visit(n, adjacency_map, a, v)
-      end)
+
+      {acc, visited} =
+        Enum.reduce(neighbors, {acc, MapSet.put(visited, node)}, fn n, {a, v} ->
+          _topo_visit(n, adjacency_map, a, v)
+        end)
+
       {[node | acc], MapSet.put(visited, node)}
     end
   end
-
 end

@@ -33,7 +33,8 @@ try do
   :snmpm.set_verbosity(:note_store, :silence)
   :snmpm.set_verbosity(:server, :silence)
 catch
-  _, _ -> :ok  # Ignore if manager is not running
+  # Ignore if manager is not running
+  _, _ -> :ok
 end
 
 # Set SNMP agent logging to none  
@@ -41,7 +42,8 @@ try do
   :snmpa.set_log_type(:none)
   :snmpa.set_verbosity(:silence)
 catch
-  _, _ -> :ok  # Ignore if agent is not running
+  # Ignore if agent is not running
+  _, _ -> :ok
 end
 
 # Configure erlang logger to suppress snmp logs completely
@@ -60,25 +62,28 @@ end
 :logger.add_primary_filter(
   :snmp_filter,
   {fn log_event, _filter_config ->
-    case log_event do
-      %{msg: {:string, msg}} when is_list(msg) ->
-        msg_str = List.to_string(msg)
-        if String.contains?(msg_str, "snmpm:") or String.contains?(msg_str, "mk_target_name") do
-          :stop
-        else
-          :ignore
-        end
-      %{msg: {:report, report}} when is_map(report) ->
-        if Map.has_key?(report, :snmpm) or 
-           (Map.has_key?(report, :label) and report.label == :snmpm) do
-          :stop
-        else
-          :ignore
-        end
-      _ ->
-        :ignore
-    end
-  end, %{}}
+     case log_event do
+       %{msg: {:string, msg}} when is_list(msg) ->
+         msg_str = List.to_string(msg)
+
+         if String.contains?(msg_str, "snmpm:") or String.contains?(msg_str, "mk_target_name") do
+           :stop
+         else
+           :ignore
+         end
+
+       %{msg: {:report, report}} when is_map(report) ->
+         if Map.has_key?(report, :snmpm) or
+              (Map.has_key?(report, :label) and report.label == :snmpm) do
+           :stop
+         else
+           :ignore
+         end
+
+       _ ->
+         :ignore
+     end
+   end, %{}}
 )
 
 # Configure ExUnit to exclude noisy/optional tests by default

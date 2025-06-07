@@ -20,12 +20,13 @@ defmodule SnmpSim.Application do
     ]
 
     opts = [strategy: :one_for_one, name: SnmpSim.Supervisor]
-    
+
     case Supervisor.start_link(children, opts) do
       {:ok, pid} ->
         # Load and start devices from configuration after supervisor is running
         load_and_start_devices()
         {:ok, pid}
+
       error ->
         error
     end
@@ -34,14 +35,16 @@ defmodule SnmpSim.Application do
   defp load_and_start_devices do
     # Try to load configuration from various sources
     config_result = try_load_configuration()
-    
+
     case config_result do
       {:ok, config} ->
         Logger.info("Loading SnmpSim configuration...")
+
         case Config.start_from_config(config) do
           {:ok, devices} ->
             Logger.info("Successfully started #{length(devices)} SNMP devices")
         end
+
       {:error, reason} ->
         Logger.warning("No configuration found or failed to load: #{inspect(reason)}")
         Logger.info("Starting SnmpSim with default settings...")
@@ -53,7 +56,7 @@ defmodule SnmpSim.Application do
     # Try loading from different sources in order of priority
     config_sources = [
       # 1. Environment variable pointing to config file
-      fn -> 
+      fn ->
         case System.get_env("SNMP_SIM_EX_CONFIG_FILE") do
           nil -> {:error, :no_env_config}
           path -> Config.load_from_file(path)
@@ -81,7 +84,7 @@ defmodule SnmpSim.Application do
     # Create minimal default configuration for testing
     device_count = get_env_int("SNMP_SIM_EX_DEVICE_COUNT", 10)
     port_start = get_env_int("SNMP_SIM_EX_PORT_RANGE_START", 30000)
-    
+
     if device_count > 0 do
       config = %{
         snmp_sim: %{
@@ -106,10 +109,12 @@ defmodule SnmpSim.Application do
           ]
         }
       }
-      
+
       case Config.start_from_config(config) do
         {:ok, devices} ->
-          Logger.info("Started #{length(devices)} default SNMP devices on ports #{port_start}-#{port_start + device_count - 1}")
+          Logger.info(
+            "Started #{length(devices)} default SNMP devices on ports #{port_start}-#{port_start + device_count - 1}"
+          )
       end
     else
       Logger.info("No devices configured to start")
@@ -118,8 +123,10 @@ defmodule SnmpSim.Application do
 
   defp get_env_int(var_name, default) do
     case System.get_env(var_name) do
-      nil -> default
-      value -> 
+      nil ->
+        default
+
+      value ->
         case Integer.parse(value) do
           {int_val, _} -> int_val
           :error -> default

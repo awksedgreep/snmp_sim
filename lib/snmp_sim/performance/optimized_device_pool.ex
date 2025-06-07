@@ -2,7 +2,7 @@ defmodule SnmpSim.Performance.OptimizedDevicePool do
   @moduledoc """
   High-performance device pool with ETS-based caching and optimization.
   Designed for 10K+ concurrent devices with sub-millisecond lookup times.
-  
+
   Features:
   - ETS-based device registry for O(1) lookups
   - Profile caching to avoid repeated profile loading
@@ -15,7 +15,7 @@ defmodule SnmpSim.Performance.OptimizedDevicePool do
   require Logger
 
   alias SnmpSim.Device
-  
+
   alias SnmpSim.Performance.ResourceManager
 
   # ETS table names
@@ -26,15 +26,22 @@ defmodule SnmpSim.Performance.OptimizedDevicePool do
   @device_stats :snmp_device_stats
 
   # Device tiers
-  @hot_tier :hot    # Active devices (frequent access)
-  @warm_tier :warm  # Recently used devices
-  @cold_tier :cold  # Idle devices (candidates for cleanup)
+  # Active devices (frequent access)
+  @hot_tier :hot
+  # Recently used devices
+  @warm_tier :warm
+  # Idle devices (candidates for cleanup)
+  @cold_tier :cold
 
   # Performance tuning
-  @cache_ttl_ms 300_000           # 5 minutes
-  @hot_access_threshold 100       # Requests per tier evaluation
-  @tier_evaluation_interval 60_000 # 1 minute
-  @response_cache_size 10_000     # Max cached responses
+  # 5 minutes
+  @cache_ttl_ms 300_000
+  # Requests per tier evaluation
+  @hot_access_threshold 100
+  # 1 minute
+  @tier_evaluation_interval 60_000
+  # Max cached responses
+  @response_cache_size 10_000
 
   defstruct [
     :device_tiers,
@@ -81,6 +88,7 @@ defmodule SnmpSim.Performance.OptimizedDevicePool do
   """
   def get_cached_response(port, oid) do
     cache_key = {port, oid}
+
     case :ets.lookup(@response_cache, cache_key) do
       [{^cache_key, response, expires_at}] ->
         if System.monotonic_time(:millisecond) < expires_at do
@@ -101,12 +109,12 @@ defmodule SnmpSim.Performance.OptimizedDevicePool do
   def cache_response(port, oid, response, ttl_ms \\ @cache_ttl_ms) do
     cache_key = {port, oid}
     expires_at = System.monotonic_time(:millisecond) + ttl_ms
-    
+
     # Maintain cache size limit
     if :ets.info(@response_cache, :size) >= @response_cache_size do
       cleanup_oldest_cache_entries()
     end
-    
+
     :ets.insert(@response_cache, {cache_key, response, expires_at})
   end
 
@@ -195,7 +203,9 @@ defmodule SnmpSim.Performance.OptimizedDevicePool do
       performance_stats: initialize_performance_stats()
     }
 
-    Logger.info("OptimizedDevicePool started with port range #{port_range_start}-#{port_range_end}")
+    Logger.info(
+      "OptimizedDevicePool started with port range #{port_range_start}-#{port_range_end}"
+    )
 
     {:ok, state}
   end
@@ -229,11 +239,13 @@ defmodule SnmpSim.Performance.OptimizedDevicePool do
   def handle_call(:cleanup_cold_devices, _from, state) do
     cold_devices = get_devices_by_tier(@cold_tier)
     cleaned_count = cleanup_devices(cold_devices)
-    
+
     new_tiers = Map.update!(state.device_tiers, @cold_tier, &(&1 - cleaned_count))
-    new_state = %{state | 
-      device_tiers: new_tiers,
-      total_devices: state.total_devices - cleaned_count
+
+    new_state = %{
+      state
+      | device_tiers: new_tiers,
+        total_devices: state.total_devices - cleaned_count
     }
 
     Logger.info("Cleaned up #{cleaned_count} cold tier devices")
@@ -244,17 +256,18 @@ defmodule SnmpSim.Performance.OptimizedDevicePool do
   def handle_info(:evaluate_device_tiers, state) do
     # Evaluate device access patterns and adjust tiers
     {promoted, demoted} = evaluate_and_adjust_tiers()
-    
+
     new_tiers = update_tier_counts(state.device_tiers, promoted, demoted)
     new_stats = update_tier_evaluation_stats(state.performance_stats, promoted, demoted)
 
     # Schedule next evaluation
     tier_timer = Process.send_after(self(), :evaluate_device_tiers, @tier_evaluation_interval)
 
-    new_state = %{state |
-      device_tiers: new_tiers,
-      tier_timer: tier_timer,
-      performance_stats: new_stats
+    new_state = %{
+      state
+      | device_tiers: new_tiers,
+        tier_timer: tier_timer,
+        performance_stats: new_stats
     }
 
     {:noreply, new_state}
@@ -265,10 +278,10 @@ defmodule SnmpSim.Performance.OptimizedDevicePool do
     # Clean up expired cache entries
     cleanup_expired_responses()
     cleanup_expired_profiles()
-    
+
     # Schedule next cleanup
     cache_timer = Process.send_after(self(), :cleanup_expired_cache, @cache_ttl_ms)
-    
+
     {:noreply, %{state | cache_cleanup_timer: cache_timer}}
   end
 
@@ -280,25 +293,25 @@ defmodule SnmpSim.Performance.OptimizedDevicePool do
       true ->
         device_type = determine_device_type(port)
         profile = get_device_profile(device_type)
-        
+
         case Device.start_link(%{
-          port: port, 
-          device_type: device_type,
-          device_id: "device_#{port}",
-          community: Map.get(profile, :community, "public")
-        }) do
+               port: port,
+               device_type: device_type,
+               device_id: "device_#{port}",
+               community: Map.get(profile, :community, "public")
+             }) do
           {:ok, device_pid} ->
             # Register device in ETS for fast lookup
             current_time = System.monotonic_time(:millisecond)
             :ets.insert(@device_registry, {port, device_pid, @warm_tier, current_time})
-            
+
             # Register with resource manager
             ResourceManager.register_device(device_pid, device_type)
-            
+
             # Update statistics
             increment_tier_stat(@warm_tier)
             increment_performance_stat(:devices_created)
-            
+
             {:ok, device_pid}
 
           {:error, reason} ->
@@ -313,16 +326,19 @@ defmodule SnmpSim.Performance.OptimizedDevicePool do
 
   defp cleanup_dead_device(port) do
     :ets.delete(@device_registry, port)
-    decrement_tier_stat(@warm_tier)  # Assume it was in warm tier
+    # Assume it was in warm tier
+    decrement_tier_stat(@warm_tier)
     increment_performance_stat(:devices_cleaned)
   end
 
   defp update_access_time(port, tier) do
     current_time = System.monotonic_time(:millisecond)
+
     case :ets.lookup(@device_registry, port) do
       [{^port, _device_pid, ^tier, _}] ->
         :ets.update_element(@device_registry, port, {4, current_time})
         increment_performance_stat(:device_accesses)
+
       [] ->
         :ok
     end
@@ -330,31 +346,34 @@ defmodule SnmpSim.Performance.OptimizedDevicePool do
 
   defp load_and_cache_profile(device_type) do
     # Try to get profile from SharedProfiles, fallback to default profile
-    profile = try do
-      case SnmpSim.MIB.SharedProfiles.get_oid_value(device_type, "1.3.6.1.2.1.1.1.0", %{}) do
-        {:ok, _} -> 
-          # SharedProfiles has data for this device type, create a simple profile
-          %{device_type: device_type, has_data: true}
-        _ -> 
+    profile =
+      try do
+        case SnmpSim.MIB.SharedProfiles.get_oid_value(device_type, "1.3.6.1.2.1.1.1.0", %{}) do
+          {:ok, _} ->
+            # SharedProfiles has data for this device type, create a simple profile
+            %{device_type: device_type, has_data: true}
+
+          _ ->
+            create_default_profile(device_type)
+        end
+      catch
+        _type, _error ->
+          # SharedProfiles not available or device type not found, use default profile
           create_default_profile(device_type)
       end
-    catch
-      _type, _error ->
-        # SharedProfiles not available or device type not found, use default profile
-        create_default_profile(device_type)
-    end
-    
+
     current_time = System.monotonic_time(:millisecond)
     :ets.insert(@profile_cache, {device_type, profile, current_time})
     increment_performance_stat(:profile_loads)
     profile
   end
-  
+
   defp create_default_profile(device_type) do
     %{
       device_type: device_type,
       has_data: false,
-      walk_file: "priv/walks/cable_modem.walk",  # Default walk file
+      # Default walk file
+      walk_file: "priv/walks/cable_modem.walk",
       community: "public"
     }
   end
@@ -364,7 +383,7 @@ defmodule SnmpSim.Performance.OptimizedDevicePool do
     case :ets.match(@port_assignments, {~c"$1", ~c"$2"}) do
       [] ->
         :default_device
-      
+
       assignments ->
         Enum.find_value(assignments, :default_device, fn [device_type, port_range] ->
           if port in port_range, do: device_type
@@ -376,8 +395,9 @@ defmodule SnmpSim.Performance.OptimizedDevicePool do
     # Remove 10% of oldest cache entries to make room
     all_entries = :ets.tab2list(@response_cache)
     sorted_entries = Enum.sort_by(all_entries, fn {_, _, expires_at} -> expires_at end)
-    
+
     entries_to_remove = Enum.take(sorted_entries, div(length(sorted_entries), 10))
+
     Enum.each(entries_to_remove, fn {cache_key, _, _} ->
       :ets.delete(@response_cache, cache_key)
     end)
@@ -386,26 +406,28 @@ defmodule SnmpSim.Performance.OptimizedDevicePool do
   defp evaluate_and_adjust_tiers() do
     current_time = System.monotonic_time(:millisecond)
     all_devices = :ets.tab2list(@device_registry)
-    
-    {promoted, demoted} = Enum.reduce(all_devices, {[], []}, fn {port, _device_pid, tier, last_access}, {prom_acc, dem_acc} ->
-      idle_time = current_time - last_access
-      access_frequency = get_access_frequency(port)
-      
-      new_tier = determine_optimal_tier(tier, idle_time, access_frequency)
-      
-      if new_tier != tier do
-        :ets.update_element(@device_registry, port, {3, new_tier})
-        
-        if tier_rank(new_tier) > tier_rank(tier) do
-          {[{port, tier, new_tier} | prom_acc], dem_acc}
+
+    {promoted, demoted} =
+      Enum.reduce(all_devices, {[], []}, fn {port, _device_pid, tier, last_access},
+                                            {prom_acc, dem_acc} ->
+        idle_time = current_time - last_access
+        access_frequency = get_access_frequency(port)
+
+        new_tier = determine_optimal_tier(tier, idle_time, access_frequency)
+
+        if new_tier != tier do
+          :ets.update_element(@device_registry, port, {3, new_tier})
+
+          if tier_rank(new_tier) > tier_rank(tier) do
+            {[{port, tier, new_tier} | prom_acc], dem_acc}
+          else
+            {prom_acc, [{port, tier, new_tier} | dem_acc]}
+          end
         else
-          {prom_acc, [{port, tier, new_tier} | dem_acc]}
+          {prom_acc, dem_acc}
         end
-      else
-        {prom_acc, dem_acc}
-      end
-    end)
-    
+      end)
+
     {promoted, demoted}
   end
 
@@ -413,13 +435,13 @@ defmodule SnmpSim.Performance.OptimizedDevicePool do
     cond do
       access_frequency > @hot_access_threshold and idle_time < 300_000 ->
         @hot_tier
-      
+
       access_frequency > 10 and idle_time < 1_800_000 ->
         @warm_tier
-      
+
       idle_time > 3_600_000 ->
         @cold_tier
-      
+
       true ->
         current_tier
     end
@@ -447,7 +469,7 @@ defmodule SnmpSim.Performance.OptimizedDevicePool do
           :ets.delete(@device_registry, port)
           ResourceManager.unregister_device(device_pid)
           count + 1
-        
+
         {:error, _reason} ->
           count
       end
@@ -456,29 +478,34 @@ defmodule SnmpSim.Performance.OptimizedDevicePool do
 
   defp cleanup_expired_responses() do
     current_time = System.monotonic_time(:millisecond)
-    
+
     # Find and delete expired entries
     :ets.select_delete(@response_cache, [
-      {{~c"$1", ~c"$2", ~c"$3"}, [{:"<", ~c"$3", current_time}], [true]}
+      {{~c"$1", ~c"$2", ~c"$3"}, [{:<, ~c"$3", current_time}], [true]}
     ])
   end
 
   defp cleanup_expired_profiles() do
     current_time = System.monotonic_time(:millisecond)
     expired_threshold = current_time - @cache_ttl_ms
-    
+
     :ets.select_delete(@profile_cache, [
-      {{~c"$1", ~c"$2", ~c"$3"}, [{:"<", ~c"$3", expired_threshold}], [true]}
+      {{~c"$1", ~c"$2", ~c"$3"}, [{:<, ~c"$3", expired_threshold}], [true]}
     ])
   end
 
   defp init_performance_counters() do
     counters = [
-      :devices_created, :devices_cleaned, :device_accesses,
-      :profile_loads, :cache_hits, :cache_misses,
-      :tier_promotions, :tier_demotions
+      :devices_created,
+      :devices_cleaned,
+      :device_accesses,
+      :profile_loads,
+      :cache_hits,
+      :cache_misses,
+      :tier_promotions,
+      :tier_demotions
     ]
-    
+
     Enum.each(counters, fn counter ->
       :ets.insert(@device_stats, {counter, 0})
     end)
@@ -500,7 +527,7 @@ defmodule SnmpSim.Performance.OptimizedDevicePool do
     hits = get_stat_value(:cache_hits)
     misses = get_stat_value(:cache_misses)
     total = hits + misses
-    
+
     if total > 0 do
       Float.round(hits / total * 100, 2)
     else
@@ -525,10 +552,11 @@ defmodule SnmpSim.Performance.OptimizedDevicePool do
   end
 
   defp update_tier_evaluation_stats(stats, promoted, demoted) do
-    %{stats |
-      tier_promotions: stats.tier_promotions + length(promoted),
-      tier_demotions: stats.tier_demotions + length(demoted),
-      last_tier_evaluation: System.monotonic_time(:millisecond)
+    %{
+      stats
+      | tier_promotions: stats.tier_promotions + length(promoted),
+        tier_demotions: stats.tier_demotions + length(demoted),
+        last_tier_evaluation: System.monotonic_time(:millisecond)
     }
   end
 

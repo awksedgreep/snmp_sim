@@ -6,27 +6,33 @@ config :snmp_sim,
   # Minimal limits for testing
   max_devices: 50,
   max_memory_mb: 128,
-  
+
   # Small port range for testing
   port_range_start: 40_000,
   port_range_end: 40_050,
-  
+
   # Fast timeouts for testing
-  idle_timeout_ms: 5 * 1000,           # 5 seconds
-  cleanup_interval_ms: 1 * 1000,       # 1 second
-  health_check_interval_ms: 1_000,     # 1 second
-  
+  # 5 seconds
+  idle_timeout_ms: 5 * 1000,
+  # 1 second
+  cleanup_interval_ms: 1 * 1000,
+  # 1 second
+  health_check_interval_ms: 1_000,
+
   # Minimal performance settings for testing
   worker_pool_size: 2,
   socket_count: 1,
   optimization_level: :minimal,
-  
+
   # Testing features
   enable_error_injection: true,
-  enable_telemetry: false,              # Disabled for cleaner test output
-  enable_performance_monitoring: false, # Disabled for faster tests
-  enable_persistence: false,            # Disabled for test isolation
-  
+  # Disabled for cleaner test output
+  enable_telemetry: false,
+  # Disabled for faster tests
+  enable_performance_monitoring: false,
+  # Disabled for test isolation
+  enable_persistence: false,
+
   # Test data directory (cleaned between tests)
   data_dir: "./test_data"
 
@@ -56,7 +62,8 @@ config :snmp_sim, :performance_monitor,
 
 # Minimal resource manager for tests
 config :snmp_sim, :resource_manager,
-  enabled: false,                       # Disabled for test isolation
+  # Disabled for test isolation
+  enabled: false,
   max_devices: 50,
   max_memory_mb: 128,
   cleanup_threshold_percent: 50,
@@ -65,8 +72,10 @@ config :snmp_sim, :resource_manager,
 
 # Minimal device pool for tests
 config :snmp_sim, :device_pool,
-  optimization_enabled: false,          # Disabled for predictable tests
-  tier_system_enabled: false,           # Disabled for simpler tests
+  # Disabled for predictable tests
+  optimization_enabled: false,
+  # Disabled for simpler tests
+  tier_system_enabled: false,
   tier_promotion_threshold: 5,
   tier_demotion_threshold: 1,
   cache_cleanup_interval_ms: 1000,
@@ -76,16 +85,20 @@ config :snmp_sim, :device_pool,
 # Enable test scenarios for testing
 config :snmp_sim, :test_scenarios,
   enabled: true,
-  default_duration_seconds: 5,          # Very short for tests
+  # Very short for tests
+  default_duration_seconds: 5,
   max_concurrent_scenarios: 3,
   scenario_cleanup_enabled: true
 
 # Fast health checks for tests
 config :snmp_sim, :health_check,
-  enabled: false,                       # Disabled unless specifically testing
-  port: 4001,                          # Different port to avoid conflicts
+  # Disabled unless specifically testing
+  enabled: false,
+  # Different port to avoid conflicts
+  port: 4001,
   path: "/health",
-  timeout_ms: 500,                     # Fast timeout
+  # Fast timeout
+  timeout_ms: 500,
   checks: [
     :memory_usage,
     :device_count,
@@ -94,11 +107,16 @@ config :snmp_sim, :health_check,
 
 # Minimal behavior features for faster tests
 config :snmp_sim, :behaviors,
-  realistic_counters_enabled: false,    # Disabled for predictable tests
-  time_patterns_enabled: false,         # Disabled for faster tests
-  correlations_enabled: false,          # Disabled for simpler tests
-  seasonal_patterns_enabled: false,     # Disabled for faster tests
-  device_characteristics_enabled: false # Disabled for predictable tests
+  # Disabled for predictable tests
+  realistic_counters_enabled: false,
+  # Disabled for faster tests
+  time_patterns_enabled: false,
+  # Disabled for simpler tests
+  correlations_enabled: false,
+  # Disabled for faster tests
+  seasonal_patterns_enabled: false,
+  # Disabled for predictable tests
+  device_characteristics_enabled: false
 
 # Test-specific ExUnit configuration
 config :ex_unit,
@@ -106,12 +124,14 @@ config :ex_unit,
   exclude: [:slow, :integration, :shell_integration],
   include: [:unit],
   formatters: [ExUnit.CLIFormatter],
-  timeout: 30_000,                      # 30 seconds per test
+  # 30 seconds per test
+  timeout: 30_000,
   assert_receive_timeout: 1000
 
 # Test database configuration (if needed)
 config :snmp_sim, :database,
-  enabled: false,                       # Disabled for test isolation
+  # Disabled for test isolation
+  enabled: false,
   pool_size: 1,
   timeout: 5000
 

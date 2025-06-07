@@ -3,7 +3,7 @@ defmodule SnmpSim.TestHelpers.SNMPTestHelpers do
   Shared SNMP test utilities that handle the new SnmpLib.PDU API
   while maintaining compatibility with existing test expectations.
   """
-  
+
   # Suppress Dialyzer warnings for test helper functions
   @dialyzer [
     {:nowarn_function, send_snmp_get: 2},
@@ -17,7 +17,7 @@ defmodule SnmpSim.TestHelpers.SNMPTestHelpers do
     {:nowarn_function, pdu_type_to_hex: 1},
     {:nowarn_function, convert_varbinds_to_legacy: 1}
   ]
-  
+
   alias SnmpLib.PDU
 
   @doc """
@@ -26,10 +26,10 @@ defmodule SnmpSim.TestHelpers.SNMPTestHelpers do
   def send_snmp_get(port, oid, community \\ "public") do
     oid_list = convert_oid_to_list(oid)
     request_id = :rand.uniform(65535)
-    
+
     request_pdu = PDU.build_get_request(oid_list, request_id)
     message = PDU.build_message(request_pdu, community, :v2c)
-    
+
     send_snmp_request(port, message)
   end
 
@@ -39,10 +39,10 @@ defmodule SnmpSim.TestHelpers.SNMPTestHelpers do
   def send_snmp_getbulk(port, oid, non_repeaters, max_repetitions, community \\ "public") do
     oid_list = convert_oid_to_list(oid)
     request_id = :rand.uniform(65535)
-    
+
     request_pdu = PDU.build_get_bulk_request(oid_list, request_id, non_repeaters, max_repetitions)
     message = PDU.build_message(request_pdu, community, :v2c)
-    
+
     send_snmp_request(port, message)
   end
 
@@ -52,10 +52,10 @@ defmodule SnmpSim.TestHelpers.SNMPTestHelpers do
   def send_snmp_getnext(port, oid, community \\ "public") do
     oid_list = convert_oid_to_list(oid)
     request_id = :rand.uniform(65535)
-    
+
     request_pdu = PDU.build_get_next_request(oid_list, request_id)
     message = PDU.build_message(request_pdu, community, :v2c)
-    
+
     send_snmp_request(port, message)
   end
 
@@ -65,28 +65,32 @@ defmodule SnmpSim.TestHelpers.SNMPTestHelpers do
     case PDU.encode_message(message) do
       {:ok, packet} ->
         {:ok, socket} = :gen_udp.open(0, [:binary, {:active, false}])
-        
+
         :gen_udp.send(socket, {127, 0, 0, 1}, port, packet)
-        
-        result = case :gen_udp.recv(socket, 0, 2000) do
-          {:ok, {_ip, _port, response_data}} ->
-            case PDU.decode_message(response_data) do
-              {:ok, response_message} ->
-                # Convert to legacy format for test compatibility
-                legacy_pdu = convert_to_legacy_format(response_message)
-                {:ok, legacy_pdu}
-              error ->
-                error
-            end
-          {:error, :timeout} ->
-            :timeout
-          {:error, reason} ->
-            {:error, reason}
-        end
-        
+
+        result =
+          case :gen_udp.recv(socket, 0, 2000) do
+            {:ok, {_ip, _port, response_data}} ->
+              case PDU.decode_message(response_data) do
+                {:ok, response_message} ->
+                  # Convert to legacy format for test compatibility
+                  legacy_pdu = convert_to_legacy_format(response_message)
+                  {:ok, legacy_pdu}
+
+                error ->
+                  error
+              end
+
+            {:error, :timeout} ->
+              :timeout
+
+            {:error, reason} ->
+              {:error, reason}
+          end
+
         :gen_udp.close(socket)
         result
-        
+
       {:error, reason} ->
         {:error, {:encode_failed, reason}}
     end
@@ -95,6 +99,7 @@ defmodule SnmpSim.TestHelpers.SNMPTestHelpers do
   defp convert_oid_to_list(oid) when is_binary(oid) do
     String.split(oid, ".") |> Enum.map(&String.to_integer/1)
   end
+
   defp convert_oid_to_list(oid) when is_list(oid), do: oid
 
   defp convert_to_legacy_format(response_message) do
@@ -123,8 +128,10 @@ defmodule SnmpSim.TestHelpers.SNMPTestHelpers do
       {oid_list, _type, value} when is_list(oid_list) ->
         oid_string = Enum.join(oid_list, ".")
         {oid_string, value}
+
       {oid_string, value} when is_binary(oid_string) ->
         {oid_string, value}
+
       other ->
         other
     end)

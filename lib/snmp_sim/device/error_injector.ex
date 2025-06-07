@@ -47,9 +47,12 @@ defmodule SnmpSim.Device.ErrorInjector do
   """
   def check_timeout_conditions(pdu, state) do
     case Map.get(state.error_conditions, :timeout) do
-      nil -> false
+      nil ->
+        false
+
       config ->
-        if should_apply_error?(config.probability) and oid_matches_target?(pdu, config.target_oids) do
+        if should_apply_error?(config.probability) and
+             oid_matches_target?(pdu, config.target_oids) do
           Logger.debug("Device #{state.device_id} applying timeout error injection")
           true
         else
@@ -63,9 +66,12 @@ defmodule SnmpSim.Device.ErrorInjector do
   """
   def check_packet_loss_conditions(pdu, state) do
     case Map.get(state.error_conditions, :packet_loss) do
-      nil -> false
+      nil ->
+        false
+
       config ->
-        if should_apply_error?(config.probability) and oid_matches_target?(pdu, config.target_oids) do
+        if should_apply_error?(config.probability) and
+             oid_matches_target?(pdu, config.target_oids) do
           Logger.debug("Device #{state.device_id} applying packet loss error injection")
           true
         else
@@ -79,9 +85,12 @@ defmodule SnmpSim.Device.ErrorInjector do
   """
   def check_snmp_error_conditions(pdu, state) do
     case Map.get(state.error_conditions, :snmp_error) do
-      nil -> false
+      nil ->
+        false
+
       config ->
-        if should_apply_error?(config.probability) and oid_matches_target?(pdu, config.target_oids) do
+        if should_apply_error?(config.probability) and
+             oid_matches_target?(pdu, config.target_oids) do
           Logger.debug("Device #{state.device_id} applying SNMP error injection")
           true
         else
@@ -95,9 +104,12 @@ defmodule SnmpSim.Device.ErrorInjector do
   """
   def check_malformed_conditions(pdu, state) do
     case Map.get(state.error_conditions, :malformed) do
-      nil -> false
+      nil ->
+        false
+
       config ->
-        if should_apply_error?(config.probability) and oid_matches_target?(pdu, config.target_oids) do
+        if should_apply_error?(config.probability) and
+             oid_matches_target?(pdu, config.target_oids) do
           Logger.debug("Device #{state.device_id} applying malformed response error injection")
           true
         else
@@ -117,15 +129,19 @@ defmodule SnmpSim.Device.ErrorInjector do
   Check if PDU OIDs match target OIDs for error injection.
   """
   def oid_matches_target?(pdu, target_oids) when is_list(target_oids) do
-    pdu_oids = case Map.get(pdu, :varbinds, Map.get(pdu, :variable_bindings, [])) do
-      [] -> []
-      varbinds -> Enum.map(varbinds, fn
-        {oid, _type, _value} -> oid
-        {oid, _value} -> oid
-        oid when is_binary(oid) -> oid
-        oid when is_list(oid) -> Enum.join(oid, ".")
-      end)
-    end
+    pdu_oids =
+      case Map.get(pdu, :varbinds, Map.get(pdu, :variable_bindings, [])) do
+        [] ->
+          []
+
+        varbinds ->
+          Enum.map(varbinds, fn
+            {oid, _type, _value} -> oid
+            {oid, _value} -> oid
+            oid when is_binary(oid) -> oid
+            oid when is_list(oid) -> Enum.join(oid, ".")
+          end)
+      end
 
     Enum.any?(target_oids, fn target_oid ->
       Enum.any?(pdu_oids, &String.starts_with?(&1, target_oid))
@@ -141,13 +157,17 @@ defmodule SnmpSim.Device.ErrorInjector do
     case config.malformation_type do
       :invalid_oid ->
         # Create response with invalid OID format
-        variable_bindings = case Map.get(pdu, :varbinds, Map.get(pdu, :variable_bindings, [])) do
-          [] -> [{"invalid.oid.format", :octet_string, "error"}]
-          varbinds -> Enum.map(varbinds, fn
-            {_oid, type, _value} -> {"invalid.oid.format", type, "error"}
-            {_oid, _value} -> {"invalid.oid.format", "error"}
-          end)
-        end
+        variable_bindings =
+          case Map.get(pdu, :varbinds, Map.get(pdu, :variable_bindings, [])) do
+            [] ->
+              [{"invalid.oid.format", :octet_string, "error"}]
+
+            varbinds ->
+              Enum.map(varbinds, fn
+                {_oid, type, _value} -> {"invalid.oid.format", type, "error"}
+                {_oid, _value} -> {"invalid.oid.format", "error"}
+              end)
+          end
 
         %{
           type: :get_response,
@@ -159,13 +179,17 @@ defmodule SnmpSim.Device.ErrorInjector do
 
       :wrong_type ->
         # Create response with wrong data types
-        variable_bindings = case Map.get(pdu, :varbinds, Map.get(pdu, :variable_bindings, [])) do
-          [] -> [{"1.3.6.1.2.1.1.1.0", :integer, "should_be_string"}]
-          varbinds -> Enum.map(varbinds, fn
-            {oid, _type, _value} -> {oid, :integer, "wrong_type"}
-            {oid, _value} -> {oid, "wrong_type"}
-          end)
-        end
+        variable_bindings =
+          case Map.get(pdu, :varbinds, Map.get(pdu, :variable_bindings, [])) do
+            [] ->
+              [{"1.3.6.1.2.1.1.1.0", :integer, "should_be_string"}]
+
+            varbinds ->
+              Enum.map(varbinds, fn
+                {oid, _type, _value} -> {oid, :integer, "wrong_type"}
+                {oid, _value} -> {oid, "wrong_type"}
+              end)
+          end
 
         %{
           type: :get_response,
@@ -190,7 +214,8 @@ defmodule SnmpSim.Device.ErrorInjector do
         %{
           type: :get_response,
           request_id: Map.get(pdu, :request_id, 0),
-          error_status: 5,  # genErr
+          # genErr
+          error_status: 5,
           error_index: 1,
           varbinds: []
         }

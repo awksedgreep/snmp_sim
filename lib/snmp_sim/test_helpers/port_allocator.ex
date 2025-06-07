@@ -1,33 +1,36 @@
 defmodule SnmpSim.TestHelpers.PortAllocator do
   @moduledoc """
   Simple port allocation service for tests.
-  
+
   Manages a pool of available ports and allocates them on demand.
   Ports can be reserved and released for reuse.
   """
-  
+
   use GenServer
   require Logger
-  
+
   # Use server range for tests to avoid conflicts (54,000-59,999)
   @start_port 54_000
   @end_port 60_000
-  
+
   defstruct [
-    :next_port,           # Next available port to allocate
-    :allocated_ports,     # MapSet of currently allocated ports
-    :reserved_ranges      # List of {start, end, id} for tracking reservations
+    # Next available port to allocate
+    :next_port,
+    # MapSet of currently allocated ports
+    :allocated_ports,
+    # List of {start, end, id} for tracking reservations
+    :reserved_ranges
   ]
-  
+
   ## Public API
-  
+
   @doc """
   Start the port allocator service.
   """
   def start_link(opts \\ []) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
-  
+
   @doc """
   Reserve a range of ports.
   Returns {:ok, {start_port, end_port}} or {:error, reason}
@@ -35,7 +38,7 @@ defmodule SnmpSim.TestHelpers.PortAllocator do
   def reserve_port_range(count) when count > 0 do
     GenServer.call(__MODULE__, {:reserve_range, count}, 10_000)
   end
-  
+
   @doc """
   Reserve a single port.
   Returns {:ok, port} or {:error, reason}
@@ -46,28 +49,28 @@ defmodule SnmpSim.TestHelpers.PortAllocator do
       {:error, reason} -> {:error, reason}
     end
   end
-  
+
   @doc """
   Release a port range back to the pool.
   """
   def release_port_range(start_port, end_port) do
     GenServer.call(__MODULE__, {:release_range, start_port, end_port})
   end
-  
+
   @doc """
   Release a single port back to the pool.
   """
   def release_port(port) do
     release_port_range(port, port)
   end
-  
+
   @doc """
   Get allocation statistics.
   """
   def get_stats do
     GenServer.call(__MODULE__, :get_stats)
   end
-  
+
   @doc """
   Reset all allocations.
   """
@@ -86,9 +89,9 @@ defmodule SnmpSim.TestHelpers.PortAllocator do
       {:error, reason} -> {:error, reason}
     end
   end
-  
+
   ## GenServer Callbacks
-  
+
   @impl true
   def init(_opts) do
     state = %__MODULE__{
@@ -96,11 +99,11 @@ defmodule SnmpSim.TestHelpers.PortAllocator do
       allocated_ports: MapSet.new(),
       reserved_ranges: []
     }
-    
+
     Logger.debug("PortAllocator started - managing ports #{@start_port}-#{@end_port}")
     {:ok, state}
   end
-  
+
   @impl true
   def handle_call({:reserve_range, count}, _from, state) do
     case find_available_range(count, state) do
@@ -108,31 +111,30 @@ defmodule SnmpSim.TestHelpers.PortAllocator do
         end_port = start_port + count - 1
         Logger.debug("Reserved ports #{start_port}-#{end_port}")
         {:reply, {:ok, {start_port, end_port}}, new_state}
+
       {:error, reason} ->
         Logger.error("Failed to reserve #{count} ports: #{reason}")
         {:reply, {:error, reason}, state}
     end
   end
-  
+
   @impl true
   def handle_call({:release_range, start_port, end_port}, _from, state) do
     ports_to_release = MapSet.new(start_port..end_port)
     new_allocated = MapSet.difference(state.allocated_ports, ports_to_release)
-    
+
     # Remove from reserved ranges
-    new_reserved = Enum.reject(state.reserved_ranges, fn {s, e, _id} ->
-      s == start_port and e == end_port
-    end)
-    
-    new_state = %{state |
-      allocated_ports: new_allocated,
-      reserved_ranges: new_reserved
-    }
-    
+    new_reserved =
+      Enum.reject(state.reserved_ranges, fn {s, e, _id} ->
+        s == start_port and e == end_port
+      end)
+
+    new_state = %{state | allocated_ports: new_allocated, reserved_ranges: new_reserved}
+
     Logger.debug("Released ports #{start_port}-#{end_port}")
     {:reply, :ok, new_state}
   end
-  
+
   @impl true
   def handle_call(:get_stats, _from, state) do
     stats = %{
@@ -141,9 +143,10 @@ defmodule SnmpSim.TestHelpers.PortAllocator do
       reserved_ranges_count: length(state.reserved_ranges),
       available_ports: @end_port - @start_port - MapSet.size(state.allocated_ports)
     }
+
     {:reply, stats, state}
   end
-  
+
   @impl true
   def handle_call(:reset, _from, _state) do
     new_state = %__MODULE__{
@@ -151,39 +154,42 @@ defmodule SnmpSim.TestHelpers.PortAllocator do
       allocated_ports: MapSet.new(),
       reserved_ranges: []
     }
+
     Logger.info("Reset all port allocations")
     {:reply, :ok, new_state}
   end
-  
+
   ## Private Functions
-  
+
   defp find_available_range(count, state) do
     # Try to find a contiguous range starting from next_port
     case find_contiguous_range(state.next_port, count, state) do
       {:ok, start_port} ->
         # Mark ports as allocated
-        new_ports = MapSet.union(state.allocated_ports, MapSet.new(start_port..(start_port + count - 1)))
-        
+        new_ports =
+          MapSet.union(state.allocated_ports, MapSet.new(start_port..(start_port + count - 1)))
+
         # Add to reserved ranges
         range_id = "range_#{start_port}_#{System.monotonic_time()}"
         new_reserved = [{start_port, start_port + count - 1, range_id} | state.reserved_ranges]
-        
+
         # Update next_port
         new_next_port = min(start_port + count, @end_port)
-        
-        new_state = %{state |
-          next_port: new_next_port,
-          allocated_ports: new_ports,
-          reserved_ranges: new_reserved
+
+        new_state = %{
+          state
+          | next_port: new_next_port,
+            allocated_ports: new_ports,
+            reserved_ranges: new_reserved
         }
-        
+
         {:ok, start_port, new_state}
-      
+
       {:error, reason} ->
         {:error, reason}
     end
   end
-  
+
   defp find_contiguous_range(start_port, count, state) do
     # Check if we have enough ports left
     if start_port + count - 1 > @end_port do
@@ -192,6 +198,7 @@ defmodule SnmpSim.TestHelpers.PortAllocator do
     else
       # Check if the range is available
       range = MapSet.new(start_port..(start_port + count - 1))
+
       if MapSet.disjoint?(range, state.allocated_ports) do
         {:ok, start_port}
       else
@@ -200,12 +207,12 @@ defmodule SnmpSim.TestHelpers.PortAllocator do
       end
     end
   end
-  
+
   defp find_gap_in_allocated(count, state) do
     # Simple implementation - just scan for gaps
     # This could be optimized further if needed
     end_search = @end_port - count
-    
+
     if end_search >= @start_port do
       @start_port..end_search
       |> Enum.find(fn start_port ->
@@ -213,7 +220,8 @@ defmodule SnmpSim.TestHelpers.PortAllocator do
         MapSet.disjoint?(range, state.allocated_ports)
       end)
     else
-      nil  # Not enough ports available
+      # Not enough ports available
+      nil
     end
     |> case do
       nil -> {:error, :insufficient_ports}

@@ -27,9 +27,9 @@ defmodule SnmpSim.MIB.SharedProfiles do
 
   @doc """
   Initialize shared profiles for device types.
-  
+
   ## Examples
-  
+
       :ok = SnmpSim.MIB.SharedProfiles.init_profiles()
       
   """
@@ -39,9 +39,9 @@ defmodule SnmpSim.MIB.SharedProfiles do
 
   @doc """
   Load a MIB-based profile for a device type.
-  
+
   ## Examples
-  
+
       :ok = SnmpSim.MIB.SharedProfiles.load_mib_profile(
         :cable_modem,
         ["DOCS-CABLE-DEVICE-MIB", "IF-MIB"]
@@ -54,9 +54,9 @@ defmodule SnmpSim.MIB.SharedProfiles do
 
   @doc """
   Load a walk file-based profile with enhanced behaviors.
-  
+
   ## Examples
-  
+
       :ok = SnmpSim.MIB.SharedProfiles.load_walk_profile(
         :cable_modem,
         "priv/walks/cable_modem.walk",
@@ -70,9 +70,9 @@ defmodule SnmpSim.MIB.SharedProfiles do
 
   @doc """
   Get a value for a specific OID with device-specific state applied.
-  
+
   ## Examples
-  
+
       value = SnmpSim.MIB.SharedProfiles.get_oid_value(
         :cable_modem,
         "1.3.6.1.2.1.2.2.1.10.1",
@@ -125,14 +125,14 @@ defmodule SnmpSim.MIB.SharedProfiles do
   def init(_opts) do
     # Create metadata table
     metadata_table = :ets.new(:snmp_sim_metadata, @table_opts)
-    
+
     state = %__MODULE__{
       profile_tables: %{},
       behavior_tables: %{},
       metadata_table: metadata_table,
       stats: init_stats()
     }
-    
+
     Logger.info("SharedProfiles manager started")
     {:ok, state}
   end
@@ -141,23 +141,20 @@ defmodule SnmpSim.MIB.SharedProfiles do
   def handle_call(:init_profiles, _from, state) do
     # Pre-create tables for common device types
     device_types = [:cable_modem, :cmts, :switch, :router, :mta, :server]
-    
-    {profile_tables, behavior_tables} = 
+
+    {profile_tables, behavior_tables} =
       Enum.reduce(device_types, {%{}, %{}}, fn device_type, {prof_acc, behav_acc} ->
         prof_table = create_profile_table(device_type)
         behav_table = create_behavior_table(device_type)
-        
+
         {
           Map.put(prof_acc, device_type, prof_table),
           Map.put(behav_acc, device_type, behav_table)
         }
       end)
-    
-    new_state = %{state | 
-      profile_tables: profile_tables,
-      behavior_tables: behavior_tables
-    }
-    
+
+    new_state = %{state | profile_tables: profile_tables, behavior_tables: behavior_tables}
+
     {:reply, :ok, new_state}
   end
 
@@ -169,20 +166,24 @@ defmodule SnmpSim.MIB.SharedProfiles do
       case load_mib_profile_impl(device_type, mib_files, opts, state) do
         {:ok, new_state} ->
           {:reply, :ok, new_state}
+
         error ->
           # Handle all error cases in a unified way
-          error_msg = 
+          error_msg =
             case error do
               {:error, {:mib_load_failed, %{__exception__: true} = exception}} ->
                 "MIB load failed: #{Exception.message(exception)}"
+
               {:error, {:mib_load_failed, reason}} when is_binary(reason) or is_atom(reason) ->
                 "MIB load failed: #{reason}"
+
               {:error, reason} when is_binary(reason) or is_atom(reason) ->
                 "Error: #{reason}"
+
               other ->
                 "Unexpected error: #{inspect(other, pretty: true)}"
             end
-          
+
           Logger.error(error_msg)
           {:reply, {:error, :load_failed}, state}
       end
@@ -199,6 +200,7 @@ defmodule SnmpSim.MIB.SharedProfiles do
     case load_walk_profile_impl(device_type, walk_file, opts, state) do
       {:ok, new_state} ->
         {:reply, :ok, new_state}
+
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
@@ -240,13 +242,13 @@ defmodule SnmpSim.MIB.SharedProfiles do
     Enum.each(state.profile_tables, fn {_type, table} ->
       :ets.delete_all_objects(table)
     end)
-    
+
     Enum.each(state.behavior_tables, fn {_type, table} ->
       :ets.delete_all_objects(table)
     end)
-    
+
     :ets.delete_all_objects(state.metadata_table)
-    
+
     {:reply, :ok, %{state | stats: init_stats()}}
   end
 
@@ -255,24 +257,24 @@ defmodule SnmpSim.MIB.SharedProfiles do
   defp load_mib_profile_impl(device_type, mib_files, opts, state) do
     # Ensure tables exist for this device type
     {prof_table, behav_table, new_state} = ensure_device_tables(device_type, state)
-    
+
     try do
       # Compile MIBs if needed
       compiled_mibs = SnmpSim.MIB.Compiler.compile_mib_files(mib_files)
-      
+
       # Extract object definitions
-      all_objects = 
+      all_objects =
         compiled_mibs
         |> Enum.map(&extract_objects_from_compiled_mib/1)
         |> Enum.reduce(%{}, &Map.merge/2)
-      
+
       # Analyze behaviors
       {:ok, behaviors} = SnmpSim.MIB.BehaviorAnalyzer.analyze_mib_behaviors(all_objects)
-      
+
       # Store in ETS tables
       store_profile_data(prof_table, all_objects)
       store_behavior_data(behav_table, behaviors)
-      
+
       # Update metadata
       metadata = %{
         device_type: device_type,
@@ -282,14 +284,13 @@ defmodule SnmpSim.MIB.SharedProfiles do
         loaded_at: DateTime.utc_now(),
         options: opts
       }
-      
+
       :ets.insert(new_state.metadata_table, {device_type, metadata})
-      
+
       # Update stats
       updated_stats = update_load_stats(new_state.stats, device_type, map_size(all_objects))
-      
+
       {:ok, %{new_state | stats: updated_stats}}
-      
     rescue
       error ->
         Logger.error("Failed to load MIB profile for #{device_type}: #{inspect(error)}")
@@ -300,27 +301,29 @@ defmodule SnmpSim.MIB.SharedProfiles do
   defp load_walk_profile_impl(device_type, walk_file, opts, state) do
     # Ensure tables exist for this device type  
     {prof_table, behav_table, new_state} = ensure_device_tables(device_type, state)
-    
+
     try do
       # Parse walk file
       {:ok, oid_map} = SnmpSim.WalkParser.parse_walk_file(walk_file)
-      
+
       # Enhance with intelligent behaviors
       enhanced_behaviors = SnmpSim.MIB.BehaviorAnalyzer.enhance_walk_file_behaviors(oid_map)
-      
+
       # Separate profile data and behaviors
-      profile_data = Map.new(enhanced_behaviors, fn {oid, data} ->
-        {oid, Map.drop(data, [:behavior])}
-      end)
-      
-      behavior_data = Map.new(enhanced_behaviors, fn {oid, data} ->
-        {oid, Map.get(data, :behavior, {:static_value, %{}})}
-      end)
-      
+      profile_data =
+        Map.new(enhanced_behaviors, fn {oid, data} ->
+          {oid, Map.drop(data, [:behavior])}
+        end)
+
+      behavior_data =
+        Map.new(enhanced_behaviors, fn {oid, data} ->
+          {oid, Map.get(data, :behavior, {:static_value, %{}})}
+        end)
+
       # Store in ETS tables
       store_profile_data(prof_table, profile_data)
       store_behavior_data(behav_table, behavior_data)
-      
+
       # Update metadata
       metadata = %{
         device_type: device_type,
@@ -330,14 +333,13 @@ defmodule SnmpSim.MIB.SharedProfiles do
         loaded_at: DateTime.utc_now(),
         options: opts
       }
-      
+
       :ets.insert(new_state.metadata_table, {device_type, metadata})
-      
+
       # Update stats
       updated_stats = update_load_stats(new_state.stats, device_type, map_size(oid_map))
-      
+
       {:ok, %{new_state | stats: updated_stats}}
-      
     rescue
       error ->
         Logger.error("Failed to load walk profile for #{device_type}: #{inspect(error)}")
@@ -348,24 +350,25 @@ defmodule SnmpSim.MIB.SharedProfiles do
   defp get_oid_value_impl(device_type, oid, device_state, state) do
     with prof_table when prof_table != nil <- Map.get(state.profile_tables, device_type),
          behav_table when behav_table != nil <- Map.get(state.behavior_tables, device_type) do
-      
       case :ets.lookup(prof_table, oid) do
         [{^oid, profile_data}] ->
           # Get behavior configuration
-          behavior_config = case :ets.lookup(behav_table, oid) do
-            [{^oid, behavior}] -> behavior
-            [] -> {:static_value, %{}}
-          end
-          
+          behavior_config =
+            case :ets.lookup(behav_table, oid) do
+              [{^oid, behavior}] -> behavior
+              [] -> {:static_value, %{}}
+            end
+
           # Apply behavior to generate current value
-          current_value = SnmpSim.ValueSimulator.simulate_value(
-            profile_data,
-            behavior_config,
-            device_state
-          )
-          
+          current_value =
+            SnmpSim.ValueSimulator.simulate_value(
+              profile_data,
+              behavior_config,
+              device_state
+            )
+
           {:ok, current_value}
-          
+
         [] ->
           {:error, :no_such_name}
       end
@@ -376,15 +379,16 @@ defmodule SnmpSim.MIB.SharedProfiles do
 
   defp get_next_oid_impl(device_type, oid, state) do
     case Map.get(state.profile_tables, device_type) do
-      nil -> 
+      nil ->
         {:error, :device_type_not_found}
+
       table ->
         # Get all OIDs and find the next one
-        all_oids = 
+        all_oids =
           :ets.tab2list(table)
           |> Enum.map(fn {oid, _data} -> oid end)
           |> Enum.sort(&compare_oids_lexicographically/2)
-        
+
         case find_next_oid_in_list(all_oids, oid) do
           nil -> :end_of_mib
           next_oid -> {:ok, next_oid}
@@ -395,9 +399,17 @@ defmodule SnmpSim.MIB.SharedProfiles do
   defp get_bulk_oids_impl(device_type, start_oid, max_repetitions, state) do
     case get_next_oid_impl(device_type, start_oid, state) do
       {:ok, first_oid} ->
-        collect_bulk_oids_with_values(device_type, first_oid, max_repetitions - 1, [first_oid], state)
+        collect_bulk_oids_with_values(
+          device_type,
+          first_oid,
+          max_repetitions - 1,
+          [first_oid],
+          state
+        )
+
       :end_of_mib ->
         {:ok, []}
+
       {:error, reason} ->
         {:error, reason}
     end
@@ -405,22 +417,34 @@ defmodule SnmpSim.MIB.SharedProfiles do
 
   defp collect_bulk_oids_with_values(_device_type, _current_oid, 0, acc, _state) do
     # Convert OID list to 3-tuples with values
-    oid_tuples = Enum.map(Enum.reverse(acc), fn oid ->
-      {oid, :octet_string, "Bulk value for #{oid}"}
-    end)
+    oid_tuples =
+      Enum.map(Enum.reverse(acc), fn oid ->
+        {oid, :octet_string, "Bulk value for #{oid}"}
+      end)
+
     {:ok, oid_tuples}
   end
 
   defp collect_bulk_oids_with_values(device_type, current_oid, remaining, acc, state) do
     case get_next_oid_impl(device_type, current_oid, state) do
       {:ok, next_oid} ->
-        collect_bulk_oids_with_values(device_type, next_oid, remaining - 1, [next_oid | acc], state)
+        collect_bulk_oids_with_values(
+          device_type,
+          next_oid,
+          remaining - 1,
+          [next_oid | acc],
+          state
+        )
+
       :end_of_mib ->
         # Convert OID list to 3-tuples with values
-        oid_tuples = Enum.map(Enum.reverse(acc), fn oid ->
-          {oid, :octet_string, "Bulk value for #{oid}"}
-        end)
+        oid_tuples =
+          Enum.map(Enum.reverse(acc), fn oid ->
+            {oid, :octet_string, "Bulk value for #{oid}"}
+          end)
+
         {:ok, oid_tuples}
+
       {:error, reason} ->
         {:error, reason}
     end
@@ -434,8 +458,10 @@ defmodule SnmpSim.MIB.SharedProfiles do
     case get_next_oid_impl(device_type, current_oid, state) do
       {:ok, next_oid} ->
         collect_bulk_oids(device_type, next_oid, remaining - 1, [next_oid | acc], state)
+
       :end_of_mib ->
         {:ok, Enum.reverse(acc)}
+
       {:error, reason} ->
         {:error, reason}
     end
@@ -445,13 +471,16 @@ defmodule SnmpSim.MIB.SharedProfiles do
 
   defp ensure_device_tables(device_type, state) do
     prof_table = Map.get(state.profile_tables, device_type) || create_profile_table(device_type)
-    behav_table = Map.get(state.behavior_tables, device_type) || create_behavior_table(device_type)
-    
-    new_state = %{state |
-      profile_tables: Map.put(state.profile_tables, device_type, prof_table),
-      behavior_tables: Map.put(state.behavior_tables, device_type, behav_table)
+
+    behav_table =
+      Map.get(state.behavior_tables, device_type) || create_behavior_table(device_type)
+
+    new_state = %{
+      state
+      | profile_tables: Map.put(state.profile_tables, device_type, prof_table),
+        behavior_tables: Map.put(state.behavior_tables, device_type, behav_table)
     }
-    
+
     {prof_table, behav_table, new_state}
   end
 
@@ -461,7 +490,7 @@ defmodule SnmpSim.MIB.SharedProfiles do
   end
 
   defp create_behavior_table(device_type) do
-    table_name = String.to_atom("#{device_type}_behavior") 
+    table_name = String.to_atom("#{device_type}_behavior")
     :ets.new(table_name, @table_opts)
   end
 
@@ -488,7 +517,7 @@ defmodule SnmpSim.MIB.SharedProfiles do
   defp compare_oids_lexicographically(oid1, oid2) do
     parts1 = String.split(oid1, ".") |> Enum.map(&String.to_integer/1)
     parts2 = String.split(oid2, ".") |> Enum.map(&String.to_integer/1)
-    
+
     compare_oid_parts(parts1, parts2)
   end
 
@@ -502,27 +531,32 @@ defmodule SnmpSim.MIB.SharedProfiles do
   defp find_next_oid_in_list(oids, target_oid) do
     # For GETNEXT, we need to find the first OID that is lexicographically greater than target_oid
     # OR the first descendant of target_oid if target_oid is a prefix
-    
+
     # First try to find descendants (for cases like "1.3.6.1.2.1" -> "1.3.6.1.2.1.1.1.0")
     descendants = Enum.filter(oids, fn oid -> oid_is_descendant(target_oid, oid) end)
-    
+
     case descendants do
       [] ->
         # No descendants, find the next OID lexicographically
         Enum.find(oids, fn oid -> compare_oids_lexicographically(target_oid, oid) end)
+
       _ ->
         # Return the first (smallest) descendant
-        Enum.min_by(descendants, fn oid -> 
-          String.split(oid, ".") |> Enum.map(&String.to_integer/1) 
-        end, fn -> nil end)
+        Enum.min_by(
+          descendants,
+          fn oid ->
+            String.split(oid, ".") |> Enum.map(&String.to_integer/1)
+          end,
+          fn -> nil end
+        )
     end
   end
-  
+
   # Check if an OID is a descendant of a target OID (i.e., target is a prefix)
   defp oid_is_descendant(target_oid, candidate_oid) do
     target_parts = String.split(target_oid, ".")
     candidate_parts = String.split(candidate_oid, ".")
-    
+
     # If target is shorter and matches the beginning of candidate, candidate is a descendant
     if length(target_parts) < length(candidate_parts) do
       target_parts == Enum.take(candidate_parts, length(target_parts))
@@ -542,9 +576,10 @@ defmodule SnmpSim.MIB.SharedProfiles do
   end
 
   defp update_load_stats(stats, _device_type, object_count) do
-    %{stats |
-      profiles_loaded: stats.profiles_loaded + 1,
-      total_objects: stats.total_objects + object_count
+    %{
+      stats
+      | profiles_loaded: stats.profiles_loaded + 1,
+        total_objects: stats.total_objects + object_count
     }
   end
 
@@ -552,7 +587,7 @@ defmodule SnmpSim.MIB.SharedProfiles do
     profile_memory = calculate_table_memory(state.profile_tables)
     behavior_memory = calculate_table_memory(state.behavior_tables)
     metadata_memory = calculate_table_memory(%{metadata: state.metadata_table})
-    
+
     %{
       total_memory_kb: div(profile_memory + behavior_memory + metadata_memory, 1024),
       profile_memory_kb: div(profile_memory, 1024),

@@ -2,7 +2,7 @@ defmodule SnmpSim.DeviceDistribution do
   @moduledoc """
   Device Type Distribution for realistic device type assignment across port ranges.
   Supports mixed device populations for authentic testing environments.
-  
+
   Features:
   - Realistic device type distribution patterns
   - Flexible port range assignment strategies
@@ -10,12 +10,12 @@ defmodule SnmpSim.DeviceDistribution do
   - Population density calculations
   - Device type metadata and characteristics
   """
-  
+
   @type device_type :: :cable_modem | :mta | :switch | :router | :cmts | :server
   @type port_range :: Range.t()
   @type device_mix :: %{device_type() => non_neg_integer()}
   @type port_assignments :: %{device_type() => port_range()}
-  
+
   @doc """
   Get the default device type port ranges for large-scale simulation.
   Optimized for 10K device populations with realistic distribution.
@@ -23,15 +23,21 @@ defmodule SnmpSim.DeviceDistribution do
   @spec default_port_assignments() :: port_assignments()
   def default_port_assignments do
     %{
-      cable_modem: 30_000..37_999,  # 8,000 cable modems (80%)
-      mta: 38_000..39_499,          # 1,500 MTAs (15%)
-      switch: 39_500..39_899,       # 400 switches (4%)
-      router: 39_900..39_949,       # 50 routers (0.5%)
-      cmts: 39_950..39_974,         # 25 CMTS devices (0.25%)
-      server: 39_975..39_999        # 25 servers (0.25%)
+      # 8,000 cable modems (80%)
+      cable_modem: 30_000..37_999,
+      # 1,500 MTAs (15%)
+      mta: 38_000..39_499,
+      # 400 switches (4%)
+      switch: 39_500..39_899,
+      # 50 routers (0.5%)
+      router: 39_900..39_949,
+      # 25 CMTS devices (0.25%)
+      cmts: 39_950..39_974,
+      # 25 servers (0.25%)
+      server: 39_975..39_999
     }
   end
-  
+
   @doc """
   Get common device mix patterns for different testing scenarios.
   """
@@ -44,16 +50,17 @@ defmodule SnmpSim.DeviceDistribution do
       server: 10
     }
   end
-  
+
   def get_device_mix(:enterprise_network) do
     %{
       switch: 500,
       router: 100,
       server: 200,
-      cable_modem: 50  # Guest network
+      # Guest network
+      cable_modem: 50
     }
   end
-  
+
   def get_device_mix(:isp_network) do
     %{
       cable_modem: 5000,
@@ -64,7 +71,7 @@ defmodule SnmpSim.DeviceDistribution do
       server: 30
     }
   end
-  
+
   def get_device_mix(:small_test) do
     %{
       cable_modem: 10,
@@ -73,7 +80,7 @@ defmodule SnmpSim.DeviceDistribution do
       server: 1
     }
   end
-  
+
   def get_device_mix(:medium_test) do
     %{
       cable_modem: 100,
@@ -84,7 +91,7 @@ defmodule SnmpSim.DeviceDistribution do
       server: 3
     }
   end
-  
+
   @doc """
   Determine device type for a given port based on port assignments.
   """
@@ -94,7 +101,7 @@ defmodule SnmpSim.DeviceDistribution do
       if port in range, do: device_type, else: nil
     end)
   end
-  
+
   @doc """
   Build port assignments from a device mix and port range.
   Distributes devices across the port range maintaining the specified ratios.
@@ -104,17 +111,19 @@ defmodule SnmpSim.DeviceDistribution do
     total_devices = Enum.sum(Map.values(device_mix))
     port_list = Enum.to_list(port_range)
     available_ports = length(port_list)
-    
+
     if total_devices > available_ports do
-      raise ArgumentError, "Not enough ports (#{available_ports}) for device count (#{total_devices})"
+      raise ArgumentError,
+            "Not enough ports (#{available_ports}) for device count (#{total_devices})"
     end
-    
-    {assignments, _remaining_ports} = 
+
+    {assignments, _remaining_ports} =
       device_mix
-      |> Enum.sort_by(fn {_type, count} -> -count end)  # Largest first
+      # Largest first
+      |> Enum.sort_by(fn {_type, count} -> -count end)
       |> Enum.reduce({%{}, port_list}, fn {device_type, count}, {acc, remaining} ->
         {assigned_ports, new_remaining} = Enum.split(remaining, count)
-        
+
         if length(assigned_ports) > 0 do
           range = build_range(assigned_ports)
           {Map.put(acc, device_type, range), new_remaining}
@@ -122,32 +131,33 @@ defmodule SnmpSim.DeviceDistribution do
           {acc, new_remaining}
         end
       end)
-    
+
     assignments
   end
-  
+
   @doc """
   Calculate population density statistics for device assignments.
   """
   @spec calculate_density_stats(port_assignments()) :: %{atom() => any()}
   def calculate_density_stats(port_assignments) do
     total_ports = count_total_ports(port_assignments)
-    
-    device_stats = 
+
+    device_stats =
       port_assignments
       |> Enum.map(fn {device_type, range} ->
         count = Enum.count(range)
-        percentage = if total_ports > 0, do: (count / total_ports) * 100, else: 0
-        
-        {device_type, %{
-          count: count,
-          percentage: Float.round(percentage, 2),
-          port_range: range,
-          density: calculate_density_category(percentage)
-        }}
+        percentage = if total_ports > 0, do: count / total_ports * 100, else: 0
+
+        {device_type,
+         %{
+           count: count,
+           percentage: Float.round(percentage, 2),
+           port_range: range,
+           density: calculate_density_category(percentage)
+         }}
       end)
       |> Map.new()
-    
+
     %{
       total_devices: total_ports,
       device_types: map_size(port_assignments),
@@ -156,7 +166,7 @@ defmodule SnmpSim.DeviceDistribution do
       smallest_group: find_smallest_group(device_stats)
     }
   end
-  
+
   @doc """
   Get device type characteristics and metadata.
   """
@@ -171,7 +181,7 @@ defmodule SnmpSim.DeviceDistribution do
       error_rates: %{low: 0.001, medium: 0.01, high: 0.1}
     }
   end
-  
+
   def get_device_characteristics(:mta) do
     %{
       typical_interfaces: 2,
@@ -182,7 +192,7 @@ defmodule SnmpSim.DeviceDistribution do
       error_rates: %{low: 0.0005, medium: 0.005, high: 0.05}
     }
   end
-  
+
   def get_device_characteristics(:switch) do
     %{
       typical_interfaces: 24,
@@ -193,7 +203,7 @@ defmodule SnmpSim.DeviceDistribution do
       error_rates: %{low: 0.0001, medium: 0.001, high: 0.01}
     }
   end
-  
+
   def get_device_characteristics(:router) do
     %{
       typical_interfaces: 8,
@@ -204,7 +214,7 @@ defmodule SnmpSim.DeviceDistribution do
       error_rates: %{low: 0.0001, medium: 0.001, high: 0.01}
     }
   end
-  
+
   def get_device_characteristics(:cmts) do
     %{
       typical_interfaces: 32,
@@ -215,7 +225,7 @@ defmodule SnmpSim.DeviceDistribution do
       error_rates: %{low: 0.00001, medium: 0.0001, high: 0.001}
     }
   end
-  
+
   def get_device_characteristics(:server) do
     %{
       typical_interfaces: 4,
@@ -226,7 +236,7 @@ defmodule SnmpSim.DeviceDistribution do
       error_rates: %{low: 0.0001, medium: 0.001, high: 0.01}
     }
   end
-  
+
   def get_device_characteristics(_unknown) do
     %{
       typical_interfaces: 1,
@@ -237,14 +247,14 @@ defmodule SnmpSim.DeviceDistribution do
       error_rates: %{low: 0.01, medium: 0.1, high: 1.0}
     }
   end
-  
+
   @doc """
   Generate device ID with type-specific formatting.
   """
   @spec generate_device_id(device_type(), non_neg_integer(), keyword()) :: String.t()
   def generate_device_id(device_type, port, opts \\ []) do
     format = Keyword.get(opts, :format, :default)
-    
+
     case format do
       :default -> "#{device_type}_#{port}"
       :mac_based -> generate_mac_based_id(device_type, port)
@@ -252,7 +262,7 @@ defmodule SnmpSim.DeviceDistribution do
       :serial -> generate_serial_id(device_type, port)
     end
   end
-  
+
   @doc """
   Validate port assignments for consistency and coverage.
   """
@@ -264,15 +274,16 @@ defmodule SnmpSim.DeviceDistribution do
       :ok
     end
   end
-  
+
   # Private Functions
-  
+
   defp build_range([]), do: 0..0
   defp build_range([single]), do: single..single
+
   defp build_range(ports) do
     min_port = Enum.min(ports)
     max_port = Enum.max(ports)
-    
+
     # Check if ports are contiguous
     if max_port - min_port + 1 == length(ports) do
       min_port..max_port
@@ -282,19 +293,19 @@ defmodule SnmpSim.DeviceDistribution do
       min_port..max_port
     end
   end
-  
+
   defp count_total_ports(port_assignments) do
     Enum.reduce(port_assignments, 0, fn {_type, range}, acc ->
       acc + Enum.count(range)
     end)
   end
-  
+
   defp calculate_density_category(percentage) when percentage >= 50, do: :dominant
   defp calculate_density_category(percentage) when percentage >= 20, do: :major
   defp calculate_density_category(percentage) when percentage >= 5, do: :moderate
   defp calculate_density_category(percentage) when percentage >= 1, do: :minor
   defp calculate_density_category(_percentage), do: :trace
-  
+
   defp find_largest_group(device_stats) do
     device_stats
     |> Enum.max_by(fn {_type, stats} -> stats.count end)
@@ -303,7 +314,7 @@ defmodule SnmpSim.DeviceDistribution do
       nil -> nil
     end
   end
-  
+
   defp find_smallest_group(device_stats) do
     device_stats
     |> Enum.min_by(fn {_type, stats} -> stats.count end)
@@ -312,25 +323,25 @@ defmodule SnmpSim.DeviceDistribution do
       nil -> nil
     end
   end
-  
+
   defp generate_mac_based_id(device_type, port) do
     # Generate deterministic MAC-like ID based on device type and port
     type_code = get_type_code(device_type)
     port_hex = Integer.to_string(port, 16) |> String.pad_leading(4, "0")
     "#{type_code}:#{String.slice(port_hex, 0..1)}:#{String.slice(port_hex, 2..3)}:#{port_hex}"
   end
-  
+
   defp generate_hostname_id(device_type, port) do
     prefix = get_hostname_prefix(device_type)
     "#{prefix}-#{String.pad_leading(Integer.to_string(port), 6, "0")}"
   end
-  
+
   defp generate_serial_id(device_type, port) do
     prefix = get_serial_prefix(device_type)
     checksum = rem(port, 100) |> Integer.to_string() |> String.pad_leading(2, "0")
     "#{prefix}#{String.pad_leading(Integer.to_string(port), 8, "0")}#{checksum}"
   end
-  
+
   defp get_type_code(:cable_modem), do: "CM"
   defp get_type_code(:mta), do: "MT"
   defp get_type_code(:switch), do: "SW"
@@ -338,7 +349,7 @@ defmodule SnmpSim.DeviceDistribution do
   defp get_type_code(:cmts), do: "CT"
   defp get_type_code(:server), do: "SV"
   defp get_type_code(_), do: "UK"
-  
+
   defp get_hostname_prefix(:cable_modem), do: "cm"
   defp get_hostname_prefix(:mta), do: "mta"
   defp get_hostname_prefix(:switch), do: "sw"
@@ -346,7 +357,7 @@ defmodule SnmpSim.DeviceDistribution do
   defp get_hostname_prefix(:cmts), do: "cmts"
   defp get_hostname_prefix(:server), do: "srv"
   defp get_hostname_prefix(_), do: "unk"
-  
+
   defp get_serial_prefix(:cable_modem), do: "SB"
   defp get_serial_prefix(:mta), do: "EM"
   defp get_serial_prefix(:switch), do: "WS"
@@ -354,56 +365,56 @@ defmodule SnmpSim.DeviceDistribution do
   defp get_serial_prefix(:cmts), do: "UBR"
   defp get_serial_prefix(:server), do: "DL"
   defp get_serial_prefix(_), do: "UNK"
-  
+
   defp validate_no_overlaps(port_assignments) do
     ranges = Map.values(port_assignments)
-    
-    overlaps = 
+
+    overlaps =
       for {range1, i} <- Enum.with_index(ranges),
           {range2, j} <- Enum.with_index(ranges),
           i < j,
           ranges_overlap?(range1, range2) do
         {range1, range2}
       end
-    
+
     if length(overlaps) > 0 do
       {:error, {:overlapping_ranges, overlaps}}
     else
       :ok
     end
   end
-  
+
   defp validate_all_ranges_valid(port_assignments) do
-    invalid_ranges = 
+    invalid_ranges =
       Enum.filter(port_assignments, fn {_type, range} ->
         Range.size(range) <= 0 or range.first > range.last
       end)
-    
+
     if length(invalid_ranges) > 0 do
       {:error, {:invalid_ranges, invalid_ranges}}
     else
       :ok
     end
   end
-  
+
   defp validate_reasonable_distribution(port_assignments) do
     total_ports = count_total_ports(port_assignments)
-    
+
     cond do
       map_size(port_assignments) == 0 ->
         {:error, :no_device_types}
-      
+
       total_ports == 0 ->
         {:error, :empty_distribution}
-      
+
       total_ports > 100_000 ->
         {:error, {:too_many_devices, total_ports}}
-      
+
       true ->
         :ok
     end
   end
-  
+
   defp ranges_overlap?(range1, range2) do
     not Range.disjoint?(range1, range2)
   end

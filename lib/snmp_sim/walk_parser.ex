@@ -6,28 +6,28 @@ defmodule SnmpSim.WalkParser do
 
   @doc """
   Parse a walk file and return a map of OID -> value mappings.
-  
+
   Supports both named MIB format and numeric OID format:
   - Named: "IF-MIB::ifInOctets.2 = Counter32: 1234567890"
   - Numeric: ".1.3.6.1.2.1.2.2.1.10.2 = Counter32: 1234567890"
-  
+
   ## Examples
-  
+
       {:ok, oid_map} = SnmpSim.WalkParser.parse_walk_file("priv/walks/cable_modem.walk")
       
   """
   def parse_walk_file(file_path) do
     case File.read(file_path) do
       {:ok, content} ->
-        oid_map = 
+        oid_map =
           content
           |> String.split("\n")
           |> Enum.map(&parse_walk_line/1)
           |> Enum.reject(&is_nil/1)
           |> Map.new()
-        
+
         {:ok, oid_map}
-      
+
       {:error, reason} ->
         {:error, {:file_read_error, reason}}
     end
@@ -35,9 +35,9 @@ defmodule SnmpSim.WalkParser do
 
   @doc """
   Parse a single line from a walk file.
-  
+
   ## Examples
-  
+
       # Named MIB format
       result = SnmpSim.WalkParser.parse_walk_line("IF-MIB::ifInOctets.2 = Counter32: 1234567890")
       # => {"1.3.6.1.2.1.2.2.1.10.2", %{type: "Counter32", value: 1234567890, mib_name: "IF-MIB::ifInOctets.2"}}
@@ -49,20 +49,20 @@ defmodule SnmpSim.WalkParser do
   """
   def parse_walk_line(line) do
     line = String.trim(line)
-    
+
     cond do
       # Named MIB format: "IF-MIB::ifInOctets.2 = Counter32: 1234567890"
       String.contains?(line, "::") ->
         parse_named_mib_line(line)
-        
+
       # Numeric OID format: ".1.3.6.1.2.1.2.2.1.10.2 = Counter32: 1234567890"
       String.starts_with?(line, ".") ->
         parse_numeric_oid_line(line)
-        
+
       # Skip comments and empty lines
       String.starts_with?(line, "#") or line == "" ->
         nil
-        
+
       # Try generic parsing for other formats
       true ->
         parse_generic_line(line)
@@ -75,12 +75,14 @@ defmodule SnmpSim.WalkParser do
       [_, mib_name, oid_suffix, data_type, value] ->
         numeric_oid = resolve_mib_name(mib_name, oid_suffix)
         parsed_value = parse_typed_value(value, data_type)
-        
-        {numeric_oid, %{
-          type: data_type, 
-          value: parsed_value, 
-          mib_name: "#{mib_name}::#{oid_suffix}"
-        }}
+
+        {numeric_oid,
+         %{
+           type: data_type,
+           value: parsed_value,
+           mib_name: "#{mib_name}::#{oid_suffix}"
+         }}
+
       _ ->
         nil
     end
@@ -92,8 +94,9 @@ defmodule SnmpSim.WalkParser do
       [_, oid, data_type, value] ->
         clean_oid = String.trim_leading(oid, ".")
         parsed_value = parse_typed_value(value, data_type)
-        
+
         {clean_oid, %{type: data_type, value: parsed_value}}
+
       _ ->
         nil
     end
@@ -105,8 +108,9 @@ defmodule SnmpSim.WalkParser do
       [_, oid_part, data_type, value] ->
         oid = normalize_oid(oid_part)
         parsed_value = parse_typed_value(value, data_type)
-        
+
         {oid, %{type: data_type, value: parsed_value}}
+
       _ ->
         nil
     end
@@ -115,7 +119,7 @@ defmodule SnmpSim.WalkParser do
   # Parse and convert values based on their SNMP data type
   defp parse_typed_value(value, data_type) do
     cleaned_value = clean_value(value)
-    
+
     case String.upcase(data_type) do
       "INTEGER" -> parse_integer(cleaned_value)
       "COUNTER32" -> parse_integer(cleaned_value)
@@ -136,18 +140,20 @@ defmodule SnmpSim.WalkParser do
   defp clean_value(value) do
     value
     |> String.trim()
-    |> String.trim("\"")  # Remove quotes from strings
+    # Remove quotes from strings
+    |> String.trim("\"")
   end
 
   # Parse integer values, including named enums like "ethernetCsmacd(6)"
   defp parse_integer(value) do
     # First try to extract number from parentheses (for named enums)
     case Regex.run(~r/\((\d+)\)/, value) do
-      [_, number_str] -> 
+      [_, number_str] ->
         case Integer.parse(number_str) do
           {int_val, _} -> int_val
           :error -> 0
         end
+
       nil ->
         # Try to parse as regular integer
         case Integer.parse(value) do
@@ -201,7 +207,7 @@ defmodule SnmpSim.WalkParser do
     base_oids = %{
       "SNMPv2-MIB" => "1.3.6.1.2.1.1",
       "IF-MIB" => "1.3.6.1.2.1.2",
-      "IP-MIB" => "1.3.6.1.2.1.4", 
+      "IP-MIB" => "1.3.6.1.2.1.4",
       "TCP-MIB" => "1.3.6.1.2.1.6",
       "UDP-MIB" => "1.3.6.1.2.1.7",
       "HOST-RESOURCES-MIB" => "1.3.6.1.2.1.25",
@@ -211,12 +217,13 @@ defmodule SnmpSim.WalkParser do
       "DOCS-CABLE-DEVICE-MIB" => "1.3.6.1.2.1.69",
       "DOCS-IF-MIB" => "1.3.6.1.2.1.10.127"
     }
-    
+
     # Try to resolve known MIB names
     case Map.get(base_oids, mib_name) do
-      nil -> 
+      nil ->
         # Unknown MIB - try to extract numeric portion from suffix
         extract_numeric_oid(oid_suffix)
+
       base_oid ->
         # Combine base OID with suffix
         combine_oid_parts(base_oid, oid_suffix)
@@ -228,7 +235,7 @@ defmodule SnmpSim.WalkParser do
     # Common object mappings within standard MIBs
     object_mappings = %{
       "sysDescr" => "1.3.6.1.2.1.1.1",
-      "sysObjectID" => "1.3.6.1.2.1.1.2", 
+      "sysObjectID" => "1.3.6.1.2.1.1.2",
       "sysUpTime" => "1.3.6.1.2.1.1.3",
       "sysContact" => "1.3.6.1.2.1.1.4",
       "sysName" => "1.3.6.1.2.1.1.5",
@@ -261,11 +268,14 @@ defmodule SnmpSim.WalkParser do
     case Regex.run(~r/^([^.]+)\.(.+)$/, oid_suffix) do
       [_, object_name, instance] ->
         case Map.get(object_mappings, object_name) do
-          nil -> oid_suffix  # Return as-is if unknown
+          # Return as-is if unknown
+          nil -> oid_suffix
           base_oid -> "#{base_oid}.#{instance}"
         end
+
       _ ->
-        oid_suffix  # Return as-is if no instance part
+        # Return as-is if no instance part
+        oid_suffix
     end
   end
 
@@ -275,39 +285,43 @@ defmodule SnmpSim.WalkParser do
     case Regex.run(~r/^([^.]+)\.(.+)$/, oid_suffix) do
       [_, object_name, instance] ->
         # Map object names to their sub-OIDs within the MIB
-        object_oid = case object_name do
-          "sysDescr" -> "#{base_oid}.1"
-          "sysObjectID" -> "#{base_oid}.2"
-          "sysUpTime" -> "#{base_oid}.3"
-          "sysContact" -> "#{base_oid}.4"
-          "sysName" -> "#{base_oid}.5"
-          "sysLocation" -> "#{base_oid}.6"
-          "sysServices" -> "#{base_oid}.7"
-          "ifNumber" -> "#{base_oid}.1"
-          "ifIndex" -> "#{base_oid}.2.1.1"
-          "ifDescr" -> "#{base_oid}.2.1.2"
-          "ifType" -> "#{base_oid}.2.1.3"
-          "ifMtu" -> "#{base_oid}.2.1.4"
-          "ifSpeed" -> "#{base_oid}.2.1.5"
-          "ifPhysAddress" -> "#{base_oid}.2.1.6"
-          "ifAdminStatus" -> "#{base_oid}.2.1.7"
-          "ifOperStatus" -> "#{base_oid}.2.1.8"
-          "ifLastChange" -> "#{base_oid}.2.1.9"
-          "ifInOctets" -> "#{base_oid}.2.1.10"
-          "ifInUcastPkts" -> "#{base_oid}.2.1.11"
-          "ifInNUcastPkts" -> "#{base_oid}.2.1.12"
-          "ifInDiscards" -> "#{base_oid}.2.1.13"
-          "ifInErrors" -> "#{base_oid}.2.1.14"
-          "ifInUnknownProtos" -> "#{base_oid}.2.1.15"
-          "ifOutOctets" -> "#{base_oid}.2.1.16"
-          "ifOutUcastPkts" -> "#{base_oid}.2.1.17"
-          "ifOutNUcastPkts" -> "#{base_oid}.2.1.18"
-          "ifOutDiscards" -> "#{base_oid}.2.1.19"
-          "ifOutErrors" -> "#{base_oid}.2.1.20"
-          "ifOutQLen" -> "#{base_oid}.2.1.21"
-          _ -> "#{base_oid}.1"  # Default
-        end
+        object_oid =
+          case object_name do
+            "sysDescr" -> "#{base_oid}.1"
+            "sysObjectID" -> "#{base_oid}.2"
+            "sysUpTime" -> "#{base_oid}.3"
+            "sysContact" -> "#{base_oid}.4"
+            "sysName" -> "#{base_oid}.5"
+            "sysLocation" -> "#{base_oid}.6"
+            "sysServices" -> "#{base_oid}.7"
+            "ifNumber" -> "#{base_oid}.1"
+            "ifIndex" -> "#{base_oid}.2.1.1"
+            "ifDescr" -> "#{base_oid}.2.1.2"
+            "ifType" -> "#{base_oid}.2.1.3"
+            "ifMtu" -> "#{base_oid}.2.1.4"
+            "ifSpeed" -> "#{base_oid}.2.1.5"
+            "ifPhysAddress" -> "#{base_oid}.2.1.6"
+            "ifAdminStatus" -> "#{base_oid}.2.1.7"
+            "ifOperStatus" -> "#{base_oid}.2.1.8"
+            "ifLastChange" -> "#{base_oid}.2.1.9"
+            "ifInOctets" -> "#{base_oid}.2.1.10"
+            "ifInUcastPkts" -> "#{base_oid}.2.1.11"
+            "ifInNUcastPkts" -> "#{base_oid}.2.1.12"
+            "ifInDiscards" -> "#{base_oid}.2.1.13"
+            "ifInErrors" -> "#{base_oid}.2.1.14"
+            "ifInUnknownProtos" -> "#{base_oid}.2.1.15"
+            "ifOutOctets" -> "#{base_oid}.2.1.16"
+            "ifOutUcastPkts" -> "#{base_oid}.2.1.17"
+            "ifOutNUcastPkts" -> "#{base_oid}.2.1.18"
+            "ifOutDiscards" -> "#{base_oid}.2.1.19"
+            "ifOutErrors" -> "#{base_oid}.2.1.20"
+            "ifOutQLen" -> "#{base_oid}.2.1.21"
+            # Default
+            _ -> "#{base_oid}.1"
+          end
+
         "#{object_oid}.#{instance}"
+
       _ ->
         # Simple scalar object
         "#{base_oid}.0"

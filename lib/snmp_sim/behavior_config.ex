@@ -6,9 +6,9 @@ defmodule SnmpSim.BehaviorConfig do
 
   @doc """
   Apply behavior configurations to a loaded profile.
-  
+
   ## Examples
-  
+
       # Apply basic realistic behaviors
       enhanced_profile = SnmpSim.BehaviorConfig.apply_behaviors(profile, [
         :realistic_counters,
@@ -20,7 +20,7 @@ defmodule SnmpSim.BehaviorConfig do
   def apply_behaviors(profile, behavior_configs) do
     # Normalize behavior configurations first
     normalized_configs = Enum.map(behavior_configs, &normalize_behavior_spec/1)
-    
+
     Enum.reduce(normalized_configs, profile, fn config, acc_profile ->
       apply_single_behavior(acc_profile, config)
     end)
@@ -28,9 +28,9 @@ defmodule SnmpSim.BehaviorConfig do
 
   @doc """
   Get predefined behavior configuration sets.
-  
+
   ## Examples
-  
+
       # Cable modem realistic simulation
       behaviors = SnmpSim.BehaviorConfig.get_preset(:cable_modem_realistic)
       
@@ -42,28 +42,28 @@ defmodule SnmpSim.BehaviorConfig do
     case preset_name do
       :cable_modem_realistic ->
         cable_modem_realistic_preset()
-        
+
       :cmts_realistic ->
         cmts_realistic_preset()
-        
+
       :switch_realistic ->
         switch_realistic_preset()
-        
+
       :high_traffic_simulation ->
         high_traffic_simulation_preset()
-        
+
       :low_signal_quality ->
         low_signal_quality_preset()
-        
+
       :network_congestion ->
         network_congestion_preset()
-        
+
       :maintenance_mode ->
         maintenance_mode_preset()
-        
+
       :development_testing ->
         development_testing_preset()
-        
+
       _ ->
         {:error, :unknown_preset}
     end
@@ -71,9 +71,9 @@ defmodule SnmpSim.BehaviorConfig do
 
   @doc """
   Create custom behavior configuration.
-  
+
   ## Examples
-  
+
       config = SnmpSim.BehaviorConfig.create_custom([
         {:traffic_counters, %{
           rate_multiplier: 1.5,
@@ -135,227 +135,256 @@ defmodule SnmpSim.BehaviorConfig do
   defp cable_modem_realistic_preset do
     [
       # Traffic counters with realistic patterns
-      {:increment_counters, %{
-        oid_patterns: ["ifInOctets", "ifOutOctets"],
-        rate_range: {1_000, 50_000_000},
-        daily_variation: true,
-        weekend_factor: 0.7,
-        burst_probability: 0.1
-      }},
-      
+      {:increment_counters,
+       %{
+         oid_patterns: ["ifInOctets", "ifOutOctets"],
+         rate_range: {1_000, 50_000_000},
+         daily_variation: true,
+         weekend_factor: 0.7,
+         burst_probability: 0.1
+       }},
+
       # Packet counters correlated with traffic
-      {:increment_counters, %{
-        oid_patterns: ["ifInUcastPkts", "ifOutUcastPkts"],
-        rate_range: {10, 500_000},
-        correlation_with: "octets_counters",
-        packet_size_avg: 1200
-      }},
-      
+      {:increment_counters,
+       %{
+         oid_patterns: ["ifInUcastPkts", "ifOutUcastPkts"],
+         rate_range: {10, 500_000},
+         correlation_with: "octets_counters",
+         packet_size_avg: 1200
+       }},
+
       # Error counters - very low but realistic
-      {:increment_counters, %{
-        oid_patterns: ["ifInErrors", "ifOutErrors"],
-        rate_range: {0, 10},
-        correlation_with: "utilization",
-        error_burst_probability: 0.02
-      }},
-      
+      {:increment_counters,
+       %{
+         oid_patterns: ["ifInErrors", "ifOutErrors"],
+         rate_range: {0, 10},
+         correlation_with: "utilization",
+         error_burst_probability: 0.02
+       }},
+
       # DOCSIS signal quality gauges
-      {:vary_gauges, %{
-        oid_patterns: ["docsIfSigQSignalNoise"],
-        range: {20, 35},
-        pattern: :inverse_utilization,
-        weather_correlation: true,
-        noise_factor: 1.0
-      }},
-      
+      {:vary_gauges,
+       %{
+         oid_patterns: ["docsIfSigQSignalNoise"],
+         range: {20, 35},
+         pattern: :inverse_utilization,
+         weather_correlation: true,
+         noise_factor: 1.0
+       }},
+
       # Power level gauges
-      {:vary_gauges, %{
-        oid_patterns: ["docsIfDownChannelPower"],
-        range: {-10, 10},
-        pattern: :environmental,
-        seasonal_variation: true
-      }},
-      
+      {:vary_gauges,
+       %{
+         oid_patterns: ["docsIfDownChannelPower"],
+         range: {-10, 10},
+         pattern: :environmental,
+         seasonal_variation: true
+       }},
+
       # System uptime
-      {:increment_uptime, %{
-        reset_probability: 0.0001,  # Very rare reboots
-        increment_rate: 100  # Standard TimeTicks
-      }},
-      
+      {:increment_uptime,
+       %{
+         # Very rare reboots
+         reset_probability: 0.0001,
+         # Standard TimeTicks
+         increment_rate: 100
+       }},
+
       # Interface utilization calculation
-      {:calculate_utilization, %{
-        based_on: ["ifInOctets", "ifOutOctets"],
-        interface_speed: "ifSpeed",
-        smoothing_factor: 0.9
-      }}
+      {:calculate_utilization,
+       %{
+         based_on: ["ifInOctets", "ifOutOctets"],
+         interface_speed: "ifSpeed",
+         smoothing_factor: 0.9
+       }}
     ]
   end
 
   defp cmts_realistic_preset do
     [
       # High-capacity traffic handling
-      {:increment_counters, %{
-        oid_patterns: ["ifInOctets", "ifOutOctets"],
-        rate_range: {100_000, 1_000_000_000},
-        aggregation_factor: 100,  # Aggregates many modems
-        daily_variation: true
-      }},
-      
+      {:increment_counters,
+       %{
+         oid_patterns: ["ifInOctets", "ifOutOctets"],
+         rate_range: {100_000, 1_000_000_000},
+         # Aggregates many modems
+         aggregation_factor: 100,
+         daily_variation: true
+       }},
+
       # Modem management counters
-      {:increment_counters, %{
-        oid_patterns: ["docsIfCmtsServiceNewCmStatusTxFails"],
-        rate_range: {0, 50},
-        pattern: :sporadic
-      }},
-      
+      {:increment_counters,
+       %{
+         oid_patterns: ["docsIfCmtsServiceNewCmStatusTxFails"],
+         rate_range: {0, 50},
+         pattern: :sporadic
+       }},
+
       # System resource gauges
-      {:vary_gauges, %{
-        oid_patterns: ["hrProcessorLoad"],
-        range: {10, 80},
-        pattern: :correlated_with_traffic,
-        spike_probability: 0.05
-      }},
-      
+      {:vary_gauges,
+       %{
+         oid_patterns: ["hrProcessorLoad"],
+         range: {10, 80},
+         pattern: :correlated_with_traffic,
+         spike_probability: 0.05
+       }},
+
       # Temperature monitoring
-      {:vary_gauges, %{
-        oid_patterns: ["entSensorValue"],
-        range: {30, 75},
-        pattern: :temperature,
-        load_correlation: true
-      }}
+      {:vary_gauges,
+       %{
+         oid_patterns: ["entSensorValue"],
+         range: {30, 75},
+         pattern: :temperature,
+         load_correlation: true
+       }}
     ]
   end
 
   defp switch_realistic_preset do
     [
       # Per-port traffic counters
-      {:increment_counters, %{
-        oid_patterns: ["ifInOctets", "ifOutOctets"],
-        rate_range: {100, 125_000_000},
-        per_interface: true,
-        trunk_multiplier: 10
-      }},
-      
+      {:increment_counters,
+       %{
+         oid_patterns: ["ifInOctets", "ifOutOctets"],
+         rate_range: {100, 125_000_000},
+         per_interface: true,
+         trunk_multiplier: 10
+       }},
+
       # Spanning tree and forwarding
-      {:increment_counters, %{
-        oid_patterns: ["dot1dTpLearnedEntryDiscards"],
-        rate_range: {0, 100},
-        pattern: :learning_phase
-      }},
-      
+      {:increment_counters,
+       %{
+         oid_patterns: ["dot1dTpLearnedEntryDiscards"],
+         rate_range: {0, 100},
+         pattern: :learning_phase
+       }},
+
       # VLAN statistics
-      {:increment_counters, %{
-        oid_patterns: ["dot1qVlanStatisticsInPkts"],
-        rate_range: {10, 100_000},
-        per_vlan: true
-      }},
-      
+      {:increment_counters,
+       %{
+         oid_patterns: ["dot1qVlanStatisticsInPkts"],
+         rate_range: {10, 100_000},
+         per_vlan: true
+       }},
+
       # CPU and memory utilization
-      {:vary_gauges, %{
-        oid_patterns: ["cpmCPUTotalPhysicalIndex"],
-        range: {5, 60},
-        pattern: :processing_load
-      }}
+      {:vary_gauges,
+       %{
+         oid_patterns: ["cpmCPUTotalPhysicalIndex"],
+         range: {5, 60},
+         pattern: :processing_load
+       }}
     ]
   end
 
   defp high_traffic_simulation_preset do
     [
-      {:increment_counters, %{
-        rate_multiplier: 5.0,
-        burst_probability: 0.3,
-        sustained_high_load: true
-      }},
-      
-      {:vary_gauges, %{
-        utilization_bias: 0.8,
-        volatility: 0.3
-      }},
-      
-      {:realistic_errors, %{
-        error_rate_multiplier: 2.0,
-        congestion_errors: true
-      }}
+      {:increment_counters,
+       %{
+         rate_multiplier: 5.0,
+         burst_probability: 0.3,
+         sustained_high_load: true
+       }},
+      {:vary_gauges,
+       %{
+         utilization_bias: 0.8,
+         volatility: 0.3
+       }},
+      {:realistic_errors,
+       %{
+         error_rate_multiplier: 2.0,
+         congestion_errors: true
+       }}
     ]
   end
 
   defp low_signal_quality_preset do
     [
-      {:vary_gauges, %{
-        oid_patterns: ["docsIfSigQSignalNoise"],
-        range: {8, 20},  # Poor SNR range
-        degradation_trend: true,
-        weather_impact_multiplier: 2.0
-      }},
-      
-      {:increment_counters, %{
-        oid_patterns: ["ifInErrors", "ifOutErrors"],
-        rate_multiplier: 5.0,
-        correlation_with: "signal_quality"
-      }},
-      
-      {:vary_gauges, %{
-        oid_patterns: ["docsIfDownChannelPower"],
-        range: {-15, -5},  # Weak signal power
-        instability: true
-      }}
+      {:vary_gauges,
+       %{
+         oid_patterns: ["docsIfSigQSignalNoise"],
+         # Poor SNR range
+         range: {8, 20},
+         degradation_trend: true,
+         weather_impact_multiplier: 2.0
+       }},
+      {:increment_counters,
+       %{
+         oid_patterns: ["ifInErrors", "ifOutErrors"],
+         rate_multiplier: 5.0,
+         correlation_with: "signal_quality"
+       }},
+      {:vary_gauges,
+       %{
+         oid_patterns: ["docsIfDownChannelPower"],
+         # Weak signal power
+         range: {-15, -5},
+         instability: true
+       }}
     ]
   end
 
   defp network_congestion_preset do
     [
-      {:increment_counters, %{
-        rate_multiplier: 1.5,
-        sustained_load: 0.9,
-        burst_frequency: 0.4
-      }},
-      
-      {:increment_counters, %{
-        oid_patterns: ["ifInDiscards", "ifOutDiscards"],
-        rate_range: {10, 1000},
-        congestion_correlation: true
-      }},
-      
-      {:vary_gauges, %{
-        oid_patterns: ["ifOutQLen"],
-        range: {10, 100},
-        pattern: :queue_buildup
-      }}
+      {:increment_counters,
+       %{
+         rate_multiplier: 1.5,
+         sustained_load: 0.9,
+         burst_frequency: 0.4
+       }},
+      {:increment_counters,
+       %{
+         oid_patterns: ["ifInDiscards", "ifOutDiscards"],
+         rate_range: {10, 1000},
+         congestion_correlation: true
+       }},
+      {:vary_gauges,
+       %{
+         oid_patterns: ["ifOutQLen"],
+         range: {10, 100},
+         pattern: :queue_buildup
+       }}
     ]
   end
 
   defp maintenance_mode_preset do
     [
-      {:static_values, %{
-        oid_patterns: ["ifAdminStatus"],
-        value: 2  # Interface down
-      }},
-      
-      {:increment_counters, %{
-        rate_multiplier: 0.1,  # Very low traffic
-        maintenance_pattern: true
-      }},
-      
-      {:vary_gauges, %{
-        stability_factor: 0.95,  # Very stable during maintenance
-        reduced_variation: true
-      }}
+      {:static_values,
+       %{
+         oid_patterns: ["ifAdminStatus"],
+         # Interface down
+         value: 2
+       }},
+      {:increment_counters,
+       %{
+         # Very low traffic
+         rate_multiplier: 0.1,
+         maintenance_pattern: true
+       }},
+      {:vary_gauges,
+       %{
+         # Very stable during maintenance
+         stability_factor: 0.95,
+         reduced_variation: true
+       }}
     ]
   end
 
   defp development_testing_preset do
     [
-      {:predictable_patterns, %{
-        counter_increment: 1000,
-        gauge_pattern: :sine_wave,
-        cycle_duration: 300  # 5 minutes
-      }},
-      
-      {:test_scenarios, %{
-        error_injection: :scheduled,
-        value_validation: true,
-        debugging_enabled: true
-      }}
+      {:predictable_patterns,
+       %{
+         counter_increment: 1000,
+         gauge_pattern: :sine_wave,
+         # 5 minutes
+         cycle_duration: 300
+       }},
+      {:test_scenarios,
+       %{
+         error_injection: :scheduled,
+         value_validation: true,
+         debugging_enabled: true
+       }}
     ]
   end
 
@@ -365,34 +394,34 @@ defmodule SnmpSim.BehaviorConfig do
     case behavior_config do
       :realistic_counters ->
         apply_realistic_counters(profile)
-        
+
       {:realistic_counters, _config} ->
         apply_realistic_counters(profile)
-        
+
       :daily_patterns ->
         apply_daily_patterns(profile)
-        
+
       {:daily_patterns, _config} ->
         apply_daily_patterns(profile)
-        
+
       :weekly_patterns ->
         apply_weekly_patterns(profile)
-        
+
       {:weekly_patterns, _config} ->
         apply_weekly_patterns(profile)
-        
+
       {:increment_counters, config} ->
         apply_increment_counters(profile, config)
-        
+
       {:vary_gauges, config} ->
         apply_vary_gauges(profile, config)
-        
+
       {:realistic_errors, config} ->
         apply_realistic_errors(profile, config)
-        
+
       {:custom_utilization, config} ->
         apply_custom_utilization(profile, config)
-        
+
       _ ->
         # Unknown behavior config, return profile unchanged
         profile
@@ -401,24 +430,26 @@ defmodule SnmpSim.BehaviorConfig do
 
   defp apply_realistic_counters(profile) do
     # Enhance counter OIDs with realistic increment behaviors
-    enhanced_oids = 
+    enhanced_oids =
       profile.oid_map
       |> Enum.map(fn {oid, value_info} ->
         if is_counter_type?(value_info.type) do
-          enhanced_info = Map.put(value_info, :behavior, determine_counter_behavior(oid, value_info))
+          enhanced_info =
+            Map.put(value_info, :behavior, determine_counter_behavior(oid, value_info))
+
           {oid, enhanced_info}
         else
           {oid, value_info}
         end
       end)
       |> Map.new()
-    
+
     %{profile | oid_map: enhanced_oids}
   end
 
   defp apply_daily_patterns(profile) do
     # Add daily pattern behavior to all appropriate OIDs
-    enhanced_oids = 
+    enhanced_oids =
       profile.oid_map
       |> Enum.map(fn {oid, value_info} ->
         if supports_time_patterns?(value_info.type) do
@@ -431,13 +462,13 @@ defmodule SnmpSim.BehaviorConfig do
         end
       end)
       |> Map.new()
-    
+
     %{profile | oid_map: enhanced_oids}
   end
 
   defp apply_weekly_patterns(profile) do
     # Similar to daily patterns but for weekly cycles
-    enhanced_oids = 
+    enhanced_oids =
       profile.oid_map
       |> Enum.map(fn {oid, value_info} ->
         if supports_time_patterns?(value_info.type) do
@@ -450,14 +481,14 @@ defmodule SnmpSim.BehaviorConfig do
         end
       end)
       |> Map.new()
-    
+
     %{profile | oid_map: enhanced_oids}
   end
 
   defp apply_increment_counters(profile, config) do
     oid_patterns = Map.get(config, :oid_patterns, [])
-    
-    enhanced_oids = 
+
+    enhanced_oids =
       profile.oid_map
       |> Enum.map(fn {oid, value_info} ->
         if matches_oid_patterns?(oid, oid_patterns) and is_counter_type?(value_info.type) do
@@ -469,14 +500,14 @@ defmodule SnmpSim.BehaviorConfig do
         end
       end)
       |> Map.new()
-    
+
     %{profile | oid_map: enhanced_oids}
   end
 
   defp apply_vary_gauges(profile, config) do
     oid_patterns = Map.get(config, :oid_patterns, [])
-    
-    enhanced_oids = 
+
+    enhanced_oids =
       profile.oid_map
       |> Enum.map(fn {oid, value_info} ->
         if matches_oid_patterns?(oid, oid_patterns) and is_gauge_type?(value_info.type) do
@@ -488,13 +519,13 @@ defmodule SnmpSim.BehaviorConfig do
         end
       end)
       |> Map.new()
-    
+
     %{profile | oid_map: enhanced_oids}
   end
 
   defp apply_realistic_errors(profile, config) do
     # Apply error behaviors to error counter OIDs
-    enhanced_oids = 
+    enhanced_oids =
       profile.oid_map
       |> Enum.map(fn {oid, value_info} ->
         if is_error_counter?(oid, value_info) do
@@ -506,13 +537,13 @@ defmodule SnmpSim.BehaviorConfig do
         end
       end)
       |> Map.new()
-    
+
     %{profile | oid_map: enhanced_oids}
   end
 
   defp apply_custom_utilization(profile, config) do
     # Apply custom utilization patterns
-    enhanced_oids = 
+    enhanced_oids =
       profile.oid_map
       |> Enum.map(fn {oid, value_info} ->
         if is_utilization_related?(oid, value_info) do
@@ -524,7 +555,7 @@ defmodule SnmpSim.BehaviorConfig do
         end
       end)
       |> Map.new()
-    
+
     %{profile | oid_map: enhanced_oids}
   end
 
@@ -556,10 +587,20 @@ defmodule SnmpSim.BehaviorConfig do
     end
   end
 
-  defp valid_behavior_spec?({behavior_type, config}) when is_atom(behavior_type) and is_map(config) do
-    behavior_type in [:increment_counters, :vary_gauges, :realistic_errors, :custom_utilization,
-                     :daily_patterns, :weekly_patterns, :seasonal_patterns, :traffic_counters,
-                     :realistic_counters, :signal_quality]
+  defp valid_behavior_spec?({behavior_type, config})
+       when is_atom(behavior_type) and is_map(config) do
+    behavior_type in [
+      :increment_counters,
+      :vary_gauges,
+      :realistic_errors,
+      :custom_utilization,
+      :daily_patterns,
+      :weekly_patterns,
+      :seasonal_patterns,
+      :traffic_counters,
+      :realistic_counters,
+      :signal_quality
+    ]
   end
 
   defp valid_behavior_spec?(_), do: false
@@ -575,24 +616,28 @@ defmodule SnmpSim.BehaviorConfig do
   defp is_error_counter?(oid, _value_info) do
     # First check the OID string directly
     oid_lower = String.downcase(oid)
-    if String.contains?(oid_lower, "error") or 
-       String.contains?(oid_lower, "discard") or
-       String.contains?(oid_lower, "drop") do
+
+    if String.contains?(oid_lower, "error") or
+         String.contains?(oid_lower, "discard") or
+         String.contains?(oid_lower, "drop") do
       true
     else
       # Also check the OID name mapping
       oid_name = get_oid_name(oid)
-      oid_name && (String.contains?(String.downcase(oid_name), "error") or
-                   String.contains?(String.downcase(oid_name), "discard") or
-                   String.contains?(String.downcase(oid_name), "drop"))
+
+      oid_name &&
+        (String.contains?(String.downcase(oid_name), "error") or
+           String.contains?(String.downcase(oid_name), "discard") or
+           String.contains?(String.downcase(oid_name), "drop"))
     end
   end
 
   defp is_utilization_related?(oid, _value_info) do
     oid_lower = String.downcase(oid)
+
     String.contains?(oid_lower, "util") or
-    String.contains?(oid_lower, "load") or
-    String.contains?(oid_lower, "cpu")
+      String.contains?(oid_lower, "load") or
+      String.contains?(oid_lower, "cpu")
   end
 
   defp supports_time_patterns?(type) do
@@ -632,22 +677,18 @@ defmodule SnmpSim.BehaviorConfig do
       String.starts_with?(oid, "1.3.6.1.2.1.2.2.1.5.") -> "ifSpeed"
       String.starts_with?(oid, "1.3.6.1.2.1.2.2.1.8.") -> "ifOperStatus"
       String.starts_with?(oid, "1.3.6.1.2.1.2.2.1.7.") -> "ifAdminStatus"
-      
       # System group (SNMPv2-MIB)
       String.starts_with?(oid, "1.3.6.1.2.1.1.1.") -> "sysDescr"
       String.starts_with?(oid, "1.3.6.1.2.1.1.3.") -> "sysUpTime"
       String.starts_with?(oid, "1.3.6.1.2.1.1.4.") -> "sysContact"
       String.starts_with?(oid, "1.3.6.1.2.1.1.5.") -> "sysName"
       String.starts_with?(oid, "1.3.6.1.2.1.1.6.") -> "sysLocation"
-      
       # DOCSIS-specific OIDs (commonly used in cable modems)
       String.starts_with?(oid, "1.3.6.1.2.1.10.127.1.1.1.1.6.") -> "docsIfSigQSignalNoise"
       String.starts_with?(oid, "1.3.6.1.2.1.10.127.1.1.1.1.2.") -> "docsIfDownChannelPower"
-      
       # CPU and memory (HOST-RESOURCES-MIB)
       String.starts_with?(oid, "1.3.6.1.2.1.25.3.3.1.2.") -> "hrProcessorLoad"
       String.starts_with?(oid, "1.3.6.1.2.1.25.2.2.1.") -> "hrStorageUsed"
-      
       true -> nil
     end
   end
@@ -656,10 +697,13 @@ defmodule SnmpSim.BehaviorConfig do
     cond do
       String.contains?(String.downcase(oid), "octets") ->
         {:traffic_counter, %{rate_range: {1_000, 50_000_000}}}
+
       String.contains?(String.downcase(oid), "packets") ->
         {:packet_counter, %{rate_range: {10, 500_000}}}
+
       String.contains?(String.downcase(oid), "error") ->
         {:error_counter, %{rate_range: {0, 10}}}
+
       true ->
         {:generic_counter, %{rate_range: {100, 10_000}}}
     end

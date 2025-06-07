@@ -13,9 +13,12 @@ defmodule SnmpSim.Performance.ResourceManager do
   # Resource limits configuration
   @default_max_devices 10_000
   @default_max_memory_mb 1024
-  @default_cleanup_interval 60_000  # 1 minute
-  @default_idle_threshold 600_000   # 10 minutes
-  @memory_check_interval 30_000     # 30 seconds
+  # 1 minute
+  @default_cleanup_interval 60_000
+  # 10 minutes
+  @default_idle_threshold 600_000
+  # 30 seconds
+  @memory_check_interval 30_000
 
   defstruct [
     :max_devices,
@@ -113,18 +116,23 @@ defmodule SnmpSim.Performance.ResourceManager do
       memory_timer: memory_timer
     }
 
-    Logger.info("ResourceManager started with limits: #{max_devices} devices, #{max_memory_mb}MB memory")
+    Logger.info(
+      "ResourceManager started with limits: #{max_devices} devices, #{max_memory_mb}MB memory"
+    )
 
     {:ok, state}
   end
 
   @impl true
   def handle_call(:can_allocate_device, _from, state) do
-    can_allocate = state.device_count < state.max_devices and
-                   memory_within_limits?(state)
+    can_allocate =
+      state.device_count < state.max_devices and
+        memory_within_limits?(state)
 
     unless can_allocate do
-      Logger.warning("Device allocation denied: #{state.device_count}/#{state.max_devices} devices, #{state.memory_usage_mb}/#{state.max_memory_mb}MB memory")
+      Logger.warning(
+        "Device allocation denied: #{state.device_count}/#{state.max_devices} devices, #{state.memory_usage_mb}/#{state.max_memory_mb}MB memory"
+      )
     end
 
     {:reply, can_allocate, state}
@@ -133,7 +141,7 @@ defmodule SnmpSim.Performance.ResourceManager do
   @impl true
   def handle_call(:get_resource_stats, _from, state) do
     current_memory = get_current_memory_usage()
-    
+
     stats = %{
       device_count: state.device_count,
       max_devices: state.max_devices,
@@ -153,22 +161,25 @@ defmodule SnmpSim.Performance.ResourceManager do
   @impl true
   def handle_call(:force_cleanup, _from, state) do
     {cleaned_count, new_state} = perform_cleanup(state)
-    
+
     Logger.info("Force cleanup completed: removed #{cleaned_count} idle devices")
-    
+
     {:reply, {:ok, cleaned_count}, new_state}
   end
 
   @impl true
   def handle_call({:update_limits, opts}, _from, state) do
-    new_state = %{state |
-      max_devices: Keyword.get(opts, :max_devices, state.max_devices),
-      max_memory_mb: Keyword.get(opts, :max_memory_mb, state.max_memory_mb),
-      cleanup_interval: Keyword.get(opts, :cleanup_interval, state.cleanup_interval),
-      idle_threshold: Keyword.get(opts, :idle_threshold, state.idle_threshold)
+    new_state = %{
+      state
+      | max_devices: Keyword.get(opts, :max_devices, state.max_devices),
+        max_memory_mb: Keyword.get(opts, :max_memory_mb, state.max_memory_mb),
+        cleanup_interval: Keyword.get(opts, :cleanup_interval, state.cleanup_interval),
+        idle_threshold: Keyword.get(opts, :idle_threshold, state.idle_threshold)
     }
 
-    Logger.info("Resource limits updated: #{new_state.max_devices} devices, #{new_state.max_memory_mb}MB memory")
+    Logger.info(
+      "Resource limits updated: #{new_state.max_devices} devices, #{new_state.max_memory_mb}MB memory"
+    )
 
     {:reply, :ok, new_state}
   end
@@ -190,18 +201,20 @@ defmodule SnmpSim.Performance.ResourceManager do
     # Monitor the device process
     Process.monitor(device_pid)
 
-    new_active_devices = Map.put(state.active_devices, device_pid, %{
-      type: device_type,
-      registered_at: System.monotonic_time(:millisecond),
-      last_activity: System.monotonic_time(:millisecond)
-    })
+    new_active_devices =
+      Map.put(state.active_devices, device_pid, %{
+        type: device_type,
+        registered_at: System.monotonic_time(:millisecond),
+        last_activity: System.monotonic_time(:millisecond)
+      })
 
     new_stats = update_allocation_stats(state.resource_stats, device_type)
 
-    new_state = %{state |
-      device_count: state.device_count + 1,
-      active_devices: new_active_devices,
-      resource_stats: new_stats
+    new_state = %{
+      state
+      | device_count: state.device_count + 1,
+        active_devices: new_active_devices,
+        resource_stats: new_stats
     }
 
     {:noreply, new_state}
@@ -212,15 +225,16 @@ defmodule SnmpSim.Performance.ResourceManager do
     case Map.get(state.active_devices, device_pid) do
       nil ->
         {:noreply, state}
-      
+
       device_info ->
         new_active_devices = Map.delete(state.active_devices, device_pid)
         new_stats = update_deallocation_stats(state.resource_stats, device_info.type)
 
-        new_state = %{state |
-          device_count: state.device_count - 1,
-          active_devices: new_active_devices,
-          resource_stats: new_stats
+        new_state = %{
+          state
+          | device_count: state.device_count - 1,
+            active_devices: new_active_devices,
+            resource_stats: new_stats
         }
 
         {:noreply, new_state}
@@ -230,35 +244,40 @@ defmodule SnmpSim.Performance.ResourceManager do
   @impl true
   def handle_info(:cleanup_idle_devices, state) do
     {cleaned_count, new_state} = perform_cleanup(state)
-    
+
     if cleaned_count > 0 do
       Logger.info("Cleanup completed: removed #{cleaned_count} idle devices")
     end
 
     # Schedule next cleanup
     cleanup_timer = Process.send_after(self(), :cleanup_idle_devices, new_state.cleanup_interval)
-    
+
     {:noreply, %{new_state | cleanup_timer: cleanup_timer}}
   end
 
   @impl true
   def handle_info(:check_memory, state) do
     current_memory = get_current_memory_usage()
-    
+
     # Log warning if memory usage is high
     if current_memory > state.max_memory_mb * 0.9 do
-      Logger.warning("High memory usage: #{current_memory}MB (#{Float.round(current_memory / state.max_memory_mb * 100, 1)}%)")
-      
+      Logger.warning(
+        "High memory usage: #{current_memory}MB (#{Float.round(current_memory / state.max_memory_mb * 100, 1)}%)"
+      )
+
       # Force cleanup if memory is critically high
       if current_memory > state.max_memory_mb do
         {cleaned_count, _} = perform_cleanup(state)
-        Logger.warning("Emergency cleanup triggered due to memory pressure: removed #{cleaned_count} devices")
+
+        Logger.warning(
+          "Emergency cleanup triggered due to memory pressure: removed #{cleaned_count} devices"
+        )
       end
     end
 
     # Schedule next memory check
     memory_timer = Process.send_after(self(), :check_memory, @memory_check_interval)
-    
+
     {:noreply, %{state | memory_usage_mb: current_memory, memory_timer: memory_timer}}
   end
 
@@ -268,15 +287,16 @@ defmodule SnmpSim.Performance.ResourceManager do
     case Map.get(state.active_devices, device_pid) do
       nil ->
         {:noreply, state}
-      
+
       device_info ->
         new_active_devices = Map.delete(state.active_devices, device_pid)
         new_stats = update_deallocation_stats(state.resource_stats, device_info.type)
 
-        new_state = %{state |
-          device_count: state.device_count - 1,
-          active_devices: new_active_devices,
-          resource_stats: new_stats
+        new_state = %{
+          state
+          | device_count: state.device_count - 1,
+            active_devices: new_active_devices,
+            resource_stats: new_stats
         }
 
         {:noreply, new_state}
@@ -297,7 +317,7 @@ defmodule SnmpSim.Performance.ResourceManager do
     try do
       # Get memory data and handle the result
       memory_data = :memsup.get_memory_data()
-      
+
       # If we get a keyword list, try to extract memory info
       if is_list(memory_data) do
         system_memory = Keyword.get(memory_data, :system_total_memory, 0)
@@ -320,31 +340,34 @@ defmodule SnmpSim.Performance.ResourceManager do
   defp perform_cleanup(state) do
     current_time = System.monotonic_time(:millisecond)
     idle_devices = find_idle_devices(state.active_devices, current_time, state.idle_threshold)
-    
-    cleaned_count = Enum.reduce(idle_devices, 0, fn {device_pid, device_info}, acc ->
-      case Device.stop(device_pid) do
-        :ok ->
-          Logger.debug("Cleaned up idle #{device_info.type} device: #{inspect(device_pid)}")
-          acc + 1
-        
-        {:error, reason} ->
-          Logger.warning("Failed to clean up device #{inspect(device_pid)}: #{inspect(reason)}")
-          acc
-      end
-    end)
+
+    cleaned_count =
+      Enum.reduce(idle_devices, 0, fn {device_pid, device_info}, acc ->
+        case Device.stop(device_pid) do
+          :ok ->
+            Logger.debug("Cleaned up idle #{device_info.type} device: #{inspect(device_pid)}")
+            acc + 1
+
+          {:error, reason} ->
+            Logger.warning("Failed to clean up device #{inspect(device_pid)}: #{inspect(reason)}")
+            acc
+        end
+      end)
 
     # Update state to remove cleaned devices
-    remaining_devices = Enum.reduce(idle_devices, state.active_devices, fn {device_pid, _}, acc ->
-      Map.delete(acc, device_pid)
-    end)
+    remaining_devices =
+      Enum.reduce(idle_devices, state.active_devices, fn {device_pid, _}, acc ->
+        Map.delete(acc, device_pid)
+      end)
 
     new_stats = update_cleanup_stats(state.resource_stats, cleaned_count)
 
-    new_state = %{state |
-      device_count: state.device_count - cleaned_count,
-      active_devices: remaining_devices,
-      last_cleanup: current_time,
-      resource_stats: new_stats
+    new_state = %{
+      state
+      | device_count: state.device_count - cleaned_count,
+        active_devices: remaining_devices,
+        last_cleanup: current_time,
+        resource_stats: new_stats
     }
 
     {cleaned_count, new_state}
@@ -378,11 +401,12 @@ defmodule SnmpSim.Performance.ResourceManager do
   defp update_allocation_stats(stats, device_type) do
     new_total = stats.total_allocated + 1
     new_by_type = Map.update(stats.allocations_by_type, device_type, 1, &(&1 + 1))
-    
-    %{stats |
-      total_allocated: new_total,
-      allocations_by_type: new_by_type,
-      peak_device_count: max(stats.peak_device_count, new_total - stats.total_deallocated)
+
+    %{
+      stats
+      | total_allocated: new_total,
+        allocations_by_type: new_by_type,
+        peak_device_count: max(stats.peak_device_count, new_total - stats.total_deallocated)
     }
   end
 
@@ -391,9 +415,10 @@ defmodule SnmpSim.Performance.ResourceManager do
   end
 
   defp update_cleanup_stats(stats, cleaned_count) do
-    %{stats |
-      total_cleanups: stats.total_cleanups + 1,
-      devices_cleaned: stats.devices_cleaned + cleaned_count
+    %{
+      stats
+      | total_cleanups: stats.total_cleanups + 1,
+        devices_cleaned: stats.devices_cleaned + cleaned_count
     }
   end
 end
