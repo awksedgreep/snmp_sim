@@ -14,7 +14,15 @@ defmodule SnmpSim.Device.OidHandler do
   # I'll move the OID handling functions here from device.ex
   # This will be populated in the next step
 
-  # Helper to extract OID from different varbind formats
+  @doc """
+  Extracts OID from SNMP PDU variable binding.
+  
+  ## Parameters
+  - `varbind` - SNMP variable binding containing OID and value
+  
+  ## Returns
+  - `oid` - Successfully extracted OID
+  """
   def extract_oid(varbind) do
     case varbind do
       {oid, _type, _value} ->
@@ -28,10 +36,28 @@ defmodule SnmpSim.Device.OidHandler do
     end
   end
 
+  @doc """
+  Converts OID list to string representation.
+  
+  ## Parameters
+  - `oid` - List of integers representing OID
+  
+  ## Returns
+  - String representation of OID (e.g., "1.3.6.1.2.1.1.1.0")
+  """
   def oid_to_string(oid) when is_list(oid), do: Enum.join(oid, ".")
   def oid_to_string(oid) when is_binary(oid), do: oid
   def oid_to_string(oid), do: to_string(oid)
 
+  @doc """
+  Converts string OID to list of integers.
+  
+  ## Parameters
+  - `oid_string` - String representation of OID
+  
+  ## Returns
+  - List of integers representing OID
+  """
   def string_to_oid_list(oid_string) when is_binary(oid_string) do
     case oid_string do
       "" ->
@@ -51,6 +77,15 @@ defmodule SnmpSim.Device.OidHandler do
   def string_to_oid_list(oid) when is_list(oid), do: oid
   def string_to_oid_list(oid), do: oid
 
+  @doc """
+  Extracts type and value from SNMP variable binding.
+  
+  ## Parameters
+  - `varbind` - SNMP variable binding
+  
+  ## Returns
+  - `{type, value}` - Tuple containing SNMP type and value
+  """
   def extract_type_and_value({type, value}) do
     {type, value}
   end
@@ -67,6 +102,17 @@ defmodule SnmpSim.Device.OidHandler do
     {:unknown, value}
   end
 
+  @doc """
+  Gets OID value based on device state and OID.
+  
+  ## Parameters
+  - `oid` - OID as list of integers
+  - `state` - Device state containing configuration and counters
+  
+  ## Returns
+  - `{:ok, value}` - Successfully retrieved OID value
+  - `{:error, reason}` - Failed to retrieve OID value
+  """
   def get_oid_value(oid, state) do
     # Update last access time
     new_state = %{state | last_access: System.monotonic_time(:millisecond)}
@@ -137,6 +183,17 @@ defmodule SnmpSim.Device.OidHandler do
     end
   end
 
+  @doc """
+  Gets dynamic OID value based on device state and OID.
+  
+  ## Parameters
+  - `oid` - OID as string
+  - `state` - Device state containing configuration and counters
+  
+  ## Returns
+  - `{:ok, {type, value}}` - Successfully retrieved OID value with type
+  - `{:error, reason}` - Failed to retrieve OID value
+  """
   def get_dynamic_oid_value("1.3.6.1.2.1.1.3.0", state) do
     # sysUpTime - calculate based on uptime_start
     uptime_ticks = calculate_uptime_ticks(state)
@@ -231,6 +288,17 @@ defmodule SnmpSim.Device.OidHandler do
     end
   end
 
+  @doc """
+  Finds the next OID in lexicographic order for SNMP GetNext operations.
+  
+  ## Parameters
+  - `oid` - Starting OID as list of integers
+  - `state` - Device state
+  
+  ## Returns
+  - `{:ok, {next_oid, type, value}}` - Next OID with its type and value
+  - `{:error, :end_of_mib}` - No more OIDs available
+  """
   def get_next_oid_value(oid, state) do
     try do
       device_state = build_device_state(state)
@@ -286,6 +354,17 @@ defmodule SnmpSim.Device.OidHandler do
     end
   end
 
+  @doc """
+  Retrieves multiple OIDs for SNMP GetBulk operations.
+  
+  ## Parameters
+  - `oid` - Starting OID
+  - `count` - Maximum number of OIDs to retrieve
+  - `state` - Device state
+  
+  ## Returns
+  - List of `{oid, type, value}` tuples
+  """
   def get_bulk_oid_values(oid, count, state) do
     try do
       device_state = build_device_state(state)
@@ -307,6 +386,16 @@ defmodule SnmpSim.Device.OidHandler do
     end
   end
 
+  @doc """
+  Walks OID values for SNMP MIB walking.
+  
+  ## Parameters
+  - `oid` - Starting OID as list of integers
+  - `state` - Device state
+  
+  ## Returns
+  - `{:ok, oid_values}` - List of OID values
+  """
   def walk_oid_values(oid, state) do
     # Simple walk implementation - get next OIDs until end of MIB or subtree
     walk_oid_recursive(oid, state, [])
@@ -339,6 +428,16 @@ defmodule SnmpSim.Device.OidHandler do
     {:ok, Enum.reverse(acc)}
   end
 
+  @doc """
+  Gets fallback next OID for SNMP GetNext operations.
+  
+  ## Parameters
+  - `oid` - Starting OID as list of integers
+  - `state` - Device state
+  
+  ## Returns
+  - `{next_oid, type, value}` - Next OID with its type and value
+  """
   def get_fallback_next_oid(oid, state) do
     # Convert OID to string format for pattern matching
     oid_string =
@@ -428,6 +527,17 @@ defmodule SnmpSim.Device.OidHandler do
     result
   end
 
+  @doc """
+  Gets fallback bulk OIDs for SNMP GetBulk operations.
+  
+  ## Parameters
+  - `oid` - Starting OID
+  - `count` - Maximum number of OIDs to retrieve
+  - `state` - Device state
+  
+  ## Returns
+  - List of `{oid, type, value}` tuples
+  """
   def get_fallback_bulk_oids(start_oid, max_repetitions, state) do
     # Simple fallback that generates a few basic interface OIDs
     case start_oid do
@@ -449,6 +559,17 @@ defmodule SnmpSim.Device.OidHandler do
     end
   end
 
+  @doc """
+  Handles interface OID.
+  
+  ## Parameters
+  - `oid` - Interface OID as string
+  - `state` - Device state
+  
+  ## Returns
+  - `{:ok, value}` - Successfully retrieved OID value
+  - `{:error, reason}` - Failed to retrieve OID value
+  """
   def handle_interface_oid(oid, state) do
     # Parse the interface OID: 1.3.6.1.2.1.2.2.1.column.interface_index
     case String.split(oid, ".") do
@@ -545,6 +666,17 @@ defmodule SnmpSim.Device.OidHandler do
     end
   end
 
+  @doc """
+  Handles high capacity interface OID.
+  
+  ## Parameters
+  - `oid` - High capacity interface OID as string
+  - `state` - Device state
+  
+  ## Returns
+  - `{:ok, value}` - Successfully retrieved OID value
+  - `{:error, reason}` - Failed to retrieve OID value
+  """
   def handle_hc_interface_oid(oid, state) do
     # Parse HC interface OID: 1.3.6.1.2.1.31.1.1.1.column.interface_index
     case String.split(oid, ".") do
@@ -573,6 +705,17 @@ defmodule SnmpSim.Device.OidHandler do
     end
   end
 
+  @doc """
+  Handles DOCSIS SNR OID.
+  
+  ## Parameters
+  - `oid` - DOCSIS SNR OID as string
+  - `state` - Device state
+  
+  ## Returns
+  - `{:ok, value}` - Successfully retrieved OID value
+  - `{:error, reason}` - Failed to retrieve OID value
+  """
   def handle_docsis_snr_oid(oid, state) do
     # Parse DOCSIS SNR OID: 1.3.6.1.2.1.10.127.1.1.4.1.5.channel_index
     case String.split(oid, ".") do
@@ -592,6 +735,17 @@ defmodule SnmpSim.Device.OidHandler do
     end
   end
 
+  @doc """
+  Handles Host Resources processor OID.
+  
+  ## Parameters
+  - `oid` - Host Resources processor OID as string
+  - `state` - Device state
+  
+  ## Returns
+  - `{:ok, value}` - Successfully retrieved OID value
+  - `{:error, reason}` - Failed to retrieve OID value
+  """
   def handle_host_processor_oid(oid, state) do
     # Parse Host Resources processor OID: 1.3.6.1.2.1.25.3.3.1.2.processor_index
     case String.split(oid, ".") do
@@ -611,6 +765,17 @@ defmodule SnmpSim.Device.OidHandler do
     end
   end
 
+  @doc """
+  Handles Host Resources storage OID.
+  
+  ## Parameters
+  - `oid` - Host Resources storage OID as string
+  - `state` - Device state
+  
+  ## Returns
+  - `{:ok, value}` - Successfully retrieved OID value
+  - `{:error, reason}` - Failed to retrieve OID value
+  """
   def handle_host_storage_oid(oid, state) do
     # Parse Host Resources storage OID: 1.3.6.1.2.1.25.2.3.1.6.storage_index
     case String.split(oid, ".") do
@@ -630,6 +795,15 @@ defmodule SnmpSim.Device.OidHandler do
     end
   end
 
+  @doc """
+  Calculates device uptime in milliseconds.
+  
+  ## Parameters
+  - `state` - Device state containing uptime_start timestamp
+  
+  ## Returns
+  - Integer representing uptime in milliseconds
+  """
   def calculate_uptime(%{uptime_start: uptime_start}) when is_integer(uptime_start) do
     current_time = :erlang.monotonic_time()
     uptime_monotonic = current_time - uptime_start
@@ -640,6 +814,15 @@ defmodule SnmpSim.Device.OidHandler do
     0
   end
 
+  @doc """
+  Calculates device uptime in SNMP TimeTicks (centiseconds).
+  
+  ## Parameters
+  - `state` - Device state
+  
+  ## Returns
+  - Integer representing uptime in centiseconds (1/100th of a second)
+  """
   def calculate_uptime_ticks(state) do
     # SNMP TimeTicks are in 1/100th of a second (centiseconds)
     uptime_milliseconds = calculate_uptime(state)
@@ -647,6 +830,15 @@ defmodule SnmpSim.Device.OidHandler do
     div(uptime_milliseconds, 10)
   end
 
+  @doc """
+  Builds comprehensive device state for monitoring and OID responses.
+  
+  ## Parameters
+  - `state` - Current device state
+  
+  ## Returns
+  - Map containing calculated device metrics and status information
+  """
   def build_device_state(state) do
     %{
       device_id: state.device_id,
@@ -664,6 +856,15 @@ defmodule SnmpSim.Device.OidHandler do
     }
   end
 
+  @doc """
+  Gets interface description based on device type.
+  
+  ## Parameters
+  - `state` - Device state containing device_type
+  
+  ## Returns
+  - String description of the interface
+  """
   def get_interface_description(state) do
     case state.device_type do
       :cable_modem -> "Ethernet Interface"
@@ -673,6 +874,16 @@ defmodule SnmpSim.Device.OidHandler do
     end
   end
 
+  @doc """
+  Calculates traffic increment for counters based on device type and time.
+  
+  ## Parameters
+  - `state` - Device state
+  - `counter_type` - Type of traffic counter (:in_octets, :out_octets, etc.)
+  
+  ## Returns
+  - Integer representing traffic increment since device start
+  """
   def calculate_traffic_increment(state, counter_type) do
     uptime_seconds = div(calculate_uptime(state), 1000)
 
@@ -724,6 +935,16 @@ defmodule SnmpSim.Device.OidHandler do
     max(0, total_increment + variance)
   end
 
+  @doc """
+  Calculates packet increment for packet counters.
+  
+  ## Parameters
+  - `state` - Device state
+  - `counter_type` - Type of packet counter (:in_ucast_pkts, :out_ucast_pkts, etc.)
+  
+  ## Returns
+  - Integer representing packet count increment since device start
+  """
   def calculate_packet_increment(state, counter_type) do
     uptime_seconds = div(calculate_uptime(state), 1000)
 
@@ -761,6 +982,16 @@ defmodule SnmpSim.Device.OidHandler do
     max(0, total_packets + variance)
   end
 
+  @doc """
+  Calculates error increment for error counters with environmental factors.
+  
+  ## Parameters
+  - `state` - Device state
+  - `counter_type` - Type of error counter (:in_errors, :out_errors, etc.)
+  
+  ## Returns
+  - Integer representing error count increment since device start
+  """
   def calculate_error_increment(state, counter_type) do
     uptime_seconds = div(calculate_uptime(state), 1000)
 
@@ -810,6 +1041,15 @@ defmodule SnmpSim.Device.OidHandler do
     end
   end
 
+  @doc """
+  Calculates Signal-to-Noise Ratio (SNR) gauge value for cable modems.
+  
+  ## Parameters
+  - `state` - Device state containing device_type
+  
+  ## Returns
+  - Integer representing SNR in dB (15-45 range for cable modems)
+  """
   def calculate_snr_gauge(state) do
     # Base SNR for cable modem (typically 25-40 dB, higher is better)
     base_snr =
@@ -836,6 +1076,15 @@ defmodule SnmpSim.Device.OidHandler do
     max(15, min(45, snr))
   end
 
+  @doc """
+  Calculates CPU utilization gauge with realistic load patterns.
+  
+  ## Parameters
+  - `state` - Device state containing device_type
+  
+  ## Returns
+  - Integer representing CPU utilization percentage (0-100)
+  """
   def calculate_cpu_gauge(state) do
     # Base CPU load depends on device type
     base_cpu =
@@ -887,6 +1136,15 @@ defmodule SnmpSim.Device.OidHandler do
     max(0, min(100, final_cpu))
   end
 
+  @doc """
+  Calculates storage usage gauge in allocation units (typically KB).
+  
+  ## Parameters
+  - `state` - Device state containing device_type
+  
+  ## Returns
+  - Integer representing storage usage in allocation units
+  """
   def calculate_storage_gauge(state) do
     # Base storage usage depends on device type (in allocation units)
     # Typical allocation unit is 1KB, so values represent KB used
@@ -932,6 +1190,15 @@ defmodule SnmpSim.Device.OidHandler do
     max(min_storage, min(max_storage, final_storage))
   end
 
+  @doc """
+  Gets time-of-day factor for simulating traffic patterns.
+  
+  Peak traffic occurs during evening hours (8-10 PM) with lower
+  utilization during overnight and early morning hours.
+  
+  ## Returns
+  - Float representing traffic multiplier (0.6 to 1.5)
+  """
   def get_time_factor do
     # Simple time-of-day factor (peak at 8-10 PM)
     hour = DateTime.utc_now().hour
@@ -950,13 +1217,30 @@ defmodule SnmpSim.Device.OidHandler do
     end
   end
 
-
+  @doc """
+  Calculates interface utilization as a percentage.
+  
+  ## Parameters
+  - `state` - Device state (currently unused)
+  
+  ## Returns
+  - Float representing interface utilization (0.1 to 0.8)
+  """
   def calculate_interface_utilization(_state) do
     # Calculate based on current traffic levels
     # For now, return a random utilization between 0.1 and 0.8
     0.1 + :rand.uniform() * 0.7
   end
 
+  @doc """
+  Calculates signal quality metric.
+  
+  ## Parameters
+  - `state` - Device state (currently unused)
+  
+  ## Returns
+  - Float representing signal quality (0.0 to 1.0)
+  """
   def calculate_signal_quality(_state) do
     # Calculate signal quality (0.0 to 1.0)
     # Could be based on SNR, power levels, etc.
@@ -965,6 +1249,15 @@ defmodule SnmpSim.Device.OidHandler do
     max(0.0, min(1.0, base_quality + random_variation))
   end
 
+  @doc """
+  Calculates CPU utilization correlated with network activity.
+  
+  ## Parameters
+  - `state` - Device state
+  
+  ## Returns
+  - Float representing CPU utilization (0.0 to 1.0)
+  """
   def calculate_cpu_utilization(state) do
     # CPU utilization often correlates with network activity
     interface_util = calculate_interface_utilization(state)
@@ -973,6 +1266,17 @@ defmodule SnmpSim.Device.OidHandler do
     max(0.0, min(1.0, base_cpu + random_variation))
   end
 
+  @doc """
+  Calculates device temperature in Celsius.
+  
+  Temperature is affected by CPU load and ambient conditions.
+  
+  ## Parameters
+  - `state` - Device state
+  
+  ## Returns
+  - Float representing temperature in Celsius
+  """
   def calculate_temperature(state) do
     # Device temperature in Celsius
     # Could be affected by CPU load, ambient temperature, etc.
@@ -985,6 +1289,15 @@ defmodule SnmpSim.Device.OidHandler do
     base_temp + load_factor + ambient_variation
   end
 
+  @doc """
+  Calculates error rate as a percentage based on signal quality.
+  
+  ## Parameters
+  - `state` - Device state
+  
+  ## Returns
+  - Float representing error rate percentage (0.0 to 0.05)
+  """
   def calculate_error_rate(state) do
     # Error rate as a percentage
     signal_quality = calculate_signal_quality(state)
@@ -993,6 +1306,17 @@ defmodule SnmpSim.Device.OidHandler do
     max(0.0, base_error_rate)
   end
 
+  @doc """
+  Calculates overall device health score.
+  
+  Health score is based on signal quality, error rate, and uptime stability.
+  
+  ## Parameters
+  - `state` - Device state
+  
+  ## Returns
+  - Float representing health score (0.0 to 1.0)
+  """
   def calculate_health_score(state) do
     # Overall device health score (0.0 to 1.0)
     signal_quality = calculate_signal_quality(state)
@@ -1006,6 +1330,17 @@ defmodule SnmpSim.Device.OidHandler do
     max(0.0, min(1.0, health))
   end
 
+  @doc """
+  Builds correlation factors for related OIDs.
+  
+  This can be expanded to track relationships between different metrics.
+  
+  ## Parameters
+  - `state` - Device state (currently unused)
+  
+  ## Returns
+  - Map of correlation factors (currently empty)
+  """
   def build_correlation_factors(_state) do
     # Build correlation factors for related OIDs
     # This could be expanded to track actual relationships
