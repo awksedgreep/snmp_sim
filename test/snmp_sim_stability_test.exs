@@ -390,7 +390,8 @@ defmodule SnmpSimStabilityTest do
         community: "public",
         device_type: :cable_modem,
         device_id: "device_#{port}",
-        port: port
+        port: port,
+        walk_file: "priv/walks/cable_modem.walk"
       })
       {device, port}  # Return both device PID and port for SNMP requests
     end)
@@ -409,7 +410,8 @@ defmodule SnmpSimStabilityTest do
           community: "public",
           device_type: :cable_modem,
           device_id: "device_#{port}",
-          port: port
+          port: port,
+          walk_file: "priv/walks/cable_modem.walk"
         }) do
           {:ok, device} ->
             {device, port}  # Return both device PID and port for SNMP requests
@@ -421,7 +423,8 @@ defmodule SnmpSimStabilityTest do
               community: "public",
               device_type: :cable_modem,
               device_id: "device_#{port}",
-              port: port
+              port: port,
+              walk_file: "priv/walks/cable_modem.walk"
             }) do
               {:ok, device} -> {device, port}
               {:error, _reason} -> nil  # Skip this device
