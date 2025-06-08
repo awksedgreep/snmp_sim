@@ -14,10 +14,10 @@ defmodule SnmpSim.GetbulkRegressionTest do
     
     # Check if walk file exists
     if File.exists?(walk_file) do
-      {:ok, _} = SharedProfiles.load_walk_profile(device_type, walk_file)
-      %{device_type: device_type, walk_file_exists: true}
+      :ok = SharedProfiles.load_walk_profile(device_type, walk_file)
+      {:ok, %{device_type: device_type, walk_file_exists: true}}
     else
-      %{device_type: device_type, walk_file_exists: false}
+      {:ok, %{device_type: device_type, walk_file_exists: false}}
     end
   end
 

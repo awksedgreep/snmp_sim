@@ -32,21 +32,23 @@ defmodule SnmpSimProductionValidationTest do
   @uptime_requirement_percent 99.9
 
   setup_all do
-    # Configure for production-like testing
+    # Configure production-like settings
     Application.put_env(:snmp_sim, :max_devices, @min_device_capacity)
     Application.put_env(:snmp_sim, :enable_performance_monitoring, true)
     Application.put_env(:snmp_sim, :optimization_level, :aggressive)
 
-    # Start application
+    # Restart application with new configuration
     Application.stop(:snmp_sim)
-    Application.start(:snmp_sim)
+    {:ok, _} = Application.ensure_all_started(:snmp_sim)
 
     # Wait for system initialization
     Process.sleep(5000)
 
     on_exit(fn ->
       ProductionTestHelper.cleanup_all()
+      # Restart application to restore normal state for other tests
       Application.stop(:snmp_sim)
+      Application.ensure_all_started(:snmp_sim)
     end)
 
     :ok

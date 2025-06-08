@@ -76,14 +76,16 @@ defmodule SnmpSimStabilityTest do
 
     # Ensure clean startup
     Application.stop(:snmp_sim)
-    Application.start(:snmp_sim)
+    {:ok, _} = Application.ensure_all_started(:snmp_sim)
 
     # Wait for system to stabilize
     Process.sleep(5000)
 
     on_exit(fn ->
       StabilityTestHelper.cleanup_all()
+      # Restart application to restore normal state for other tests
       Application.stop(:snmp_sim)
+      Application.ensure_all_started(:snmp_sim)
     end)
 
     :ok

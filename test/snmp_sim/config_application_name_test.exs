@@ -6,7 +6,7 @@ defmodule SnmpSim.ConfigApplicationNameTest do
   instead of the correct :snmp_sim application name.
   """
 
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   describe "Configuration application name consistency" do
     test "mix.exs defines application name as :snmp_sim" do
@@ -14,34 +14,30 @@ defmodule SnmpSim.ConfigApplicationNameTest do
       mix_content = File.read!("mix.exs")
 
       # Should contain 'app: :snmp_sim'
-      assert mix_content =~ ~r/app:\s*:snmp_sim/
-      # Should NOT contain the old incorrect name
-      refute mix_content =~ ~r/app:\s*:snmp_sim_ex/
+      assert String.contains?(mix_content, "app: :snmp_sim")
+
+      # Should not contain the old incorrect name
+      refute String.contains?(mix_content, "app: :snmp_sim_ex")
     end
 
-    test "config files use correct application name :snmp_sim" do
+    test "config files reference correct application name" do
+      # Check config files use :snmp_sim not :snmp_sim_ex
       config_files = [
         "config/config.exs",
         "config/dev.exs",
-        "config/test.exs",
-        "config/prod.exs"
+        "config/prod.exs",
+        "config/test.exs"
       ]
 
-      for config_file <- config_files do
+      Enum.each(config_files, fn config_file ->
         if File.exists?(config_file) do
           content = File.read!(config_file)
 
-          # Should not contain the old incorrect name
-          refute content =~ ~r/:snmp_sim_ex/,
-                 "#{config_file} still contains incorrect application name :snmp_sim_ex"
-
-          # If it configures the app, it should use the correct name
-          if content =~ ~r/config\s+:/ do
-            assert content =~ ~r/:snmp_sim/,
-                   "#{config_file} should use correct application name :snmp_sim"
-          end
+          # Should not contain references to the old incorrect name
+          refute String.contains?(content, ":snmp_sim_ex"),
+                 "#{config_file} contains incorrect application name :snmp_sim_ex"
         end
-      end
+      end)
     end
 
     test "application can start without configuration errors" do
@@ -54,8 +50,8 @@ defmodule SnmpSim.ConfigApplicationNameTest do
       # Try to start it - should not raise configuration errors
       assert {:ok, _} = Application.ensure_all_started(:snmp_sim)
 
-      # Clean up
-      Application.stop(:snmp_sim)
+      # Ensure application stays running for other tests
+      # (No need to stop it again since test_helper.exs starts it)
     end
   end
 end

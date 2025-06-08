@@ -5,6 +5,13 @@ case Application.start(:snmp) do
   error -> IO.puts("Warning: Could not start SNMP application: #{inspect(error)}")
 end
 
+# Start the snmp_sim application to ensure SharedProfiles GenServer is available
+case Application.ensure_all_started(:snmp_sim) do
+  {:ok, _} -> :ok
+  {:error, {:already_started, _}} -> :ok
+  error -> IO.puts("Warning: Could not start snmp_sim application: #{inspect(error)}")
+end
+
 # Configure SNMP logging to be silent during tests
 # This eliminates the verbose .snmpm:snmpm:mk_target_name logs and other SNMP verbosity
 
