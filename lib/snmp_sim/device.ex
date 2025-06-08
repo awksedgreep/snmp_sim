@@ -376,7 +376,8 @@ defmodule SnmpSim.Device do
     # Handle different return formats based on type
     test_result = case result do
       {:ok, {:octet_string, value}} -> {:ok, value}  # Return raw value for octet_string
-      {:ok, {type, value}} -> {:ok, {type, value}}   # Return typed tuple for other types
+      {:ok, {:integer, value}} -> {:ok, value}       # Return raw value for integer
+      {:ok, {type, value}} -> {:ok, {type, value}}   # Return typed tuple for SNMP-specific types (counter32, gauge32, timeticks, object_identifier, etc.)
       {:ok, value} -> {:ok, value}
       error -> error
     end

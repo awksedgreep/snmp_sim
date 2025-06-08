@@ -75,8 +75,8 @@ defmodule SnmpSim.SNMPRegressionTest do
             assert String.contains?(oid_value, "."), "Object identifier should contain dots"
 
           :integer ->
-            assert match?({:integer, _}, value),
-                   "#{name} (#{oid}) should return integer tuple, got: #{inspect(value)}"
+            assert is_integer(value),
+                   "#{name} (#{oid}) should return integer, got: #{inspect(value)}"
         end
       end
     end
@@ -245,7 +245,6 @@ defmodule SnmpSim.SNMPRegressionTest do
       # Valid SNMP types
       s when is_binary(s) -> true
       i when is_integer(i) -> true
-      {:integer, v} when is_integer(v) -> true
       {:counter32, v} when is_integer(v) -> true
       {:gauge32, v} when is_integer(v) -> true
       {:timeticks, v} when is_integer(v) -> true
