@@ -51,8 +51,8 @@ defmodule SnmpSim.SNMPOperationsTest do
         {"1.3.6.1.2.1.1.4.0", fn v -> is_binary(v) end, "sysContact should be string"},
         {"1.3.6.1.2.1.1.5.0", fn v -> is_binary(v) end, "sysName should be string"},
         {"1.3.6.1.2.1.1.6.0", fn v -> is_binary(v) end, "sysLocation should be string"},
-        {"1.3.6.1.2.1.1.7.0", fn v -> is_integer(v) end, "sysServices should be integer"},
-        {"1.3.6.1.2.1.2.1.0", fn v -> is_integer(v) end, "ifNumber should be integer"}
+        {"1.3.6.1.2.1.1.7.0", fn v -> match?({:integer, _}, v) end, "sysServices should be integer tuple"},
+        {"1.3.6.1.2.1.2.1.0", fn v -> match?({:integer, _}, v) end, "ifNumber should be integer tuple"}
       ]
 
       for {oid, validator, description} <- test_cases do
@@ -151,18 +151,20 @@ defmodule SnmpSim.SNMPOperationsTest do
           {:ok, value} ->
             case expected_type do
               :integer ->
-                assert is_integer(value), "#{oid} should return integer, got: #{inspect(value)}"
+                assert match?({:integer, _}, value),
+                       "#{oid} should return integer tuple, got: #{inspect(value)}"
 
               :string ->
-                assert is_binary(value), "#{oid} should return string, got: #{inspect(value)}"
+                assert is_binary(value),
+                       "#{oid} should return string, got: #{inspect(value)}"
 
               :gauge32 ->
                 assert match?({:gauge32, _}, value),
-                       "#{oid} should return gauge32, got: #{inspect(value)}"
+                       "#{oid} should return gauge32 tuple, got: #{inspect(value)}"
 
               :timeticks ->
                 assert match?({:timeticks, _}, value),
-                       "#{oid} should return timeticks, got: #{inspect(value)}"
+                       "#{oid} should return timeticks tuple, got: #{inspect(value)}"
             end
 
           {:error, :no_such_name} ->
@@ -270,7 +272,7 @@ defmodule SnmpSim.SNMPOperationsTest do
 
           # Verify data types - sysDescr should be string, sysUpTime should be TimeTicks
           assert is_binary(value1), "sysDescr should be string, got: #{inspect(value1)}"
-          assert is_integer(value2), "sysUpTime should be integer, got: #{inspect(value2)}"
+          assert match?({:timeticks, _}, value2), "sysUpTime should be TimeTicks tuple, got: #{inspect(value2)}"
 
           # Verify the response can be encoded (this was the original problem)
           test_message = SnmpLib.PDU.build_message(response_pdu, "public", :v1)
@@ -401,7 +403,7 @@ defmodule SnmpSim.SNMPOperationsTest do
     case value do
       # Basic SNMP types
       s when is_binary(s) -> true
-      i when is_integer(i) -> true
+      {:integer, i} when is_integer(i) -> true
       # SNMP-specific types  
       {:counter32, v} when is_integer(v) -> true
       {:gauge32, v} when is_integer(v) -> true
