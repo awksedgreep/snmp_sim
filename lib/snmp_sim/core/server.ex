@@ -472,10 +472,37 @@ defmodule SnmpSim.Core.Server do
 
               # Convert walk file type to SnmpLib atom, fallback to :auto
               snmp_type = convert_walk_type_to_snmp_atom(type)
-              {normalized_oid, snmp_type, value}
+
+              # Convert value format for specific types
+              converted_value = case {snmp_type, value} do
+                {:object_identifier, oid_string} when is_binary(oid_string) ->
+                  # Convert OID string to integer list for :object_identifier type
+                  case SnmpLib.OID.string_to_list(oid_string) do
+                    {:ok, oid_list} -> oid_list
+                    {:error, _} -> 
+                      # Fallback: manual parsing
+                      String.split(oid_string, ".") |> Enum.map(&String.to_integer/1)
+                  end
+                _ ->
+                  # Keep value as-is for other types
+                  value
+              end
+
+              {normalized_oid, snmp_type, converted_value}
             end)
 
-          pdu = PDU.build_response(request_id, error_status, error_index, typed_varbinds)
+          # Build PDU response with error handling
+          pdu = try do
+            PDU.build_response(request_id, error_status, error_index, typed_varbinds)
+          rescue
+            e ->
+              require Logger
+              Logger.error("Error building PDU response: #{inspect(e)}")
+              Logger.error("Varbinds that caused error: #{inspect(typed_varbinds)}")
+              # Fallback to error response
+              PDU.build_response(request_id, 5, 1, [])  # genErr
+          end
+          
           PDU.build_message(pdu, community, version)
 
         # Handle map format (legacy)
@@ -563,9 +590,24 @@ defmodule SnmpSim.Core.Server do
       "integer" -> :integer
       "string" -> :string
       "octet" -> :string
-      "oid" -> :objectid
+      "oid" -> :object_identifier
       "ipaddress" -> :ipaddress
       _ -> :auto  # Fallback to auto for unknown types
+    end
+  end
+
+  defp convert_walk_type_to_snmp_atom(type) when is_atom(type) do
+    case type do
+      :object_identifier -> :object_identifier
+      :counter32 -> :counter32
+      :counter64 -> :counter64
+      :gauge32 -> :gauge32
+      :timeticks -> :timeticks
+      :integer -> :integer
+      :string -> :string
+      :octet_string -> :string
+      :ipaddress -> :ipaddress
+      _ -> type  # Keep as-is for other atoms
     end
   end
 

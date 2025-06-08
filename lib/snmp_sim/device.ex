@@ -257,6 +257,22 @@ defmodule SnmpSim.Device do
         mac_address =
           Map.get(device_config, :mac_address, generate_mac_address(device_type, port))
 
+        # Load walk file if provided
+        case Map.get(device_config, :walk_file) do
+          nil ->
+            :ok
+
+          walk_file ->
+            Logger.info("Loading walk file #{walk_file} for device type #{inspect(device_type)}")
+            case SnmpSim.MIB.SharedProfiles.load_walk_profile(device_type, walk_file) do
+              :ok ->
+                Logger.info("Successfully loaded walk file #{walk_file} for device type #{inspect(device_type)}")
+
+              {:error, reason} ->
+                Logger.warning("Failed to load walk file #{walk_file} for device type #{inspect(device_type)}: #{inspect(reason)}")
+            end
+        end
+
         # Start the UDP server for this device
         case Server.start_link(port, community: community) do
           {:ok, server_pid} ->
@@ -356,10 +372,18 @@ defmodule SnmpSim.Device do
   def handle_call({:get_oid, oid}, _from, state) do
     # Use the same logic as SNMP GET requests for consistency
     result = get_oid_value(oid, state)
+    
+    # Handle different return formats based on type
+    test_result = case result do
+      {:ok, {:octet_string, value}} -> {:ok, value}  # Return raw value for octet_string
+      {:ok, {type, value}} -> {:ok, {type, value}}   # Return typed tuple for other types
+      {:ok, value} -> {:ok, value}
+      error -> error
+    end
 
     # Update last access time
     new_state = %{state | last_access: System.monotonic_time(:millisecond)}
-    {:reply, result, new_state}
+    {:reply, test_result, new_state}
   end
 
   @impl true
@@ -554,34 +578,45 @@ defmodule SnmpSim.Device do
   # Private functions
 
   defp initialize_device_state(state) do
-    # Mock implementation for testing - initialize with minimal state
-    Logger.info("Device #{state.device_id} initialized with mock profile for testing")
+    # Try to load actual profile data from SharedProfiles
+    profiles = SnmpSim.MIB.SharedProfiles.list_profiles()
+    
+    case Enum.member?(profiles, state.device_type) do
+      true ->
+        Logger.info("Device #{state.device_id} initialized with profile for device type: #{state.device_type}")
+        # Profile exists in SharedProfiles, device will use it via OidHandler
+        {:ok, state}
+        
+      false ->
+        # Fallback to mock implementation for testing
+        Logger.info("Device #{state.device_id} initialized with mock profile for testing")
 
-    # Initialize basic counters and gauges for testing
-    counters = %{
-      # ifInOctets
-      "1.3.6.1.2.1.2.2.1.10.1" => 0,
-      # ifOutOctets
-      "1.3.6.1.2.1.2.2.1.16.1" => 0
-    }
+        # Initialize basic counters and gauges for testing
+        counters = %{
+          # ifInOctets
+          "1.3.6.1.2.1.2.2.1.10.1" => 0,
+          # ifOutOctets
+          "1.3.6.1.2.1.2.2.1.16.1" => 0
+        }
 
-    gauges = %{
-      # ifSpeed
-      "1.3.6.1.2.1.2.2.1.5.1" => 100_000_000,
-      # ifMtu
-      "1.3.6.1.2.1.2.2.1.4.1" => 1500
-    }
+        gauges = %{
+          # ifSpeed
+          "1.3.6.1.2.1.2.2.1.5.1" => 100_000_000,
+          # ifMtu
+          "1.3.6.1.2.1.2.2.1.4.1" => 1500
+        }
 
-    status_vars = initialize_status_vars(state)
+        status_vars = initialize_status_vars(state)
 
-    {:ok,
-     %{
-       state
-       | counters: counters,
-         gauges: gauges,
-         status_vars: status_vars,
-         error_conditions: state.error_conditions
-     }}
+        {:ok,
+         %{
+           state
+           | counters: counters,
+             gauges: gauges,
+             status_vars: status_vars,
+             error_conditions: state.error_conditions
+         }}
+    end
   end
 
   defp generate_mac_address(device_type, port) do

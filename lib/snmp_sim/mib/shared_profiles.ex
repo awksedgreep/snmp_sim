@@ -119,6 +119,31 @@ defmodule SnmpSim.MIB.SharedProfiles do
     GenServer.call(__MODULE__, :clear_all_profiles)
   end
 
+  @doc """
+  Store profile data directly (useful for testing).
+  """
+  def store_profile(device_type, profile_data, behavior_data) do
+    GenServer.call(__MODULE__, {:store_profile, device_type, profile_data, behavior_data})
+  end
+
+  @doc """
+  Compare OIDs lexicographically (useful for testing).
+  """
+  def compare_oids_lexicographically(oid1, oid2) do
+    # Convert OIDs to lists if they're strings
+    oid1_list = case oid1 do
+      oid when is_binary(oid) -> String.split(oid, ".") |> Enum.map(&String.to_integer/1)
+      oid when is_list(oid) -> oid
+    end
+    
+    oid2_list = case oid2 do
+      oid when is_binary(oid) -> String.split(oid, ".") |> Enum.map(&String.to_integer/1)
+      oid when is_list(oid) -> oid
+    end
+    
+    compare_oid_parts(oid1_list, oid2_list)
+  end
+
   # GenServer Callbacks
 
   @impl true
@@ -220,7 +245,27 @@ defmodule SnmpSim.MIB.SharedProfiles do
 
   @impl true
   def handle_call({:get_bulk_oids, device_type, start_oid, max_repetitions}, _from, state) do
-    result = get_bulk_oids_impl(device_type, start_oid, max_repetitions, state)
+    # CRITICAL FIX: For GETBULK, we should only return OIDs that come AFTER start_oid
+    # If start_oid is the last OID, get_next_oid should return :end_of_mib
+    result = case get_next_oid_impl(device_type, start_oid, state) do
+      {:ok, _first_oid} ->
+        # Start collecting from first_oid, but don't include it in the initial accumulator
+        # We'll add it during the collection process
+        collect_bulk_oids_with_values(
+          device_type,
+          start_oid,  # Start from start_oid, not first_oid
+          max_repetitions,
+          [],  # Empty accumulator - don't pre-include any OIDs
+          state
+        )
+
+      :end_of_mib ->
+        {:ok, []}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+    
     {:reply, result, state}
   end
 
@@ -250,6 +295,39 @@ defmodule SnmpSim.MIB.SharedProfiles do
     :ets.delete_all_objects(state.metadata_table)
 
     {:reply, :ok, %{state | stats: init_stats()}}
+  end
+
+  @impl true
+  def handle_call({:store_profile, device_type, profile_data, behavior_data}, _from, state) do
+    # Ensure tables exist for this device type
+    {prof_table, behav_table, new_state} = ensure_device_tables(device_type, state)
+
+    # Store in ETS tables
+    store_profile_data(prof_table, profile_data)
+    store_behavior_data(behav_table, behavior_data)
+
+    # Calculate object count based on data type
+    object_count = case profile_data do
+      data when is_map(data) -> map_size(data)
+      data when is_list(data) -> length(data)
+      _ -> 0
+    end
+
+    # Update metadata
+    metadata = %{
+      device_type: device_type,
+      source_type: :directly_stored,
+      object_count: object_count,
+      loaded_at: DateTime.utc_now(),
+      options: %{}
+    }
+
+    :ets.insert(new_state.metadata_table, {device_type, metadata})
+
+    # Update stats
+    updated_stats = update_load_stats(new_state.stats, device_type, object_count)
+
+    {:reply, :ok, %{new_state | stats: updated_stats}}
   end
 
   # Implementation Functions
@@ -367,7 +445,16 @@ defmodule SnmpSim.MIB.SharedProfiles do
               device_state
             )
 
-          {:ok, {profile_data.type, current_value}}
+          # Convert string type to atom type for compatibility
+          atom_type = convert_type_to_atom(profile_data.type)
+          
+          # Handle the case where ValueSimulator returns a typed tuple
+          final_value = case current_value do
+            {_type, value} -> value  # Extract value from typed tuple
+            value -> value           # Use value as-is if not a tuple
+          end
+          
+          {:ok, {atom_type, final_value}}
 
         [] ->
           {:error, :no_such_name}
@@ -396,30 +483,15 @@ defmodule SnmpSim.MIB.SharedProfiles do
     end
   end
 
-  defp get_bulk_oids_impl(device_type, start_oid, max_repetitions, state) do
-    case get_next_oid_impl(device_type, start_oid, state) do
-      {:ok, first_oid} ->
-        collect_bulk_oids_with_values(
-          device_type,
-          first_oid,
-          max_repetitions - 1,
-          [first_oid],
-          state
-        )
-
-      :end_of_mib ->
-        {:ok, []}
-
-      {:error, reason} ->
-        {:error, reason}
-    end
-  end
-
-  defp collect_bulk_oids_with_values(_device_type, _current_oid, 0, acc, _state) do
-    # Convert OID list to 3-tuples with values
+  defp collect_bulk_oids_with_values(device_type, _current_oid, 0, acc, state) do
+    # Convert OID list to 3-tuples with actual values from walk file
     oid_tuples =
       Enum.map(Enum.reverse(acc), fn oid ->
-        {oid, :octet_string, "Bulk value for #{oid}"}
+        case get_oid_value_impl(device_type, oid, %{}, state) do
+          {:ok, {type, value}} -> {oid, type, value}
+          {:ok, value} -> {oid, :octet_string, value}
+          {:error, _} -> {oid, :octet_string, "Bulk value for #{oid}"}
+        end
       end)
 
     {:ok, oid_tuples}
@@ -428,44 +500,67 @@ defmodule SnmpSim.MIB.SharedProfiles do
   defp collect_bulk_oids_with_values(device_type, current_oid, remaining, acc, state) do
     case get_next_oid_impl(device_type, current_oid, state) do
       {:ok, next_oid} ->
-        collect_bulk_oids_with_values(
-          device_type,
-          next_oid,
-          remaining - 1,
-          [next_oid | acc],
-          state
-        )
+        # Check if this OID actually exists in the walk file
+        case get_oid_value_impl(device_type, next_oid, %{}, state) do
+          {:ok, _} ->
+            # OID exists, continue collecting
+            collect_bulk_oids_with_values(
+              device_type,
+              next_oid,
+              remaining - 1,
+              [next_oid | acc],
+              state
+            )
+          {:error, :no_such_name} ->
+            # OID doesn't exist in walk file - this indicates end of MIB
+            # Convert accumulated OIDs to 3-tuples with actual values
+            oid_tuples =
+              Enum.map(Enum.reverse(acc), fn oid ->
+                case get_oid_value_impl(device_type, oid, %{}, state) do
+                  {:ok, {type, value}} -> {oid, type, value}
+                  {:ok, value} -> {oid, :octet_string, value}
+                  {:error, _} -> {oid, :octet_string, "Bulk value for #{oid}"}
+                end
+              end)
+            {:ok, oid_tuples}
+          {:error, _} ->
+            # Other errors - continue with fallback
+            collect_bulk_oids_with_values(
+              device_type,
+              next_oid,
+              remaining - 1,
+              [next_oid | acc],
+              state
+            )
+        end
 
       :end_of_mib ->
-        # Convert OID list to 3-tuples with values
+        # Convert OID list to 3-tuples with actual values from walk file
         oid_tuples =
           Enum.map(Enum.reverse(acc), fn oid ->
-            {oid, :octet_string, "Bulk value for #{oid}"}
+            case get_oid_value_impl(device_type, oid, %{}, state) do
+              {:ok, {type, value}} -> {oid, type, value}
+              {:ok, value} -> {oid, :octet_string, value}
+              {:error, _} -> {oid, :octet_string, "Bulk value for #{oid}"}
+            end
           end)
 
         {:ok, oid_tuples}
 
-      {:error, reason} ->
-        {:error, reason}
+      {:error, _reason} ->
+        # Convert accumulated OIDs to 3-tuples with actual values
+        oid_tuples =
+          Enum.map(Enum.reverse(acc), fn oid ->
+            case get_oid_value_impl(device_type, oid, %{}, state) do
+              {:ok, {type, value}} -> {oid, type, value}
+              {:ok, value} -> {oid, :octet_string, value}
+              {:error, _} -> {oid, :octet_string, "Bulk value for #{oid}"}
+            end
+          end)
+
+        {:ok, oid_tuples}
     end
   end
-
-  # defp collect_bulk_oids(_device_type, _current_oid, 0, acc, _state) do
-  #   {:ok, Enum.reverse(acc)}
-  # end
-
-  # defp collect_bulk_oids(device_type, current_oid, remaining, acc, state) do
-  #   case get_next_oid_impl(device_type, current_oid, state) do
-  #     {:ok, next_oid} ->
-  #       collect_bulk_oids(device_type, next_oid, remaining - 1, [next_oid | acc], state)
-
-  #     :end_of_mib ->
-  #       {:ok, Enum.reverse(acc)}
-
-  #     {:error, reason} ->
-  #       {:error, reason}
-  #   end
-  # end
 
   # Helper Functions
 
@@ -486,12 +581,24 @@ defmodule SnmpSim.MIB.SharedProfiles do
 
   defp create_profile_table(device_type) do
     table_name = String.to_atom("#{device_type}_profile")
-    :ets.new(table_name, @table_opts)
+    case :ets.info(table_name) do
+      :undefined ->
+        :ets.new(table_name, @table_opts)
+      _ ->
+        # Table already exists, return the existing table name
+        table_name
+    end
   end
 
   defp create_behavior_table(device_type) do
     table_name = String.to_atom("#{device_type}_behavior")
-    :ets.new(table_name, @table_opts)
+    case :ets.info(table_name) do
+      :undefined ->
+        :ets.new(table_name, @table_opts)
+      _ ->
+        # Table already exists, return the existing table name
+        table_name
+    end
   end
 
   defp extract_objects_from_compiled_mib(_compiled_mib) do
@@ -514,13 +621,6 @@ defmodule SnmpSim.MIB.SharedProfiles do
     end)
   end
 
-  defp compare_oids_lexicographically(oid1, oid2) do
-    parts1 = String.split(oid1, ".") |> Enum.map(&String.to_integer/1)
-    parts2 = String.split(oid2, ".") |> Enum.map(&String.to_integer/1)
-
-    compare_oid_parts(parts1, parts2)
-  end
-
   defp compare_oid_parts([], []), do: false
   defp compare_oid_parts([], _), do: true
   defp compare_oid_parts(_, []), do: false
@@ -538,14 +638,20 @@ defmodule SnmpSim.MIB.SharedProfiles do
     case descendants do
       [] ->
         # No descendants, find the next OID lexicographically
-        Enum.find(oids, fn oid -> compare_oids_lexicographically(target_oid, oid) end)
+        # Must be strictly greater than target_oid (not equal)
+        Enum.find(oids, fn oid -> 
+          oid != target_oid and compare_oids_lexicographically(target_oid, oid)
+        end)
 
       _ ->
         # Return the first (smallest) descendant
         Enum.min_by(
           descendants,
           fn oid ->
-            String.split(oid, ".") |> Enum.map(&String.to_integer/1)
+            case oid do
+              oid when is_binary(oid) -> String.split(oid, ".") |> Enum.map(&String.to_integer/1)
+              oid when is_list(oid) -> oid
+            end
           end,
           fn -> nil end
         )
@@ -554,8 +660,19 @@ defmodule SnmpSim.MIB.SharedProfiles do
 
   # Check if an OID is a descendant of a target OID (i.e., target is a prefix)
   defp oid_is_descendant(target_oid, candidate_oid) do
-    target_parts = String.split(target_oid, ".")
-    candidate_parts = String.split(candidate_oid, ".")
+    # Convert both OIDs to string format for comparison
+    target_str = case target_oid do
+      target when is_binary(target) -> target
+      target when is_list(target) -> Enum.join(target, ".")
+    end
+    
+    candidate_str = case candidate_oid do
+      candidate when is_binary(candidate) -> candidate
+      candidate when is_list(candidate) -> Enum.join(candidate, ".")
+    end
+    
+    target_parts = String.split(target_str, ".")
+    candidate_parts = String.split(candidate_str, ".")
 
     # If target is shorter and matches the beginning of candidate, candidate is a descendant
     if length(target_parts) < length(candidate_parts) do
@@ -605,5 +722,25 @@ defmodule SnmpSim.MIB.SharedProfiles do
       :ets.info(table, :memory) * :erlang.system_info(:wordsize)
     end)
     |> Enum.sum()
+  end
+
+  defp convert_type_to_atom(type) when is_binary(type) do
+    case String.upcase(type) do
+      "STRING" -> :octet_string
+      "INTEGER" -> :integer
+      "GAUGE32" -> :gauge32
+      "COUNTER32" -> :counter32
+      "COUNTER64" -> :counter64
+      "TIMETICKS" -> :timeticks
+      "OID" -> :object_identifier
+      "IPADDRESS" -> :ip_address
+      "OPAQUE" -> :opaque
+      "BITS" -> :bits
+      _ -> String.to_atom(String.downcase(type))
+    end
+  end
+
+  defp convert_type_to_atom(type) when is_atom(type) do
+    type
   end
 end

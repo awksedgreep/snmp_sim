@@ -190,34 +190,44 @@ defmodule SnmpSim.Device.PduProcessor do
                 {next_oid_list, type, actual_value}
 
               {:error, _} ->
+                # If we can't get the value from SharedProfiles, use fallback
                 get_fallback_next_oid(oid_string, state)
             end
 
+          # Reached end of MIB tree
           :end_of_mib ->
             {oid, :end_of_mib_view, {:end_of_mib_view, nil}}
 
+          # Alternative end of MIB format
           {:error, :end_of_mib} ->
             {oid, :end_of_mib_view, {:end_of_mib_view, nil}}
 
+          # Device type not found in SharedProfiles, use fallback
           {:error, :device_type_not_found} ->
             get_fallback_next_oid(oid_string, state)
 
+          # Any other error from SharedProfiles, use fallback
           {:error, _reason} ->
             get_fallback_next_oid(oid_string, state)
         end
       catch
+        # SharedProfiles process not running, use fallback directly
         :exit, {:noproc, _} ->
           get_fallback_next_oid(oid_string, state)
 
+        # SharedProfiles process crashed or other exit reason
         :exit, reason ->
           Logger.debug(
             "SharedProfiles unavailable (#{inspect(reason)}), using fallback for OID #{oid_string}"
           )
 
+          # Handle 3-tuple format from fallback and ensure consistent format
           case get_fallback_next_oid(oid_string, state) do
             {next_oid_list, type, value} ->
               next_oid_str =
-                if is_list(next_oid_list), do: Enum.join(next_oid_list, "."), else: next_oid_list
+                if is_list(next_oid_list),
+                  do: Enum.join(next_oid_list, "."),
+                  else: next_oid_list
 
               {next_oid_str, type, value}
           end
@@ -306,7 +316,6 @@ defmodule SnmpSim.Device.PduProcessor do
                         else: next_oid_list
 
                     {next_oid_str, type, value}
-
                 end
             end
           end)
@@ -326,7 +335,7 @@ defmodule SnmpSim.Device.PduProcessor do
               try do
                 # Try to get bulk OIDs using SharedProfiles
                 case SharedProfiles.get_bulk_oids(state.device_type, start_oid, max_repetitions) do
-                  {:ok, bulk_oids} ->
+                  {:ok, bulk_oids} when bulk_oids != [] ->
                     # Ensure all bulk_oids are in proper 3-tuple format {oid, type, value}
                     Enum.map(bulk_oids, fn
                       # Already in correct 3-tuple format
@@ -342,10 +351,21 @@ defmodule SnmpSim.Device.PduProcessor do
                         other
                     end)
 
+                  {:ok, []} ->
+                    # End of MIB reached - return single endOfMibView response
+                    [{start_oid, :end_of_mib_view, nil}]
+
                   # Device type not found in SharedProfiles, use fallback bulk
                   {:error, :device_type_not_found} ->
+                    # Convert OID to string format for fallback function
+                    start_oid_string = case start_oid do
+                      oid when is_list(oid) -> Enum.join(oid, ".")
+                      oid when is_binary(oid) -> oid
+                      _ -> to_string(start_oid)
+                    end
+                    
                     # Handle mixed format from fallback bulk function
-                    case get_fallback_bulk_oids(start_oid, max_repetitions, state) do
+                    case get_fallback_bulk_oids(start_oid_string, max_repetitions, state) do
                       bulk_list when is_list(bulk_list) ->
                         # Convert any inconsistent formats to proper 3-tuples
                         Enum.map(bulk_list, fn
@@ -375,8 +395,15 @@ defmodule SnmpSim.Device.PduProcessor do
               catch
                 # SharedProfiles process not running, use fallback bulk
                 :exit, {:noproc, _} ->
+                  # Convert OID to string format for fallback function
+                  start_oid_string = case start_oid do
+                    oid when is_list(oid) -> Enum.join(oid, ".")
+                    oid when is_binary(oid) -> oid
+                    _ -> to_string(start_oid)
+                  end
+                    
                   # Handle mixed format from fallback bulk function
-                  case get_fallback_bulk_oids(start_oid, max_repetitions, state) do
+                  case get_fallback_bulk_oids(start_oid_string, max_repetitions, state) do
                     bulk_list when is_list(bulk_list) ->
                       # Convert any inconsistent formats to proper 3-tuples
                       Enum.map(bulk_list, fn
@@ -397,9 +424,6 @@ defmodule SnmpSim.Device.PduProcessor do
                           other
                       end)
 
-                    # Fallback didn't return a list, pass through
-                    # other ->
-                    #   other
                   end
 
                 # SharedProfiles process crashed or other exit reason
@@ -408,8 +432,15 @@ defmodule SnmpSim.Device.PduProcessor do
                     "SharedProfiles unavailable (#{inspect(reason)}), using fallback for OID #{start_oid}"
                   )
 
+                  # Convert OID to string format for fallback function
+                  start_oid_string = case start_oid do
+                    oid when is_list(oid) -> Enum.join(oid, ".")
+                    oid when is_binary(oid) -> oid
+                    _ -> to_string(start_oid)
+                  end
+                    
                   # Handle mixed format from fallback bulk function
-                  case get_fallback_bulk_oids(start_oid, max_repetitions, state) do
+                  case get_fallback_bulk_oids(start_oid_string, max_repetitions, state) do
                     bulk_list when is_list(bulk_list) ->
                       # Convert any inconsistent formats to proper 3-tuples
                       Enum.map(bulk_list, fn
@@ -430,9 +461,6 @@ defmodule SnmpSim.Device.PduProcessor do
                           other
                       end)
 
-                    # Fallback didn't return a list, pass through
-                    # other ->
-                    #   other
                   end
               end
           end

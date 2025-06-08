@@ -6,7 +6,7 @@ defmodule SnmpSim.Device.OidHandler do
   # Suppress Dialyzer warnings for pattern matches and guards
   @dialyzer [
     {:nowarn_function, get_dynamic_oid_value: 2},
-    {:nowarn_function, walk_oid_recursive: 3}
+    {:nowarn_function, walk_oid_recursive: 4}
   ]
   require Logger
   alias SnmpSim.MIB.SharedProfiles
@@ -133,60 +133,40 @@ defmodule SnmpSim.Device.OidHandler do
           to_string(oid)
       end
 
-    # Check for special dynamic OIDs first - these should always use typed responses
-    cond do
-      oid_string == "1.3.6.1.2.1.1.3.0" ->
-        # sysUpTime - always dynamic
+    # Try to get value from SharedProfiles first (if available)
+    try do
+      case SharedProfiles.get_oid_value(state.device_type, oid_string, build_device_state(state)) do
+        {:ok, {type, value}} ->
+          {:ok, {type, value}}
+
+        {:ok, value} ->
+          {:ok, value}
+
+        {:error, :no_such_object} ->
+          get_dynamic_oid_value(oid_string, new_state)
+
+        {:error, :no_such_name} ->
+          # Fallback to device-specific dynamic OIDs
+          get_dynamic_oid_value(oid_string, new_state)
+
+        {:error, :end_of_mib} ->
+          {:error, :end_of_mib}
+
+        {:error, :device_type_not_found} ->
+          # Device type not loaded in SharedProfiles, fallback to dynamic OIDs
+          get_dynamic_oid_value(oid_string, new_state)
+      end
+    catch
+      :exit, {:noproc, _} ->
+        # SharedProfiles not available, use fallback directly
         get_dynamic_oid_value(oid_string, new_state)
 
-      oid_string == "1.3.6.1.2.1.1.2.0" ->
-        # sysObjectID - always use typed response
+      :exit, reason ->
+        Logger.debug(
+          "SharedProfiles unavailable (#{inspect(reason)}), using fallback for OID #{oid_string}"
+        )
+
         get_dynamic_oid_value(oid_string, new_state)
-
-      String.starts_with?(oid_string, "1.3.6.1.2.1.2.2.1.") ->
-        # Interface table OIDs - always use typed responses
-        get_dynamic_oid_value(oid_string, new_state)
-
-      true ->
-        # Try to get value from SharedProfiles first (if available)
-        try do
-          device_state = build_device_state(state)
-
-          case SharedProfiles.get_oid_value(state.device_type, oid_string, device_state) do
-            {:ok, {type, value}} ->
-              {:ok, {type, value}}
-
-            {:ok, value} ->
-              # Handle legacy format for backward compatibility
-              {:ok, value}
-
-            {:error, :no_such_object} ->
-              # Fallback to device-specific dynamic OIDs
-              get_dynamic_oid_value(oid_string, new_state)
-
-            {:error, :no_such_name} ->
-              # OID not found in SharedProfiles, fallback to dynamic OIDs
-              get_dynamic_oid_value(oid_string, new_state)
-
-            {:error, :end_of_mib} ->
-              {:error, :end_of_mib}
-
-            {:error, :device_type_not_found} ->
-              # Device type not loaded in SharedProfiles, fallback to dynamic OIDs
-              get_dynamic_oid_value(oid_string, new_state)
-          end
-        catch
-          :exit, {:noproc, _} ->
-            # SharedProfiles not available, use fallback directly
-            get_dynamic_oid_value(oid_string, new_state)
-
-          :exit, reason ->
-            Logger.debug(
-              "SharedProfiles unavailable (#{inspect(reason)}), using fallback for OID #{oid_string}"
-            )
-
-            get_dynamic_oid_value(oid_string, new_state)
-        end
     end
   end
 
@@ -308,57 +288,66 @@ defmodule SnmpSim.Device.OidHandler do
   """
   def get_next_oid_value(oid, state) do
     try do
-      device_state = build_device_state(state)
-
-      case SharedProfiles.get_next_oid(oid, device_state) do
+      Logger.debug("get_next_oid_value: device_type=#{inspect(state.device_type)}, oid=#{inspect(oid)}")
+      case SharedProfiles.get_next_oid(state.device_type, oid) do
         {:ok, next_oid} ->
+          Logger.debug("SharedProfiles.get_next_oid returned: #{inspect(next_oid)}")
           # Get the value for the next OID
-          case SharedProfiles.get_oid_value(state.device_type, next_oid, device_state) do
+          case SharedProfiles.get_oid_value(state.device_type, next_oid, build_device_state(state)) do
             {:ok, {type, value}} ->
               case {next_oid, type, value} do
                 {_next_oid, :end_of_mib_view, {:end_of_mib_view, nil}} ->
                   {:error, :end_of_mib_view}
 
-                {next_oid, _type, value} ->
+                {next_oid, type, value} ->
+                  # CRITICAL FIX: Return the exact OID from SharedProfiles without any transformation
                   {:ok, {oid_to_string(next_oid), type, value}}
               end
 
             {:ok, value} ->
               # Handle legacy format for backward compatibility
+              # CRITICAL FIX: Return the exact OID from SharedProfiles without any transformation
               {:ok, {oid_to_string(next_oid), :unknown, value}}
 
             {:error, :end_of_mib} ->
               {:error, :end_of_mib_view}
 
             {:error, :device_type_not_found} ->
+              # Only use fallback if SharedProfiles doesn't have the device type
               case get_fallback_next_oid(oid, state) do
                 {_next_oid, :end_of_mib_view, {:end_of_mib_view, nil}} -> {:error, :end_of_mib_view}
                 {next_oid, type, value} -> {:ok, {next_oid, type, value}}
               end
 
+            {:error, :no_such_name} ->
+              # OID doesn't exist in walk file - signal end of MIB instead of using fallback
+              Logger.debug("OID #{next_oid} not found in walk file - signaling end of MIB")
+              {:error, :end_of_mib_view}
+
             {:error, _reason} ->
-              case get_fallback_next_oid(oid, state) do
-                {_next_oid, :end_of_mib_view, {:end_of_mib_view, nil}} -> {:error, :end_of_mib_view}
-                {next_oid, type, value} -> {:ok, {next_oid, type, value}}
-              end
+              # For other errors, signal end of MIB instead of using fallback
+              Logger.debug("Error getting value for OID #{next_oid} - signaling end of MIB")
+              {:error, :end_of_mib_view}
           end
         :end_of_mib ->
+          Logger.debug("SharedProfiles.get_next_oid returned: :end_of_mib")
           {:error, :end_of_mib_view}
 
         {:error, :end_of_mib} ->
+          Logger.debug("SharedProfiles.get_next_oid returned: {:error, :end_of_mib}")
           {:error, :end_of_mib_view}
 
         {:error, :device_type_not_found} ->
+          Logger.debug("SharedProfiles.get_next_oid returned: {:error, :device_type_not_found}")
           case get_fallback_next_oid(oid, state) do
             {_next_oid, :end_of_mib_view, {:end_of_mib_view, nil}} -> {:error, :end_of_mib_view}
             {next_oid, type, value} -> {:ok, {next_oid, type, value}}
           end
 
-        {:error, _reason} ->
-          case get_fallback_next_oid(oid, state) do
-            {_next_oid, :end_of_mib_view, {:end_of_mib_view, nil}} -> {:error, :end_of_mib_view}
-            {next_oid, type, value} -> {:ok, {next_oid, type, value}}
-          end
+        {:error, reason} ->
+          Logger.debug("SharedProfiles.get_next_oid returned: {:error, #{inspect(reason)}}")
+          # Signal end of MIB instead of using fallback for unknown errors
+          {:error, :end_of_mib_view}
       end
     catch
       :exit, {:noproc, _} ->
@@ -405,9 +394,7 @@ defmodule SnmpSim.Device.OidHandler do
   """
   def get_bulk_oid_values(oid, count, state) do
     try do
-      device_state = build_device_state(state)
-
-      case SharedProfiles.get_bulk_oids(oid, count, device_state) do
+      case SharedProfiles.get_bulk_oids(state.device_type, oid, count) do
         {:ok, oid_values} -> {:ok, oid_values}
         {:error, _reason} -> {:ok, get_fallback_bulk_oids(oid, count, state)}
       end
@@ -446,19 +433,15 @@ defmodule SnmpSim.Device.OidHandler do
   """
   def walk_oid_values(oid, state) do
     # Simple walk implementation - get next OIDs until end of MIB or subtree
-    walk_oid_recursive(oid, state, [])
+    walk_oid_recursive(oid, oid, state, [])
   end
 
-  def walk_oid_recursive(oid, state, acc) when length(acc) < 100 do
+  def walk_oid_recursive(oid, root_oid, state, acc) when length(acc) < 100 do
     case get_next_oid_value(oid, state) do
       {:ok, {next_oid, _type, value}} ->
-        # Convert both OIDs to strings for comparison
-        oid_str = oid_to_string(oid)
-        next_oid_str = oid_to_string(next_oid)
-
-        # Check if still in the same subtree
-        if String.starts_with?(next_oid_str, oid_str) do
-          walk_oid_recursive(next_oid_str, state, [{next_oid_str, value} | acc])
+        # Check if next_oid is still within the requested subtree
+        if oid_within_subtree?(next_oid, root_oid) do
+          walk_oid_recursive(next_oid, root_oid, state, [{next_oid, value} | acc])
         else
           {:ok, Enum.reverse(acc)}
         end
@@ -471,7 +454,7 @@ defmodule SnmpSim.Device.OidHandler do
     end
   end
 
-  def walk_oid_recursive(_oid, _state, acc) do
+  def walk_oid_recursive(_oid, _root_oid, _state, acc) do
     # Limit recursion depth to prevent infinite loops
     {:ok, Enum.reverse(acc)}
   end
@@ -481,98 +464,58 @@ defmodule SnmpSim.Device.OidHandler do
 
   ## Parameters
   - `oid` - Starting OID as list of integers
-  - `state` - Device state
+  - `_state` - Device state (unused)
 
   ## Returns
   - `{next_oid, type, value}` - Next OID with its type and value
   """
   def get_fallback_next_oid(oid, state) do
-    # Convert OID to string format for pattern matching
-    oid_string =
-      case oid do
-        oid when is_list(oid) -> oid_to_string(oid)
-        oid when is_binary(oid) -> oid
-        _ -> to_string(oid)
-      end
-
-    Logger.debug(
-      "get_fallback_next_oid called with OID: #{inspect(oid)} -> string: #{oid_string}"
-    )
-
-    result =
-      case oid_string do
-        "1.3.6.1.2.1.1.1.0" ->
-          {"1.3.6.1.2.1.1.2.0", :object_identifier, "1.3.6.1.4.1.4491.2.4.1"}
-
-        "1.3.6.1.2.1.1.2.0" ->
-          {"1.3.6.1.2.1.1.3.0", :timeticks, calculate_uptime_ticks(state)}
-
-        "1.3.6.1.2.1.1.3.0" ->
-          {"1.3.6.1.2.1.1.4.0", :octet_string, "admin@example.com"}
-
-        "1.3.6.1.2.1.1.4.0" ->
-          device_name = state.device_id || "device_#{state.port}"
-          {"1.3.6.1.2.1.1.5.0", :octet_string, device_name}
-
-        "1.3.6.1.2.1.1.5.0" ->
-          {"1.3.6.1.2.1.1.6.0", :octet_string, "Customer Premises"}
-
-        "1.3.6.1.2.1.1.6.0" ->
-          {"1.3.6.1.2.1.1.7.0", :integer, 2}
-
-        "1.3.6.1.2.1.2.1.0" ->
-          {"1.3.6.1.2.1.2.2.1.1.1", :integer, 1}
-
-        "1.3.6.1.2.1.2.2.1.1" ->
-          {"1.3.6.1.2.1.2.2.1.1.1", :integer, 1}
-
-        "1.3.6.1.2.1.2.2.1.1.1" ->
-          {"1.3.6.1.2.1.2.2.1.1.2", :integer, 2}
-
-        "1.3.6.1.2.1.2.2.1.2.1" ->
-          {"1.3.6.1.2.1.2.2.1.2.1", :octet_string, get_interface_description(state)}
-
-        "1.3.6.1.2.1.2.2.1.3.1" ->
-          {"1.3.6.1.2.1.2.2.1.3.1", :integer, 6}
-
-        "1.3.6.1.2.1.2.2.1.4.1" ->
-          {"1.3.6.1.2.1.2.2.1.4.1", :gauge32, 100_000_000}
-
-        # Handle various starting points for SNMP walk - all redirect to first system OID
-        oid_string
-        when oid_string in [
-               "1.3.6.1",
-               "1.3.6",
-               "1.3",
-               "1",
-               "1.3.6.1.2",
-               "1.3.6.1.2.1",
-               "1.3.6.1.2.1.1"
-             ] ->
-          # Starting from various root points - go to first system OID
-          device_type_str =
-            case state.device_type do
-              :cable_modem -> "Motorola SB6141 DOCSIS 3.0 Cable Modem"
-              :cmts -> "Cisco CMTS Cable Modem Termination System"
-              :router -> "Cisco Router"
-              _ -> "SNMP Simulator Device"
-            end
-
-          {"1.3.6.1.2.1.1.1.0", :octet_string, device_type_str}
-
-        _ ->
-          # For non-existent roots, return the special end of MIB value
-          oid_str =
-            case oid do
-              oid when is_list(oid) -> oid_to_string(oid)
-              oid when is_binary(oid) -> oid
-              _ -> to_string(oid)
-            end
-
-          {oid_str, :end_of_mib_view, {:end_of_mib_view, nil}}
-      end
-
-    result
+    # Convert OID to string if it's a list
+    oid_string = case oid do
+      oid when is_list(oid) -> oid_to_string(oid)
+      oid when is_binary(oid) -> oid
+    end
+    
+    Logger.debug("Fallback next OID for #{oid_string}")
+    
+    # Handle common SNMP root OIDs and return appropriate next OIDs
+    case oid_string do
+      # MIB-2 root progression
+      "1.3.6.1.2.1" -> {"1.3.6.1.2.1.1.1.0", :octet_string, "Motorola SB6141 DOCSIS 3.0 Cable Modem"}
+      "1.3.6.1.2.1.1" -> {"1.3.6.1.2.1.1.1.0", :octet_string, "Motorola SB6141 DOCSIS 3.0 Cable Modem"}
+      "1.3.6.1.2.1.1.1.0" -> {"1.3.6.1.2.1.1.2.0", :object_identifier, "1.3.6.1.4.1.4491.2.4.1"}
+      "1.3.6.1.2.1.1.2.0" -> {"1.3.6.1.2.1.1.3.0", :timeticks, 123456}
+      "1.3.6.1.2.1.1.3.0" -> {"1.3.6.1.2.1.1.4.0", :octet_string, "System Administrator"}
+      "1.3.6.1.2.1.1.4.0" -> {"1.3.6.1.2.1.1.5.0", :octet_string, "cable-modem0"}
+      "1.3.6.1.2.1.1.5.0" -> {"1.3.6.1.2.1.1.6.0", :octet_string, "Home Office"}
+      "1.3.6.1.2.1.1.6.0" -> {"1.3.6.1.2.1.1.7.0", :integer, 72}
+      "1.3.6.1.2.1.1.7.0" -> {"1.3.6.1.2.1.2.1.0", :integer, 2}
+      
+      # Interface table progression  
+      "1.3.6.1.2.1.2" -> {"1.3.6.1.2.1.2.1.0", :integer, 2}
+      "1.3.6.1.2.1.2.1.0" -> {"1.3.6.1.2.1.2.2.1.1.1", :integer, 1}
+      "1.3.6.1.2.1.2.2.1.1.1" -> {"1.3.6.1.2.1.2.2.1.1.2", :integer, 2}
+      "1.3.6.1.2.1.2.2.1.1.2" -> {"1.3.6.1.2.1.2.2.1.1.2", :end_of_mib_view, {:end_of_mib_view, nil}}
+      "1.3.6.1.2.1.2.2.1.2.1" -> {"1.3.6.1.2.1.2.2.1.2.2", :octet_string, "Loopback Interface"}
+      "1.3.6.1.2.1.2.2.1.2.2" -> {"1.3.6.1.2.1.2.2.1.3.1", :integer, 6}
+      
+      # Very broad roots
+      "1" -> {"1.3.6.1.2.1.1.1.0", :octet_string, "Motorola SB6141 DOCSIS 3.0 Cable Modem"}
+      "1.3" -> {"1.3.6.1.2.1.1.1.0", :octet_string, "Motorola SB6141 DOCSIS 3.0 Cable Modem"}
+      "1.3.6" -> {"1.3.6.1.2.1.1.1.0", :octet_string, "Motorola SB6141 DOCSIS 3.0 Cable Modem"}
+      "1.3.6.1" -> {"1.3.6.1.2.1.1.1.0", :octet_string, "Motorola SB6141 DOCSIS 3.0 Cable Modem"}
+      
+      # Default: try to get value from device state or return end of MIB
+      _ ->
+        case handle_interface_oid(oid_string, state) do
+          {:ok, value} when is_integer(value) -> {oid_string, :integer, value}
+          {:ok, value} when is_binary(value) -> {oid_string, :octet_string, value}
+          {:ok, {:counter32, value}} -> {oid_string, :counter32, value}
+          {:ok, {:gauge32, value}} -> {oid_string, :gauge32, value}
+          {:ok, value} -> {oid_string, :octet_string, "#{value}"}
+          {:error, _} -> {oid_string, :end_of_mib_view, {:end_of_mib_view, nil}}
+        end
+    end
   end
 
   @doc """
@@ -587,29 +530,24 @@ defmodule SnmpSim.Device.OidHandler do
   - List of `{oid, type, value}` tuples
   """
   def get_fallback_bulk_oids(start_oid, max_repetitions, state) do
-    # Simple fallback that generates a few basic interface OIDs
-    case start_oid do
-      "1.3.6.1.2.1.2.2.1.1" ->
-        # Generate interface indices
-        for i <- 1..min(max_repetitions, 3) do
-          {"1.3.6.1.2.1.2.2.1.1.#{i}", :integer, i}
-        end
-
-      "1.3.6.1.2.1.2.2.1.10" ->
-        # Generate interface octet counters
-        for i <- 1..min(max_repetitions, 3) do
-          {"1.3.6.1.2.1.2.2.1.10.#{i}", :counter32, i * 1000}
-        end
-
-      _ ->
-        # For other OIDs, iterate through get_fallback_next_oid to get bulk results
-        get_bulk_oids_iteratively(start_oid, max_repetitions, state, [])
+    # Convert OID to string if it's a list
+    start_oid_string = case start_oid do
+      oid when is_list(oid) -> oid_to_string(oid)
+      oid when is_binary(oid) -> oid
     end
+    
+    Logger.debug("Fallback bulk OIDs for #{start_oid_string}, max_repetitions: #{max_repetitions}")
+    
+    # Collect bulk OIDs iteratively
+    get_bulk_oids_iteratively(start_oid_string, max_repetitions, state, [])
   end
 
-  # Helper function to iteratively get bulk OIDs
-  defp get_bulk_oids_iteratively(_current_oid, 0, _state, acc), do: Enum.reverse(acc)
-  
+  # Helper function to iteratively collect bulk OIDs
+  defp get_bulk_oids_iteratively(_current_oid, 0, _state, acc) do
+    # Reached max repetitions, return accumulated results
+    Enum.reverse(acc)
+  end
+
   defp get_bulk_oids_iteratively(current_oid, remaining_count, state, acc) do
     case get_fallback_next_oid(current_oid, state) do
       {next_oid, :end_of_mib_view, value} ->
@@ -994,7 +932,11 @@ defmodule SnmpSim.Device.OidHandler do
     # Add some accumulated variance
     # 5% base variance
     base_variance = div(total_increment, 20)
-    variance = :rand.uniform(base_variance * 2) - base_variance
+    variance = if base_variance > 0 do
+      :rand.uniform(base_variance * 2) - base_variance
+    else
+      0
+    end
 
     max(0, total_increment + variance)
   end
@@ -1041,7 +983,11 @@ defmodule SnmpSim.Device.OidHandler do
     # Add some accumulated variance
     # ~7% variance
     base_variance = div(total_packets, 15)
-    variance = :rand.uniform(base_variance * 2) - base_variance
+    variance = if base_variance > 0 do
+      :rand.uniform(base_variance * 2) - base_variance
+    else
+      0
+    end
 
     max(0, total_packets + variance)
   end
@@ -1409,5 +1355,20 @@ defmodule SnmpSim.Device.OidHandler do
     # Build correlation factors for related OIDs
     # This could be expanded to track actual relationships
     %{}
+  end
+
+  @doc """
+  Checks if an OID is within the requested subtree.
+
+  ## Parameters
+  - `oid` - OID to check
+  - `root_oid` - Root OID of the subtree
+
+  ## Returns
+  - `true` if OID is within the subtree, `false` otherwise
+  """
+  def oid_within_subtree?(oid, root_oid) do
+    oid_prefix = String.slice(oid, 0, String.length(root_oid))
+    oid_prefix == root_oid
   end
 end
