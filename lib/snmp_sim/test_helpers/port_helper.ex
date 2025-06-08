@@ -17,8 +17,8 @@ defmodule SnmpSim.TestHelpers.PortHelper do
         port
 
       {:error, _reason} ->
-        # Fallback to server port range (54,000-59,999)
-        54_000 + :rand.uniform(6_000)
+        # Fallback to reduced server port range (30,040-30,049)
+        30_040 + :rand.uniform(10) - 1
     end
   end
 
@@ -33,9 +33,9 @@ defmodule SnmpSim.TestHelpers.PortHelper do
         start_port..end_port
 
       {:error, _reason} ->
-        # Fallback to server port range (54,000-59,999) with enough space
-        available_space = 6_000 - count
-        start_port = 54_000 + :rand.uniform(max(1, available_space))
+        # Fallback to reduced port range (30,000-30,049) with enough space
+        available_space = 50 - count
+        start_port = 30_000 + :rand.uniform(max(1, available_space))
         start_port..(start_port + count - 1)
     end
   end

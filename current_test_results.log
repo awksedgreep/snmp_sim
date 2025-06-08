@@ -1,0 +1,959 @@
+[warning] Compiling obsolete MIB "IPV6-TC"... This may not work. Please see RFC 8096 at https://tools.ietf.org/html/rfc8096 for details
+IPV6-TC.mib: 5: TEXTUAL-CONVENTION is only allowed in SNMPv2.
+IPV6-TC.mib: 8: syntax error before: 'TEXTUAL-CONVENTION'
+UCD-SNMP-MIB.mib: 778: Number of columns differs from SEQUENCE definition (object:dskTotalLow).
+UCD-SNMP-MIB.mib: 787: Number of columns differs from SEQUENCE definition (object:dskTotalHigh).
+UCD-SNMP-MIB.mib: 796: Number of columns differs from SEQUENCE definition (object:dskAvailLow).
+UCD-SNMP-MIB.mib: 805: Number of columns differs from SEQUENCE definition (object:dskAvailHigh).
+UCD-SNMP-MIB.mib: 814: Number of columns differs from SEQUENCE definition (object:dskUsedLow).
+UCD-SNMP-MIB.mib: 823: Number of columns differs from SEQUENCE definition (object:dskUsedHigh).
+UCD-SNMP-MIB.mib: 850: Number of columns differs from SEQUENCE definition (object:laTable).
+UCD-SNMP-MIB.mib: 858: Number of columns differs from SEQUENCE definition (object:laEntry).
+UCD-SNMP-MIB.mib: 867: Corrupt table definition.
+UCD-SNMP-MIB.mib: 878: OBJECT IDENTIFIER [laIndex] defined in terms of undefined parent object. Parent: 'laEntry'.(Sub-indexes: [1].)
+UCD-SNMP-MIB.mib: 886: OBJECT IDENTIFIER [laNames] defined in terms of undefined parent object. Parent: 'laEntry'.(Sub-indexes: [2].)
+UCD-SNMP-MIB.mib: 894: OBJECT IDENTIFIER [laLoad] defined in terms of undefined parent object. Parent: 'laEntry'.(Sub-indexes: [3].)
+UCD-SNMP-MIB.mib: 902: OBJECT IDENTIFIER [laConfig] defined in terms of undefined parent object. Parent: 'laEntry'.(Sub-indexes: [4].)
+UCD-SNMP-MIB.mib: 912: OBJECT IDENTIFIER [laLoadInt] defined in terms of undefined parent object. Parent: 'laEntry'.(Sub-indexes: [5].)
+UCD-SNMP-MIB.mib: 923: OBJECT IDENTIFIER [laLoadFloat] defined in terms of undefined parent object. Parent: 'laEntry'.(Sub-indexes: [6].)
+UCD-SNMP-MIB.mib: 932: OBJECT IDENTIFIER [laErrorFlag] defined in terms of undefined parent object. Parent: 'laEntry'.(Sub-indexes: [100].)
+UCD-SNMP-MIB.mib: 942: OBJECT IDENTIFIER [laErrMessage] defined in terms of undefined parent object. Parent: 'laEntry'.(Sub-indexes: [101].)
+UCD-SNMP-MIB.mib: Multiple used object with OBJECT IDENTIFIER '[99,99]'. Used in 'laIndex' and 'laNames'.
+[warning] Compiling obsolete MIB "IPV6-MIB"... This may not work. Please see RFC 8096 at https://tools.ietf.org/html/rfc8096 for details
+IPV6-MIB.mib: 13: Could not import [{type,'Ipv6IfIndex'},
+                                    {type,'Ipv6Address'},
+                                    {type,'Ipv6AddressPrefix'},
+                                    {type,'Ipv6AddressIfIdentifier'},
+                                    {type,'Ipv6IfIndexOrZero'}] from mib IPV6-TC.bin. File not found. Check that the MIB to be IMPORTED is compiled and present in the import path.
+[warning] Compiling obsolete MIB "IPV6-TCP-MIB"... This may not work. Please see RFC 8096 at https://tools.ietf.org/html/rfc8096 for details
+IPV6-TCP-MIB.mib: 7: Could not import [{type,'Ipv6Address'},
+                                       {type,'Ipv6IfIndexOrZero'}] from mib IPV6-TC.bin. File not found. Check that the MIB to be IMPORTED is compiled and present in the import path.
+[warning] Compiling obsolete MIB "IPV6-UDP-MIB"... This may not work. Please see RFC 8096 at https://tools.ietf.org/html/rfc8096 for details
+IPV6-UDP-MIB.mib: 7: Could not import [{type,'Ipv6Address'},
+                                       {type,'Ipv6IfIndexOrZero'}] from mib IPV6-TC.bin. File not found. Check that the MIB to be IMPORTED is compiled and present in the import path.
+UCD-DEMO-MIB.mib: 5: Could not import [{node,ucdavis}] from mib UCD-SNMP-MIB.bin. File not found. Check that the MIB to be IMPORTED is compiled and present in the import path.
+UCD-DISKIO-MIB.mib: 17: Could not import [{node,ucdExperimental}] from mib UCD-SNMP-MIB.bin. File not found. Check that the MIB to be IMPORTED is compiled and present in the import path.
+UCD-DLMOD-MIB.mib: 11: Could not import [{node,ucdExperimental}] from mib UCD-SNMP-MIB.bin. File not found. Check that the MIB to be IMPORTED is compiled and present in the import path.
+UCD-IPFWACC-MIB.mib: 9: Could not import [{node,ucdExperimental}] from mib UCD-SNMP-MIB.bin. File not found. Check that the MIB to be IMPORTED is compiled and present in the import path.
+DISMAN-EVENT-MIB.mib: 548: Corrupt table definition.
+DISMAN-EVENT-MIB.mib: Table 'mteTriggerDeltaTable' must have at least one accessible column.
+[warning] Compiling obsolete MIB "IPV6-ICMP-MIB"... This may not work. Please see RFC 8096 at https://tools.ietf.org/html/rfc8096 for details
+IPV6-ICMP-MIB.mib: 7: Could not import [{node,ipv6IfEntry}] from mib IPV6-MIB.bin. File not found. Check that the MIB to be IMPORTED is compiled and present in the import path.
+    warning: using single-quoted strings to represent charlists is deprecated.
+    Use ~c"" if you indeed want a charlist or use "" instead.
+    You may run "mix format --migrate" to change all single-quoted
+    strings to use the ~c sigil and fix this warning.
+    \x{2502}
+ 20 \x{2502}   {:config, [{:dir, '/tmp'}, {:log_type, :none}]},
+    \x{2502}                     ~
+    \x{2502}
+    \x{2514}\x{2500} test/test_helper.exs:20:21
+
+    warning: using single-quoted strings to represent charlists is deprecated.
+    Use ~c"" if you indeed want a charlist or use "" instead.
+    You may run "mix format --migrate" to change all single-quoted
+    strings to use the ~c sigil and fix this warning.
+    \x{2502}
+ 30 \x{2502}   {:config, [{:dir, '/tmp'}, {:log_type, :none}]},
+    \x{2502}                     ~
+    \x{2502}
+    \x{2514}\x{2500} test/test_helper.exs:30:21
+
+Running ExUnit with seed: 553274, max_cases: 16
+Excluding tags: [:shell_integration, :slow, :erlang, :optional, :snmp_ex_integration]
+Including tags: [:unit]
+
+    warning: variable "profile" is unused (if the variable is not meant to be used, prefix it with an underscore)
+    \x{2502}
+ 93 \x{2502}       {:ok, profile} =
+    \x{2502}             ~~~~~~~
+    \x{2502}
+    \x{2514}\x{2500} test/snmp_sim_phase2_integration_test.exs:93:13: SnmpSimPhase2IntegrationTest."test Enhanced Behavior Integration device starts successfully with enhanced behaviors"/1
+
+     warning: variable "profile" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 129 \x{2502}       {:ok, profile} =
+     \x{2502}             ~~~~~~~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim_phase2_integration_test.exs:129:13: SnmpSimPhase2IntegrationTest."test Enhanced Behavior Integration applies preset behaviors correctly"/1
+
+     warning: variable "expected_factor" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 285 \x{2502}       Enum.each(results, fn {hour, daily_factor, weekly_factor, value, expected_factor} ->
+     \x{2502}                                                                        ~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim_phase5_integration_test.exs:285:72: SnmpSim.Phase5IntegrationTest."test Phase 5 Realistic Value Simulation Integration time patterns integration across daily cycle"/1
+
+     warning: variable "profile" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 289 \x{2502}     {:ok, profile} = ProfileLoader.load_profile(device_type, source, behaviors: behaviors)
+     \x{2502}           ~~~~~~~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim_phase2_integration_test.exs:289:11: SnmpSimPhase2IntegrationTest.start_manual_devices/2
+
+     warning: variable "startup_result" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 232 \x{2502}       assert {:ok, startup_result} = result
+     \x{2502}                    ~~~~~~~~~~~~~~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim/multi_device_startup_test.exs:232:20: SnmpSim.MultiDeviceStartupTest."test pre-warming functionality pre-warms devices for immediate availability"/1
+
+     warning: variable "port_range" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 297 \x{2502}     test "console progress callback works", %{port_range: port_range} do
+     \x{2502}                                                           ~~~~~~~~~~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim/multi_device_startup_test.exs:297:59: SnmpSim.MultiDeviceStartupTest."test startup status and monitoring console progress callback works"/1
+
+     warning: variable "i" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 419 \x{2502}         for i <- 1..3 do
+     \x{2502}             ~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim/multi_device_startup_test.exs:419:13: SnmpSim.MultiDeviceStartupTest."test concurrent startup operations handles concurrent startup requests"/1
+
+     warning: variable "walked_oids" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 288 \x{2502}       walked_oids = []
+     \x{2502}       ~~~~~~~~~~~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim_snmp_ex_integration_test.exs:288:7: SnmpSimSnmpExIntegrationTest."test Integration with snmp_ex Library snmp_ex handles lexicographic ordering correctly"/1
+
+     warning: variable "version" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 510 \x{2502}       for {version, test_agent} <- [v1: v1_agent, v2c: v2c_agent] do
+     \x{2502}            ~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim_snmp_ex_integration_test.exs:510:12: SnmpSimSnmpExIntegrationTest."test Protocol Compliance and Edge Cases snmp_ex handles SNMPv1 vs v2c correctly"/1
+
+    warning: variable "profile" is unused (if the variable is not meant to be used, prefix it with an underscore)
+    \x{2502}
+ 23 \x{2502}       {:ok, profile} =
+    \x{2502}             ~~~~~~~
+    \x{2502}
+    \x{2514}\x{2500} test/snmp_sim_shell_integration_test.exs:23:13: SnmpSimShellIntegrationTest.__ex_unit_setup_0_0/1
+
+     warning: variable "profile" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 219 \x{2502}       {:ok, profile} =
+     \x{2502}             ~~~~~~~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim_shell_integration_test.exs:219:13: SnmpSimShellIntegrationTest.__ex_unit_setup_1_0/1
+
+    warning: unused alias Server
+    \x{2502}
+ 12 \x{2502}   alias SnmpSim.Core.Server
+    \x{2502}   ~
+    \x{2502}
+    \x{2514}\x{2500} test/snmp_sim/snmp_regression_test.exs:12:3
+
+    warning: unused alias ProfileLoader
+    \x{2502}
+ 14 \x{2502}   alias SnmpSim.ProfileLoader
+    \x{2502}   ~
+    \x{2502}
+    \x{2514}\x{2500} test/snmp_sim_snmp_ex_integration_test.exs:14:3
+
+    warning: variable "profile" is unused (if the variable is not meant to be used, prefix it with an underscore)
+    \x{2502}
+ 30 \x{2502}       {:ok, profile} =
+    \x{2502}             ~~~~~~~
+    \x{2502}
+    \x{2514}\x{2500} test/snmp_sim_erlang_snmp_integration_test.exs:30:13: SnmpSimErlangSnmpIntegrationTest.__ex_unit_setup_0_0/1
+
+     warning: variable "walked_oids" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 185 \x{2502}       walked_oids = []
+     \x{2502}       ~~~~~~~~~~~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim_erlang_snmp_integration_test.exs:185:7: SnmpSimErlangSnmpIntegrationTest."test Integration with Erlang SNMP Manager Erlang SNMP handles lexicographic ordering correctly"/1
+
+     warning: variable "profile" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 471 \x{2502}       {:ok, profile} =
+     \x{2502}             ~~~~~~~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim_erlang_snmp_integration_test.exs:471:13: SnmpSimErlangSnmpIntegrationTest.__ex_unit_setup_1_0/1
+
+    warning: unused alias PortHelper
+    \x{2502}
+  5 \x{2502}   alias SnmpSim.TestHelpers.PortHelper
+    \x{2502}   ~
+    \x{2502}
+    \x{2514}\x{2500} test/snmp_sim_phase5_integration_test.exs:5:3
+
+.    warning: variable "profile" is unused (if the variable is not meant to be used, prefix it with an underscore)
+    \x{2502}
+ 49 \x{2502}       {:ok, profile} =
+    \x{2502}             ~~~~~~~
+    \x{2502}
+    \x{2514}\x{2500} test/snmp_sim_integration_test.exs:49:13: SnmpSimIntegrationTest."test End-to-End Device Simulation loads profile and starts device successfully"/1
+
+    warning: variable "profile" is unused (if the variable is not meant to be used, prefix it with an underscore)
+    \x{2502}
+ 86 \x{2502}       {:ok, profile} =
+    \x{2502}             ~~~~~~~
+    \x{2502}
+    \x{2514}\x{2500} test/snmp_sim_integration_test.exs:86:13: SnmpSimIntegrationTest."test End-to-End Device Simulation handles GETNEXT operations correctly"/1
+
+     warning: variable "profile" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 120 \x{2502}       {:ok, profile} =
+     \x{2502}             ~~~~~~~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim_integration_test.exs:120:13: SnmpSimIntegrationTest."test End-to-End Device Simulation responds with proper error for non-existent OIDs"/1
+
+.     warning: variable "profile" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 189 \x{2502}       {:ok, profile} =
+     \x{2502}             ~~~~~~~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim_integration_test.exs:189:13: SnmpSimIntegrationTest."test End-to-End Device Simulation device info and statistics work correctly"/1
+
+     warning: variable "profile" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 222 \x{2502}       {:ok, profile} =
+     \x{2502}             ~~~~~~~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim_integration_test.exs:222:13: SnmpSimIntegrationTest."test End-to-End Device Simulation device reboot functionality works"/1
+
+     warning: variable "i" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 315 \x{2502}         for i <- 1..20 do
+     \x{2502}             ~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim_integration_test.exs:315:13: SnmpSimIntegrationTest."test Performance and Reliability handles multiple concurrent requests per device"/1
+
+.     warning: variable "profile" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 294 \x{2502}       {:ok, profile} =
+     \x{2502}             ~~~~~~~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim_integration_test.exs:294:13: SnmpSimIntegrationTest."test Performance and Reliability handles multiple concurrent requests per device"/1
+
+     warning: the underscored variable "_i" is used after being set. A leading underscore indicates that the value of the variable should be ignored. If this is intended please rename the variable to remove the underscore
+     \x{2502}
+ 364 \x{2502}         if rem(_i, 10) == 0, do: Process.sleep(10)
+     \x{2502}                ~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim_integration_test.exs:364:16: SnmpSimIntegrationTest."test Performance and Reliability device memory usage remains stable"/1
+
+     warning: variable "profile" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 337 \x{2502}       {:ok, profile} =
+     \x{2502}             ~~~~~~~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim_integration_test.exs:337:13: SnmpSimIntegrationTest."test Performance and Reliability device memory usage remains stable"/1
+
+.     warning: variable "profile" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 422 \x{2502}       {:ok, profile} =
+     \x{2502}             ~~~~~~~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim_integration_test.exs:422:13: SnmpSimIntegrationTest."test Error Handling and Edge Cases handles invalid community strings"/1
+
+     warning: variable "profile" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 454 \x{2502}       {:ok, profile} =
+     \x{2502}             ~~~~~~~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim_integration_test.exs:454:13: SnmpSimIntegrationTest."test Error Handling and Edge Cases handles port conflicts gracefully"/1
+
+.     warning: variable "t1" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 236 \x{2502}   defp compare_oid_parts([h1 | t1], [h2 | t2]) when h1 < h2, do: true
+     \x{2502}                                ~~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim/profile_loader_test.exs:236:32: SnmpSim.ProfileLoaderTest.compare_oid_parts/2
+
+     warning: variable "t2" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 236 \x{2502}   defp compare_oid_parts([h1 | t1], [h2 | t2]) when h1 < h2, do: true
+     \x{2502}                                           ~~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim/profile_loader_test.exs:236:43: SnmpSim.ProfileLoaderTest.compare_oid_parts/2
+
+     warning: variable "t1" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 237 \x{2502}   defp compare_oid_parts([h1 | t1], [h2 | t2]) when h1 > h2, do: false
+     \x{2502}                                ~~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim/profile_loader_test.exs:237:32: SnmpSim.ProfileLoaderTest.compare_oid_parts/2
+
+     warning: variable "t2" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 237 \x{2502}   defp compare_oid_parts([h1 | t1], [h2 | t2]) when h1 > h2, do: false
+     \x{2502}                                           ~~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim/profile_loader_test.exs:237:43: SnmpSim.ProfileLoaderTest.compare_oid_parts/2
+
+.    warning: unused alias Server
+    \x{2502}
+ 20 \x{2502}   alias SnmpSim.{Device, LazyDevicePool, Core.Server}
+    \x{2502}   ~
+    \x{2502}
+    \x{2514}\x{2500} test/snmp_sim_stability_test.exs:20:3
+
+..     warning: variable "other" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 200 \x{2502}           {:error, other} ->
+     \x{2502}                    ~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim/snmp_operations_test.exs:200:20: SnmpSim.SNMPOperationsTest."test Device SNMP operations non-existent OIDs return proper SNMP error types"/1
+
+....    warning: variable "profile" is unused (if the variable is not meant to be used, prefix it with an underscore)
+    \x{2502}
+ 29 \x{2502}       {:ok, profile} =
+    \x{2502}             ~~~~~~~
+    \x{2502}
+    \x{2514}\x{2500} test/snmp_sim_erlang_snmp_integration_simple_test.exs:29:13: SnmpSimErlangSnmpIntegrationSimpleTest.__ex_unit_setup_0_0/1
+
+    warning: variable "target_name" is unused (if the variable is not meant to be used, prefix it with an underscore)
+    \x{2502}
+ 50 \x{2502}       target_name = "target_#{port}_#{:rand.uniform(100_000)}"
+    \x{2502}       ~~~~~~~~~~~
+    \x{2502}
+    \x{2514}\x{2500} test/snmp_sim_erlang_snmp_integration_simple_test.exs:50:7: SnmpSimErlangSnmpIntegrationSimpleTest.__ex_unit_setup_0_0/1
+
+.    warning: variable "test_port" is unused (if the variable is not meant to be used, prefix it with an underscore)
+    \x{2502}
+ 86 \x{2502}     test "determines device type based on port range", %{test_port: test_port} do
+    \x{2502}                                                                     ~~~~~~~~~
+    \x{2502}
+    \x{2514}\x{2500} test/snmp_sim/lazy_device_pool_test.exs:86:69: SnmpSim.LazyDevicePoolTest."test device creation determines device type based on port range"/1
+
+     warning: variable "iterations" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 103 \x{2502}       iterations = 0
+     \x{2502}       ~~~~~~~~~~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim/getbulk_end_of_mib_simple_test.exs:103:7: SnmpSim.GetbulkEndOfMibSimpleTest."test Core GETBULK end-of-MIB fixes get_bulk_oids simulates complete walk without infinite loops"/1
+
+     warning: variable "value" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 204 \x{2502}       for {oid, type, value} <- bulk_oids do
+     \x{2502}                       ~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim/getbulk_end_of_mib_simple_test.exs:204:23: SnmpSim.GetbulkEndOfMibSimpleTest."test Edge cases large GETBULK requests don't cause issues"/1
+
+    warning: unused alias Server
+    \x{2502}
+ 12 \x{2502}   alias SnmpSim.Core.Server
+    \x{2502}   ~
+    \x{2502}
+    \x{2514}\x{2500} test/snmp_sim/snmp_operations_test.exs:12:3
+
+    warning: variable "iterations" is unused (if the variable is not meant to be used, prefix it with an underscore)
+    \x{2502}
+ 80 \x{2502}         iterations = 0
+    \x{2502}         ~
+    \x{2502}
+    \x{2514}\x{2500} test/snmp_sim/getbulk_regression_test.exs:80:9: SnmpSim.GetbulkRegressionTest."test GETBULK end-of-MIB regression tests get_bulk_oids simulates walk without infinite loops"/1
+
+    warning: variable "total_oids" is unused (if the variable is not meant to be used, prefix it with an underscore)
+    \x{2502}
+ 79 \x{2502}         total_oids = 0
+    \x{2502}         ~
+    \x{2502}
+    \x{2514}\x{2500} test/snmp_sim/getbulk_regression_test.exs:79:9: SnmpSim.GetbulkRegressionTest."test GETBULK end-of-MIB regression tests get_bulk_oids simulates walk without infinite loops"/1
+
+     warning: variable "last_oid" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 150 \x{2502}         last_oid = nil
+     \x{2502}         ~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim/getbulk_regression_test.exs:150:9: SnmpSim.GetbulkRegressionTest."test End-of-MIB handling GETBULK at end of MIB returns empty list"/1
+
+    warning: unused alias Device
+    \x{2502}
+  4 \x{2502}   alias SnmpSim.{LazyDevicePool, Device}
+    \x{2502}   ~
+    \x{2502}
+    \x{2514}\x{2500} test/snmp_sim/lazy_device_pool_test.exs:4:3
+
+     warning: do not use "length(bulk_oids) > 0" to check if a list is not empty since length always traverses the whole list. Prefer to pattern match on a non-empty list, such as [_ | _], or use "bulk_oids != []" as a guard
+     \x{2502}
+ 138 \x{2502}           {:ok, bulk_oids} when length(bulk_oids) > 0 ->
+     \x{2502}                                                   ~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim/getbulk_end_of_mib_test.exs:138:51
+
+     warning: the underscored variable "_last_oid" is used after being set. A leading underscore indicates that the value of the variable should be ignored. If this is intended please rename the variable to remove the underscore
+     \x{2502}
+ 141 \x{2502}             {:cont, {_last_oid, new_total}}
+     \x{2502}                      ~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim/getbulk_end_of_mib_test.exs:141:22: SnmpSim.GetbulkEndOfMibTest."test GETBULK collection fixes get_bulk_oids simulates complete walk without infinite loops"/1
+
+     warning: variable "iterations" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 133 \x{2502}       iterations = 0
+     \x{2502}       ~~~~~~~~~~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim/getbulk_end_of_mib_test.exs:133:7: SnmpSim.GetbulkEndOfMibTest."test GETBULK collection fixes get_bulk_oids simulates complete walk without infinite loops"/1
+
+     warning: variable "total_oids_collected" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 132 \x{2502}       total_oids_collected = 0
+     \x{2502}       ~~~~~~~~~~~~~~~~~~~~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim/getbulk_end_of_mib_test.exs:132:7: SnmpSim.GetbulkEndOfMibTest."test GETBULK collection fixes get_bulk_oids simulates complete walk without infinite loops"/1
+
+     warning: variable "new_visited" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 248 \x{2502}               new_visited = MapSet.put(visited_oids, returned_oid)
+     \x{2502}               ~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim/getbulk_end_of_mib_test.exs:248:15: SnmpSim.GetbulkEndOfMibTest."test SNMP protocol compliance SNMP GETNEXT progression works correctly"/1
+
+     warning: variable "device_type" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 278 \x{2502}     test "empty walk file handling", %{device_type: device_type} do
+     \x{2502}                                                     ~~~~~~~~~~~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim/getbulk_end_of_mib_test.exs:278:53: SnmpSim.GetbulkEndOfMibTest."test edge cases and regression tests empty walk file handling"/1
+
+     warning: variable "value" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 300 \x{2502}       for {oid, type, value} <- bulk_oids do
+     \x{2502}                       ~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim/getbulk_end_of_mib_test.exs:300:23: SnmpSim.GetbulkEndOfMibTest."test edge cases and regression tests large GETBULK requests don't cause issues"/1
+
+     warning: variable "cell_min" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 238 \x{2502}       {cell_min, cell_max, cell_factor} = cellular_rates
+     \x{2502}        ~~~~~~~~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim/time_patterns_test.exs:238:8: SnmpSim.TimePatternsTest."test Interface Traffic Rates returns appropriate rates for different interface types"/1
+
+     warning: variable "docsis_min" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 237 \x{2502}       {docsis_min, docsis_max, docsis_factor} = docsis_rates
+     \x{2502}        ~~~~~~~~~~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim/time_patterns_test.exs:237:8: SnmpSim.TimePatternsTest."test Interface Traffic Rates returns appropriate rates for different interface types"/1
+
+     warning: variable "eth_min" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 236 \x{2502}       {eth_min, eth_max, eth_factor} = ethernet_rates
+     \x{2502}        ~~~~~~~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim/time_patterns_test.exs:236:8: SnmpSim.TimePatternsTest."test Interface Traffic Rates returns appropriate rates for different interface types"/1
+
+    warning: unused alias Device
+    \x{2502}
+ 11 \x{2502}   alias SnmpSim.{Device, LazyDevicePool}
+    \x{2502}   ~
+    \x{2502}
+    \x{2514}\x{2500} test/snmp_sim/snmp_version_compatibility_test.exs:11:3
+
+    warning: unused alias PDU
+    \x{2502}
+ 13 \x{2502}   alias SnmpLib.PDU
+    \x{2502}   ~
+    \x{2502}
+    \x{2514}\x{2500} test/snmp_sim/snmp_version_compatibility_test.exs:13:3
+
+    warning: unused alias LazyDevicePool
+    \x{2502}
+  7 \x{2502}   alias SnmpSim.{LazyDevicePool}
+    \x{2502}   ~
+    \x{2502}
+    \x{2514}\x{2500} test/snmp_sim/error_injector_test.exs:7:3
+
+warning: 1000..999 has a default step of -1, please write 1000..999//-1 instead
+  test/snmp_sim/device_distribution_test.exs:341: SnmpSim.DeviceDistributionTest."test port assignment validation detects invalid ranges"/1
+
+    warning: variable "type" is unused (if the variable is not meant to be used, prefix it with an underscore)
+    \x{2502}
+ 93 \x{2502}       [{next_oid, type, value}] = response_pdu.varbinds
+    \x{2502}                   ~~~~
+    \x{2502}
+    \x{2514}\x{2500} test/snmp_sim/comprehensive_walk_test.exs:93:19: SnmpSim.ComprehensiveWalkTest."test Walk Functionality - All Versions walk with GETNEXT sequence - SNMPv1"/1
+
+     warning: variable "type" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 121 \x{2502}       [{next_oid, type, value}] = response_pdu.varbinds
+     \x{2502}                   ~~~~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim/comprehensive_walk_test.exs:121:19: SnmpSim.ComprehensiveWalkTest."test Walk Functionality - All Versions walk with GETNEXT sequence - SNMPv2c"/1
+
+     warning: variable "type" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 148 \x{2502}       for {oid, type, value} <- response_pdu.varbinds do
+     \x{2502}                 ~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim/comprehensive_walk_test.exs:148:17: SnmpSim.ComprehensiveWalkTest."test Walk Functionality - All Versions GETBULK operation - SNMPv2c only"/1
+
+     warning: variable "value" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 148 \x{2502}       for {oid, type, value} <- response_pdu.varbinds do
+     \x{2502}                       ~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim/comprehensive_walk_test.exs:148:23: SnmpSim.ComprehensiveWalkTest."test Walk Functionality - All Versions GETBULK operation - SNMPv2c only"/1
+
+    warning: variable "min" is unused (if the variable is not meant to be used, prefix it with an underscore)
+    \x{2502}
+ 45 \x{2502}           {:increment_counters, %{rate_range: {min, max}}} ->
+    \x{2502}                                                ~
+    \x{2502}
+    \x{2514}\x{2500} test/snmp_sim/behavior_config_test.exs:45:48: SnmpSim.BehaviorConfigTest."test Behavior Presets CMTS realistic preset has appropriate high-capacity settings"/1
+
+...    warning: variable "behavior" is unused (there is a variable with the same name in the context, use the pin operator (^) to match on it or prefix this variable with underscore if it is not meant to be used)
+    \x{2502}
+ 45 \x{2502}       assert {:ok, {:counter32, 1_234_567}, behavior} =
+    \x{2502}                                             ~~~~~~~~
+    \x{2502}
+    \x{2514}\x{2500} test/snmp_sim/oid_tree_test.exs:45:45: SnmpSim.OIDTreeTest."test OID Tree Creation and Basic Operations inserts OID with behavior information"/1
+
+     warning: variable "count" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 288 \x{2502}       count = 0
+     \x{2502}       ~~~~~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim/oid_tree_test.exs:288:7: SnmpSim.OIDTreeTest."test Performance with Large OID Trees GETNEXT traversal is efficient on large trees"/1
+
+.    warning: default values for the optional arguments in get_test_port_range/2 are never used
+    \x{2502}
+ 30 \x{2502}   defp get_test_port_range(_test_name, size \\ 100) do
+    \x{2502}        ~
+    \x{2502}
+    \x{2514}\x{2500} test/snmp_sim/performance/performance_test.exs:30:8: SnmpSim.Performance.PerformanceTest (module)
+
+     warning: function create_devices_up_to_limit/2 is unused
+     \x{2502}
+ 499 \x{2502}   defp create_devices_up_to_limit(attempt_count, start_port) do
+     \x{2502}        ~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim/performance/performance_test.exs:499:8: SnmpSim.Performance.PerformanceTest (module)
+
+............GETBULK varbinds: [
+  {[1, 3, 6, 1, 2, 1, 1, 1, 0], :octet_string,
+   "Motorola SB6141 DOCSIS 3.0 Cable Modem"}
+]
+GETBULK error_status: 0
+..............    warning: variable "i" is unused (if the variable is not meant to be used, prefix it with an underscore)
+    \x{2502}
+ 31 \x{2502}         for i <- 1..10 do
+    \x{2502}             ~
+    \x{2502}
+    \x{2514}\x{2500} test/snmp_sim/core/server_test.exs:31:13: SnmpSim.Core.ServerTest."test UDP Server handles concurrent requests without blocking"/1
+
+    warning: variable "i" is unused (if the variable is not meant to be used, prefix it with an underscore)
+    \x{2502}
+ 73 \x{2502}         for i <- 1..50 do
+    \x{2502}             ~
+    \x{2502}
+    \x{2514}\x{2500} test/snmp_sim/core/server_test.exs:73:13: SnmpSim.Core.ServerTest."test UDP Server processes 100+ requests per second"/1
+
+     warning: variable "i" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 122 \x{2502}       for i <- 1..5 do
+     \x{2502}           ~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim/core/server_test.exs:122:11: SnmpSim.Core.ServerTest."test UDP Server manages socket resources efficiently"/1
+
+.     warning: variable "i" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 270 \x{2502}       for i <- 1..5 do
+     \x{2502}           ~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim/core/server_test.exs:270:11: SnmpSim.Core.ServerTest."test Performance Monitoring tracks processing times"/1
+
+    warning: unused alias Device
+    \x{2502}
+ 15 \x{2502}   alias SnmpSim.{Device, LazyDevicePool}
+    \x{2502}   ~
+    \x{2502}
+    \x{2514}\x{2500} test/snmp_sim/comprehensive_walk_test.exs:15:3
+
+    warning: unused alias PDU
+    \x{2502}
+ 17 \x{2502}   alias SnmpLib.PDU
+    \x{2502}   ~
+    \x{2502}
+    \x{2514}\x{2500} test/snmp_sim/comprehensive_walk_test.exs:17:3
+
+....    warning: unused alias OptimizedUdpServer
+    \x{2502}
+ 12 \x{2502}   alias SnmpSim.Performance.{
+    \x{2502}   ~
+    \x{2502}
+    \x{2514}\x{2500} test/snmp_sim/performance/performance_test.exs:12:3
+
+    warning: unused alias LazyDevicePool
+    \x{2502}
+ 19 \x{2502}   alias SnmpSim.{Device, LazyDevicePool, Core.Server}
+    \x{2502}   ~
+    \x{2502}
+    \x{2514}\x{2500} test/snmp_sim_production_validation_test.exs:19:3
+
+    warning: unused alias PortHelper
+    \x{2502}
+ 20 \x{2502}   alias SnmpSim.TestHelpers.{ProductionTestHelper, PerformanceHelper, PortHelper}
+    \x{2502}   ~
+    \x{2502}
+    \x{2514}\x{2500} test/snmp_sim_production_validation_test.exs:20:3
+
+    warning: unused alias Server
+    \x{2502}
+ 19 \x{2502}   alias SnmpSim.{Device, LazyDevicePool, Core.Server}
+    \x{2502}   ~
+    \x{2502}
+    \x{2514}\x{2500} test/snmp_sim_production_validation_test.exs:19:3
+
+    warning: module attribute @test_timeout was set but never used
+    \x{2502}
+ 15 \x{2502}   @test_timeout 10_000
+    \x{2502}   ~~~~~~~~~~~~~~~~~~~~
+    \x{2502}
+    \x{2514}\x{2500} test/snmp_sim/udp_server_integration_test.exs:15: SnmpSim.UdpServerIntegrationTest (module)
+
+    warning: unused alias PDU
+    \x{2502}
+ 13 \x{2502}   alias SnmpLib.PDU
+    \x{2502}   ~
+    \x{2502}
+    \x{2514}\x{2500} test/snmp_sim/udp_server_integration_test.exs:13:3
+
+    warning: unused alias Server
+    \x{2502}
+ 11 \x{2502}   alias SnmpSim.{LazyDevicePool, Core.Server}
+    \x{2502}   ~
+    \x{2502}
+    \x{2514}\x{2500} test/snmp_sim/udp_server_integration_test.exs:11:3
+
+     warning: comparison between distinct types found:
+
+         var === :critical
+
+     given types:
+
+         dynamic(:warning) === :critical
+
+     where "var" (context Kernel) was given the type:
+
+         # type: dynamic(:warning)
+         # from: test/snmp_sim_production_validation_test.exs:329
+         var = alert_details.severity
+
+     While Elixir can compare across all types, you are comparing across types which are always disjoint, and the result is either always true or always false
+
+     typing violation found at:
+     \x{2502}
+ 329 \x{2502}       assert alert_details.severity in [:warning, :critical],
+     \x{2502}       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim_production_validation_test.exs:329: SnmpSimProductionValidationTest."test monitoring and alerting systems function correctly"/1
+
+    warning: comparison between distinct types found:
+
+        left != right
+
+    given types:
+
+        binary() != nil
+
+    where "left" (context ExUnit.Assertions) was given the type:
+
+        # type: binary()
+        # from: test/snmp_sim/mib/shared_profiles_bulk_test.exs:53
+        left = value
+
+    where "right" (context ExUnit.Assertions) was given the type:
+
+        # type: nil
+        # from: test/snmp_sim/mib/shared_profiles_bulk_test.exs:53
+        right = nil
+
+    While Elixir can compare across all types, you are comparing across types which are always disjoint, and the result is either always true or always false
+
+    typing violation found at:
+    \x{2502}
+ 53 \x{2502}       assert value != nil
+    \x{2502}                    ~
+    \x{2502}
+    \x{2514}\x{2500} test/snmp_sim/mib/shared_profiles_bulk_test.exs:53:20: SnmpSim.MIB.SharedProfilesBulkTest."test GETBULK format regression tests demonstrates proper 3-tuple format for device compatibility"/1
+
+     warning: :snmp.sync_get/5 is undefined or private
+     \x{2502}
+ 518 \x{2502}         case :snmp.sync_get("127.0.0.1", port, "public", [test_oid], 5000) do
+     \x{2502}                    ~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim/performance/performance_test.exs:518:20: SnmpSim.Performance.PerformanceTest.test_device_responsiveness/1
+     \x{2514}\x{2500} test/snmp_sim/performance/performance_test.exs:556:13: SnmpSim.Performance.PerformanceTest.test_loop/2
+     \x{2514}\x{2500} test/snmp_sim/performance/performance_test.exs:613:17: SnmpSim.Performance.PerformanceTest.warm_up_caches/1
+     \x{2514}\x{2500} test/snmp_sim/performance/performance_test.exs:627:13: SnmpSim.Performance.PerformanceTest.test_response_times/3
+     \x{2514}\x{2500} test/snmp_sim/performance/performance_test.exs:797:20: SnmpSim.Performance.PerformanceTest.generate_load_burst/2
+
+     warning: SnmpSim.TestHelpers.StabilityTestHelper.analyze_response_times/1 is undefined or private. Did you mean:
+
+           * analyze_memory_samples/1
+
+     \x{2502}
+ 178 \x{2502}       StabilityTestHelper.analyze_response_times(metrics.response_times)
+     \x{2502}                           ~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim_stability_test.exs:178:27: SnmpSimStabilityTest."test sustained load handling for 60 minutes"/1
+
+     warning: SnmpSim.TestHelpers.StabilityTestHelper.calculate_error_rate/2 is undefined or private
+     \x{2502}
+ 180 \x{2502}     error_rate = StabilityTestHelper.calculate_error_rate(metrics.errors, metrics.total_requests)
+     \x{2502}                                      ~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim_stability_test.exs:180:38: SnmpSimStabilityTest."test sustained load handling for 60 minutes"/1
+
+     warning: :snmpm.set_verbosity/1 is undefined or private
+     \x{2502}
+ 610 \x{2502}       :snmpm.set_verbosity(:silence)
+     \x{2502}              ~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim_erlang_snmp_integration_test.exs:610:14: SnmpSimErlangSnmpIntegrationTest.configure_snmp_logging/0
+
+     warning: :snmpm.set_verbosity/1 is undefined or private
+     \x{2502}
+ 225 \x{2502}       :snmpm.set_verbosity(:silence)
+     \x{2502}              ~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim_erlang_snmp_integration_simple_test.exs:225:14: SnmpSimErlangSnmpIntegrationSimpleTest.configure_snmp_logging/0
+
+     warning: :snmpm.set_verbosity/2 is undefined or private
+     \x{2502}
+ 226 \x{2502}       :snmpm.set_verbosity(:net_if, :silence)
+     \x{2502}              ~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim_erlang_snmp_integration_simple_test.exs:226:14: SnmpSimErlangSnmpIntegrationSimpleTest.configure_snmp_logging/0
+     \x{2514}\x{2500} test/snmp_sim_erlang_snmp_integration_simple_test.exs:227:14: SnmpSimErlangSnmpIntegrationSimpleTest.configure_snmp_logging/0
+     \x{2514}\x{2500} test/snmp_sim_erlang_snmp_integration_simple_test.exs:228:14: SnmpSimErlangSnmpIntegrationSimpleTest.configure_snmp_logging/0
+     \x{2514}\x{2500} test/snmp_sim_erlang_snmp_integration_simple_test.exs:229:14: SnmpSimErlangSnmpIntegrationSimpleTest.configure_snmp_logging/0
+
+     warning: :snmpm.set_verbosity/2 is undefined or private
+     \x{2502}
+ 611 \x{2502}       :snmpm.set_verbosity(:net_if, :silence)
+     \x{2502}              ~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim_erlang_snmp_integration_test.exs:611:14: SnmpSimErlangSnmpIntegrationTest.configure_snmp_logging/0
+     \x{2514}\x{2500} test/snmp_sim_erlang_snmp_integration_test.exs:612:14: SnmpSimErlangSnmpIntegrationTest.configure_snmp_logging/0
+     \x{2514}\x{2500} test/snmp_sim_erlang_snmp_integration_test.exs:613:14: SnmpSimErlangSnmpIntegrationTest.configure_snmp_logging/0
+     \x{2514}\x{2500} test/snmp_sim_erlang_snmp_integration_test.exs:614:14: SnmpSimErlangSnmpIntegrationTest.configure_snmp_logging/0
+
+     warning: :dbg.stop_clear/0 is undefined (module :dbg is not available or is yet to be defined)
+     \x{2502}
+ 233 \x{2502}       :dbg.stop_clear()
+     \x{2502}            ~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim_erlang_snmp_integration_simple_test.exs:233:12: SnmpSimErlangSnmpIntegrationSimpleTest.configure_snmp_logging/0
+
+     warning: :snmp.set_debug/1 is undefined or private
+     \x{2502}
+ 237 \x{2502}         :snmp.set_debug(false)
+     \x{2502}               ~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim_erlang_snmp_integration_simple_test.exs:237:15: SnmpSimErlangSnmpIntegrationSimpleTest.configure_snmp_logging/0
+
+     warning: :dbg.stop_clear/0 is undefined (module :dbg is not available or is yet to be defined)
+     \x{2502}
+ 618 \x{2502}       :dbg.stop_clear()
+     \x{2502}            ~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim_erlang_snmp_integration_test.exs:618:12: SnmpSimErlangSnmpIntegrationTest.configure_snmp_logging/0
+
+     warning: :snmp.set_debug/1 is undefined or private
+     \x{2502}
+ 622 \x{2502}         :snmp.set_debug(false)
+     \x{2502}               ~
+     \x{2502}
+     \x{2514}\x{2500} test/snmp_sim_erlang_snmp_integration_test.exs:622:15: SnmpSimErlangSnmpIntegrationTest.configure_snmp_logging/0
+
+\x{2713} FIXED: 3 repeated GETBULK calls returned consistent results
+.\x{2713} FIXED: GETBULK from 1.3.6.1 returned 10 OIDs in 3ms
+.\x{2713} FIXED: GETBULK from high OID 1.3.6.1.4.1.99999.99999.99999 correctly returned empty list
+.\x{2713} FIXED: GETBULK from 1.3.6.1.2.1.1.1.0 correctly excluded starting OID
+.\x{2713} FIXED: GETBULK walk completed: 11 iterations, 50 OIDs, 18ms
+.\x{2713} FIXED: get_next_oid(1.3.6.1.2.1.2.2.1.21.1) = 1.3.6.1.2.1.2.2.1.21.2
+.\x{2713} FIXED: GETBULK works correctly with various max_repetitions values
+...........................................................................Phase 5 simulation performance: 2.28ms for 1000 simulations
+Average per simulation: 0.002ms
+.......................................Expected 50 OIDs from walk file
+Walk returned 50 OIDs
+First few OIDs from walk:
+{"1.3.6.1.2.1.1.1.0", "Motorola SB6141 DOCSIS 3.0 Cable Modem"}
+{"1.3.6.1.2.1.1.2.0", "SNMPv2-SMI::enterprises.4491.2.4.1"}
+{"1.3.6.1.2.1.1.3.0", 400}
+{"1.3.6.1.2.1.1.4.0", "admin@example.com"}
+{"1.3.6.1.2.1.1.5.0", "CM-001A2B3C4D5E"}
+Retrieved 50 OIDs via GETBULK walk
+First 10 retrieved OIDs:
+  1.3.6.1.2.1.1.1.0
+  1.3.6.1.2.1.1.2.0
+  1.3.6.1.2.1.1.3.0
+  1.3.6.1.2.1.1.4.0
+  1.3.6.1.2.1.1.5.0
+  1.3.6.1.2.1.1.6.0
+  1.3.6.1.2.1.1.7.0
+  1.3.6.1.2.1.2.1.0
+  1.3.6.1.2.1.2.2.1.1.1
+  1.3.6.1.2.1.2.2.1.1.2
+Last 10 retrieved OIDs:
+  1.3.6.1.2.1.2.2.1.5.1
+  1.3.6.1.2.1.2.2.1.5.2
+  1.3.6.1.2.1.2.2.1.6.1
+  1.3.6.1.2.1.2.2.1.6.2
+  1.3.6.1.2.1.2.2.1.7.1
+  1.3.6.1.2.1.2.2.1.7.2
+  1.3.6.1.2.1.2.2.1.8.1
+  1.3.6.1.2.1.2.2.1.8.2
+  1.3.6.1.2.1.2.2.1.9.1
+  1.3.6.1.2.1.2.2.1.9.2
+.First OID found: 1.3.6.1.2.1.2.2.1.1.1 (integer) = 1
+Second OID found: 1.3.6.1.2.1.2.2.1.1.2 (integer) = 2
+.GETBULK response varbinds (10):
+  1. {[1, 3, 6, 1, 2, 1, 2, 2, 1, 1, 1], :auto, 1}
+  2. {[1, 3, 6, 1, 2, 1, 2, 2, 1, 1, 2], :auto, 2}
+  3. {[1, 3, 6, 1, 2, 1, 2, 2, 1, 2, 1], :auto, "cable-modem0"}
+  4. {[1, 3, 6, 1, 2, 1, 2, 2, 1, 2, 2], :auto, "docsis-mac"}
+  5. {[1, 3, 6, 1, 2, 1, 2, 2, 1, 3, 1], :auto, 6}
+  6. {[1, 3, 6, 1, 2, 1, 2, 2, 1, 3, 2], :auto, 127}
+  7. {[1, 3, 6, 1, 2, 1, 2, 2, 1, 4, 1], :auto, 1500}
+  8. {[1, 3, 6, 1, 2, 1, 2, 2, 1, 4, 2], :auto, 1518}
+  9. {[1, 3, 6, 1, 2, 1, 2, 2, 1, 5, 1], :auto, {:gauge32, 1000000000}}
+  10. {[1, 3, 6, 1, 2, 1, 2, 2, 1, 5, 2], :auto, {:gauge32, 38000000}}
+..\x{2713} 1.3.6.1.2.1.1.1.0 = "Motorola SB6141 DOCSIS 3.0 Cable Modem"
+
+
+  1) test SNMP Walk OID Loading and Responses walk file data is loaded and interface OIDs are accessible (SnmpSim.SnmpWalkFixTest)
+     test/snmp_sim/snmp_walk_fix_test.exs:105
+     OID 1.3.6.1.2.1.2.1.0 returned 2, expected {:integer, 2}
+     code: Enum.each(working_cases, fn {oid, expected_value} ->
+     stacktrace:
+       (elixir 1.18.3) lib/enum.ex:987: Enum."-each/2-lists^foreach/1-0-"/2
+       test/snmp_sim/snmp_walk_fix_test.exs:113: (test)
+
+get_next result: {:ok, {"1.3.6.1.2.1.2.2.1.2.1", :octet_string, "cable-modem0"}}
+.......................................................................
+
+  2) test Device SNMP operations interface table OIDs return proper SNMP types (SnmpSim.SNMPOperationsTest)
+     test/snmp_sim/snmp_operations_test.exs:129
+     1.3.6.1.2.1.2.2.1.4.1 should return gauge32 tuple, got: 1500
+     code: for {oid, expected_type} <- interface_oids do
+     stacktrace:
+       test/snmp_sim/snmp_operations_test.exs:162: anonymous fn/3 in SnmpSim.SNMPOperationsTest."test Device SNMP operations interface table OIDs return proper SNMP types"/1
+       (elixir 1.18.3) lib/enum.ex:2546: Enum."-reduce/3-lists^foldl/2-0-"/3
+       test/snmp_sim/snmp_operations_test.exs:149: (test)
+
+.............GETBULK walk completed in 4 iterations, collected 8 OIDs
+........................\x{2713} 5 repeated GETBULK calls returned consistent results
+.\x{2713} GETBULK from 1.3.6.1 returned 10 OIDs in 5ms
+.\x{2713} GETBULK from last OID 1.3.6.1.2.1.2.2.1.21.2 correctly returned empty list
+.\x{2713} GETBULK walk completed: 11 iterations, 50 OIDs, 19ms
+.\x{2713} GETBULK from 1.3.6.1.2.1.1.1.0 correctly excluded starting OID
+.\x{2713} get_next_oid(1.3.6.1.2.1.2.2.1.21.1) = 1.3.6.1.2.1.2.2.1.21.2 (different OID)
+..................................
+
+  3) test SNMP protocol compliance SNMP GETBULK from last OID returns endOfMibView (SnmpSim.GetbulkEndOfMibTest)
+     test/snmp_sim/getbulk_end_of_mib_test.exs:183
+     SNMP command failed: -Cn0: Unknown Object Identifier (Sub-id not found: (top) -> -Cn0)
+
+     code: assert exit_code == 0, "SNMP command failed: #{output}"
+     stacktrace:
+       test/snmp_sim/getbulk_end_of_mib_test.exs:191: (test)
+
+...
+
+  4) test SNMP protocol compliance SNMP GETBULK walk terminates correctly (SnmpSim.GetbulkEndOfMibTest)
+     test/snmp_sim/getbulk_end_of_mib_test.exs:203
+     Walk output should contain OIDs
+     code: assert String.contains?(output, "1.3.6.1"), "Walk output should contain OIDs"
+     stacktrace:
+       test/snmp_sim/getbulk_end_of_mib_test.exs:216: (test)
+
+     The following output was logged:
+     [error] Error processing SNMP packet: %ArgumentError{message: "errors were found at the given arguments:\n\n  * 1st argument: not a textual representation of an integer\n"}
+     [error] Error processing SNMP packet: %ArgumentError{message: "errors were found at the given arguments:\n\n  * 1st argument: not a textual representation of an integer\n"}
+     [error] Error processing SNMP packet: %ArgumentError{message: "errors were found at the given arguments:\n\n  * 1st argument: not a textual representation of an integer\n"}
+     [error] Error processing SNMP packet: %ArgumentError{message: "errors were found at the given arguments:\n\n  * 1st argument: not a textual representation of an integer\n"}
+     [error] Error processing SNMP packet: %ArgumentError{message: "errors were found at the given arguments:\n\n  * 1st argument: not a textual representation of an integer\n"}
+     [error] Error processing SNMP packet: %ArgumentError{message: "errors were found at the given arguments:\n\n  * 1st argument: not a textual representation of an integer\n"}
+     
+.
+
+  5) test SNMP protocol compliance SNMP GETNEXT progression works correctly (SnmpSim.GetbulkEndOfMibTest)
+     test/snmp_sim/getbulk_end_of_mib_test.exs:223
+     GETNEXT should return at least some OIDs
+     code: assert MapSet.size(visited_oids) > 0, "GETNEXT should return at least some OIDs"
+     stacktrace:
+       test/snmp_sim/getbulk_end_of_mib_test.exs:259: (test)
+
+..GETBULK walk completed in 6 iterations, collected 50 OIDs
+......................*************************....................
+
+  6) test SNMP GETBULK OID format fix verification SNMP GETBULK handles different starting OIDs correctly (SnmpSim.GetBulkOidFormatTest)
+     test/snmp_sim/getbulk_oid_format_test.exs:105
+     snmpbulkwalk failed for OID 1.3.6.1 with output: Timeout: No Response from 127.0.0.1:10996
+
+     code: for oid <- test_oids do
+     stacktrace:
+       test/snmp_sim/getbulk_oid_format_test.exs:148: anonymous fn/2 in SnmpSim.GetBulkOidFormatTest."test SNMP GETBULK OID format fix verification SNMP GETBULK handles different starting OIDs correctly"/1
+       (elixir 1.18.3) lib/enum.ex:2546: Enum."-reduce/3-lists^foldl/2-0-"/3
+       test/snmp_sim/getbulk_oid_format_test.exs:129: (test)
+
+     The following output was logged:
+     [error] Error processing SNMP packet: %ArgumentError{message: "errors were found at the given arguments:\n\n  * 1st argument: not a textual representation of an integer\n"}
+     [error] Error processing SNMP packet: %ArgumentError{message: "errors were found at the given arguments:\n\n  * 1st argument: not a textual representation of an integer\n"}
+     
+
+
+  7) test SNMP GETBULK OID format fix verification regression test - reproduces original bug scenario (SnmpSim.GetBulkOidFormatTest)
+     test/snmp_sim/getbulk_oid_format_test.exs:160
+     Regression detected! Original bug has returned. Output: Timeout: No Response from 127.0.0.1:10995
+
+     code: assert exit_code == 0, "Regression detected! Original bug has returned. Output: #{output}"
+     stacktrace:
+       test/snmp_sim/getbulk_oid_format_test.exs:192: (test)
+
+     The following output was logged:
+     [error] Error processing SNMP packet: %ArgumentError{message: "errors were found at the given arguments:\n\n  * 1st argument: not a textual representation of an integer\n"}
+     [error] Error processing SNMP packet: %ArgumentError{message: "errors were found at the given arguments:\n\n  * 1st argument: not a textual representation of an integer\n"}
+     [error] Error processing SNMP packet: %ArgumentError{message: "errors were found at the given arguments:\n\n  * 1st argument: not a textual representation of an integer\n"}
+     [error] Error processing SNMP packet: %ArgumentError{message: "errors were found at the given arguments:\n\n  * 1st argument: not a textual representation of an integer\n"}
+     [error] Error processing SNMP packet: %ArgumentError{message: "errors were found at the given arguments:\n\n  * 1st argument: not a textual representation of an integer\n"}
+     [error] Error processing SNMP packet: %ArgumentError{message: "errors were found at the given arguments:\n\n  * 1st argument: not a textual representation of an integer\n"}
+     
+
+
+  8) test SNMP GETBULK OID format fix verification SNMP GETBULK works correctly after OID format fix (SnmpSim.GetBulkOidFormatTest)
+     test/snmp_sim/getbulk_oid_format_test.exs:10
+     SNMP GETBULK failed with exit code 1. Output: Timeout: No Response from 127.0.0.1:10997
+
+     code: assert exit_code == 0, "SNMP GETBULK failed with exit code #{exit_code}. Output: #{output}"
+     stacktrace:
+       test/snmp_sim/getbulk_oid_format_test.exs:46: (test)
+
+     The following output was logged:
+     [error] Error processing SNMP packet: %ArgumentError{message: "errors were found at the given arguments:\n\n  * 1st argument: not a textual representation of an integer\n"}
+     [error] Error processing SNMP packet: %ArgumentError{message: "errors were found at the given arguments:\n\n  * 1st argument: not a textual representation of an integer\n"}
+     
+.........................................................................................................
+
+  9) test UDP Server SNMP Version Handling server handles GETBULK with mixed valid and invalid OIDs (SnmpSim.UdpServerIntegrationTest)
+     test/snmp_sim/udp_server_integration_test.exs:300
+     Expected at least one end_of_mib_view varbind, got: [{[1, 3, 6, 1, 2, 1, 2, 1, 0], :auto, 2}, {[1, 3, 6, 1, 2, 1, 2, 2, 1, 1, 1], :auto, 1}, {[1, 3, 6, 1, 2, 1, 2, 2, 1, 1, 2], :auto, 2}]
+     code: assert has_end_of_mib,
+     stacktrace:
+       test/snmp_sim/udp_server_integration_test.exs:334: (test)
+
+
+
+ 10) test UDP Server SNMP Version Handling server handles GETBULK with no_such_name in non-repeaters (SnmpSim.UdpServerIntegrationTest)
+     test/snmp_sim/udp_server_integration_test.exs:436
+     Expected truthy, got false
+     code: assert is_binary(first_value) or is_list(first_value)
+     stacktrace:
+       test/snmp_sim/udp_server_integration_test.exs:488: (test)
+
+.........
+Finished in 37.6 seconds (0.6s async, 36.9s sync)
+583 tests, 10 failures, 67 excluded, 25 skipped
+[os_mon] cpu supervisor port (cpu_sup): Erlang has closed
+[os_mon] memory supervisor port (memsup): Erlang has closed

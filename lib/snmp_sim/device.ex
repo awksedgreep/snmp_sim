@@ -17,8 +17,10 @@ defmodule SnmpSim.Device do
   alias SnmpSim.{DeviceDistribution}
   alias SnmpSim.Core.Server
   alias SnmpSim.Device.ErrorInjector
+  alias SnmpSim.Device.OidHandler
+  alias SnmpSim.Device.PduProcessor
   import SnmpSim.Device.OidHandler
-  import SnmpSim.Device.PduProcessor
+  import SnmpSim.Device.PduProcessor, only: [process_snmp_pdu: 2]
 
 
   defstruct [
@@ -38,7 +40,9 @@ defmodule SnmpSim.Device do
     # For tracking access time
     :last_access,
     # Active error injection conditions
-    :error_conditions
+    :error_conditions,
+    # Flag indicating if device has walk data loaded
+    :has_walk_data
   ]
 
   @default_community "public"
@@ -223,8 +227,8 @@ defmodule SnmpSim.Device do
   @doc """
   Get bulk OID values from the device (for testing).
   """
-  def get_bulk(device_pid, oid, count) do
-    GenServer.call(device_pid, {:get_bulk_oid, oid, count})
+  def get_bulk(device_pid, oids, non_repeaters, max_repetitions) do
+    GenServer.call(device_pid, {:get_bulk_oid, oids, non_repeaters, max_repetitions})
   end
 
   @doc """
@@ -257,19 +261,21 @@ defmodule SnmpSim.Device do
         mac_address =
           Map.get(device_config, :mac_address, generate_mac_address(device_type, port))
 
-        # Load walk file if provided
-        case Map.get(device_config, :walk_file) do
+        # Load walk file if provided and set flag
+        has_walk_data = case Map.get(device_config, :walk_file) do
           nil ->
-            :ok
+            false
 
           walk_file ->
             Logger.info("Loading walk file #{walk_file} for device type #{inspect(device_type)}")
             case SnmpSim.MIB.SharedProfiles.load_walk_profile(device_type, walk_file) do
               :ok ->
                 Logger.info("Successfully loaded walk file #{walk_file} for device type #{inspect(device_type)}")
+                true
 
               {:error, reason} ->
                 Logger.warning("Failed to load walk file #{walk_file} for device type #{inspect(device_type)}: #{inspect(reason)}")
+                false
             end
         end
 
@@ -288,7 +294,8 @@ defmodule SnmpSim.Device do
               status_vars: %{},
               community: community,
               last_access: System.monotonic_time(:millisecond),
-              error_conditions: %{}
+              error_conditions: %{},
+              has_walk_data: has_walk_data
             }
 
             # Set up the SNMP handler for this device
@@ -331,7 +338,8 @@ defmodule SnmpSim.Device do
       counters: map_size(state.counters),
       gauges: map_size(state.gauges),
       status_vars: map_size(state.status_vars),
-      last_access: state.last_access
+      last_access: state.last_access,
+      has_walk_data: state.has_walk_data
     }
 
     # Update last access time
@@ -370,51 +378,48 @@ defmodule SnmpSim.Device do
 
   @impl true
   def handle_call({:get_oid, oid}, _from, state) do
-    # Use the same logic as SNMP GET requests for consistency
-    result = get_oid_value(oid, state)
-    
-    # Handle different return formats based on type
-    test_result = case result do
-      {:ok, {:octet_string, value}} -> {:ok, value}  # Return raw value for octet_string
-      {:ok, {:integer, value}} -> {:ok, value}       # Return raw value for integer
-      {:ok, {type, value}} -> {:ok, {type, value}}   # Return typed tuple for SNMP-specific types (counter32, gauge32, timeticks, object_identifier, etc.)
+    result = SnmpSim.Device.OidHandler.get_oid_value(state.device_type, oid)
+    formatted_result = case result do
+      {:ok, {oid, type, value}} -> {:ok, {oid, type, value}}
+      {:ok, {oid, value}} -> {:ok, {oid, :octet_string, value}}
       {:ok, value} -> {:ok, value}
       error -> error
     end
-
-    # Update last access time
     new_state = %{state | last_access: System.monotonic_time(:millisecond)}
-    {:reply, test_result, new_state}
+    {:reply, formatted_result, new_state}
   end
 
   @impl true
   def handle_call({:get_next_oid, oid}, _from, state) do
-    # Use SNMP GETNEXT logic
-    result = get_next_oid_value(oid, state)
-
-    # Update last access time
-    new_state = %{state | last_access: System.monotonic_time(:millisecond)}
-    {:reply, result, new_state}
+    result = SnmpSim.Device.OidHandler.get_next_oid_value(state.device_type, oid, state)
+    formatted_result = case result do
+      {:ok, {oid, type, value}} -> {:ok, {oid, type, value}}
+      {:ok, {oid, value}} -> {:ok, {oid, :octet_string, value}}
+      {:ok, value} -> {:ok, value}
+      error -> error
+    end
+    {:reply, formatted_result, state}
   end
 
   @impl true
-  def handle_call({:get_bulk_oid, oid, count}, _from, state) do
-    # Use SNMP GETBULK logic
-    result = get_bulk_oid_values(oid, count, state)
-
-    # Update last access time
-    new_state = %{state | last_access: System.monotonic_time(:millisecond)}
-    {:reply, result, new_state}
+  def handle_call({:get_bulk_oid, oids, non_repeaters, max_repetitions}, _from, state) do
+    result = process_get_bulk_varbinds(oids, non_repeaters, max_repetitions, state.device_type)
+    formatted_result = Enum.map(result, fn
+      {oid, type, value} -> {oid, type, value}
+      {oid, value} -> {oid, :octet_string, value}
+    end)
+    {:reply, formatted_result, state}
   end
 
   @impl true
   def handle_call({:walk_oid, oid}, _from, state) do
-    # Walk through OIDs starting from the given OID
-    result = walk_oid_values(oid, state)
-
-    # Update last access time
+    result = walk_oid_recursive(oid, 100, state, [])
+    formatted_result = Enum.map(result, fn
+      {oid, type, value} -> {oid, type, value}
+      {oid, value} -> {oid, :octet_string, value}
+    end)
     new_state = %{state | last_access: System.monotonic_time(:millisecond)}
-    {:reply, result, new_state}
+    {:reply, formatted_result, new_state}
   end
 
   @impl true
@@ -427,7 +432,8 @@ defmodule SnmpSim.Device do
         counters: %{},
         gauges: %{},
         status_vars: %{},
-        error_conditions: %{}
+        error_conditions: %{},
+        has_walk_data: false
     }
 
     {:ok, initialized_state} = initialize_device_state(new_state)
@@ -513,7 +519,8 @@ defmodule SnmpSim.Device do
           state
           | error_conditions: new_error_conditions,
             counters: %{},
-            status_vars: %{"admin_status" => 1, "oper_status" => 1, "last_change" => 0}
+            status_vars: %{"admin_status" => 1, "oper_status" => 1, "last_change" => 0},
+            has_walk_data: false
         }
 
         {:noreply, new_state}
@@ -586,7 +593,7 @@ defmodule SnmpSim.Device do
       true ->
         Logger.info("Device #{state.device_id} initialized with profile for device type: #{state.device_type}")
         # Profile exists in SharedProfiles, device will use it via OidHandler
-        {:ok, state}
+        {:ok, %{state | has_walk_data: true}}
         
       false ->
         # Fallback to mock implementation for testing
@@ -615,7 +622,8 @@ defmodule SnmpSim.Device do
            | counters: counters,
              gauges: gauges,
              status_vars: status_vars,
-             error_conditions: state.error_conditions
+             error_conditions: state.error_conditions,
+             has_walk_data: false
          }}
     end
   end
@@ -634,5 +642,38 @@ defmodule SnmpSim.Device do
       "oper_status" => 1,
       "last_change" => 0
     }
+  end
+
+  defp process_get_bulk_varbinds(varbinds, non_repeaters, max_repetitions, device_type) do
+    {non_repeater_vars, repeater_vars} = Enum.split(varbinds, non_repeaters)
+
+    non_repeater_results =
+      non_repeater_vars
+      |> Enum.map(fn {oid, _} ->
+        case SnmpSim.Device.OidHandler.get_oid_value(device_type, oid) do
+          {:ok, {oid, type, value}} -> {oid, type, value}
+          {:ok, {oid, value}} -> {oid, :octet_string, value}
+          {:ok, value} -> {oid, :octet_string, value}
+          {:error, _} -> {oid, :no_such_name, :null}
+        end
+      end)
+
+    repeater_results =
+      repeater_vars
+      |> Enum.flat_map(fn {oid, _} ->
+        1..max_repetitions
+        |> Enum.reduce_while([{oid, :null}], fn _, acc ->
+          {last_oid, _} = List.last(acc)
+          case SnmpSim.Device.OidHandler.get_next_oid_value(device_type, last_oid, %{}) do
+            {:ok, {next_oid, type, value}} -> {:cont, acc ++ [{next_oid, type, value}]}
+            {:ok, {next_oid, value}} -> {:cont, acc ++ [{next_oid, :octet_string, value}]}
+            {:ok, value} -> {:cont, acc ++ [{oid, :octet_string, value}]}
+            {:error, _} -> {:halt, acc}
+          end
+        end)
+        |> tl()
+      end)
+
+    non_repeater_results ++ repeater_results
   end
 end

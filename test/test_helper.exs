@@ -17,7 +17,7 @@ end
 
 # Configure SNMP manager before starting it
 Application.put_env(:snmp, :manager, [
-  {:config, [{:dir, '/tmp'}, {:log_type, :none}]},
+  {:config, [{:dir, "/tmp"}, {:log_type, :none}]},
   {:server, [{:timeout, 30000}, {:verbosity, :silence}]},
   {:net_if, [{:verbosity, :silence}]},
   {:note_store, [{:verbosity, :silence}]},
@@ -27,7 +27,7 @@ Application.put_env(:snmp, :manager, [
 
 # Also set application environment for agent
 Application.put_env(:snmp, :agent, [
-  {:config, [{:dir, '/tmp'}, {:log_type, :none}]},
+  {:config, [{:dir, "/tmp"}, {:log_type, :none}]},
   {:verbosity, :silence}
 ])
 
@@ -92,6 +92,74 @@ end
      end
    end, %{}}
 )
+
+# Set up SNMP manager configuration for tests
+# We set up a temporary directory to avoid file conflicts
+# between test runs
+snmp_manager_config = [
+  {:config, [{:dir, "/tmp"}, {:log_type, :none}]},
+  {:net_if, [{:bind_to, false}, {:filter, []}, {:log_type, :none}]},
+  {:server, [{:timeout, 10000}]}
+]
+
+# Apply configuration
+Enum.each(snmp_manager_config, fn {key, value} ->
+  Application.put_env(:snmp, key, value)
+end)
+
+# Start the application to ensure Config module is available
+Application.ensure_all_started(:snmp_sim)
+
+# Define device types for testing
+device_types = try do
+  case function_exported?(SnmpSim.Config, :device_types, 0) do
+    true -> 
+      case SnmpSim.Config.device_types() do
+        {:ok, types} -> types
+        _ -> []
+      end
+    false -> []
+  end
+rescue
+  _ -> []
+end
+
+# Helper to find a device type that matches our test walk file
+find_device_type = fn ->
+  Enum.find(device_types, fn dt ->
+    case function_exported?(SnmpSim.Config, :get_profile, 1) do
+      true -> 
+        case SnmpSim.Config.get_profile(dt) do
+          {:ok, profile} -> profile.walk_file == "priv/walks/cable_modem.walk"
+          _ -> false
+        end
+      false -> false
+    end
+  end)
+end
+
+# Set up a test device type for consistent testing
+test_device_type = case find_device_type.() do
+  nil -> nil
+  dt -> dt
+end
+
+# Configure environment for consistent testing
+Application.put_env(:snmp_sim, :test_device_type, test_device_type)
+
+# Ensure no processes are using port 161 or 1161 before starting tests
+for port <- [161, 1161] do
+  System.cmd("lsof", ["-i", ":#{port}", "-t"])
+  |> case do
+    {output, 0} ->
+      pids = String.split(output, "\n", trim: true)
+      Enum.each(pids, fn pid -> System.cmd("kill", ["-9", pid]) end)
+    _ -> :ok
+  end
+end
+
+# Override SNMP port for test environment
+Application.put_env(:snmp_ex, :port, 1161)
 
 # Configure ExUnit to exclude noisy/optional tests by default
 # Run shell integration tests with: mix test --include shell_integration

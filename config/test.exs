@@ -118,6 +118,12 @@ config :snmp_sim, :behaviors,
   # Disabled for predictable tests
   device_characteristics_enabled: false
 
+# Configure SNMP server for testing
+config :snmp_ex, [
+  port: 1161
+  # Other SNMP configuration options as needed
+]
+
 # Test-specific ExUnit configuration
 config :ex_unit,
   capture_log: true,

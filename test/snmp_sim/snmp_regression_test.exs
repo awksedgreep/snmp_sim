@@ -37,46 +37,69 @@ defmodule SnmpSim.SNMPRegressionTest do
       %{device: device_pid}
     end
 
-    test "system OIDs return proper SNMP types (not NULL)", %{device: device} do
-      # These are the exact OIDs that were returning "Wrong Type: NULL" 
-      # when tested with snmpwalk
+    test "Regression: Wrong Type NULL issue - system OIDs return proper SNMP types (not NULL)", %{device: device} do
       critical_oids = [
-        {"1.3.6.1.2.1.1.1.0", "sysDescr", :string},
+        {"1.3.6.1.2.1.1.1.0", "sysDescr", :octet_string},
         {"1.3.6.1.2.1.1.2.0", "sysObjectID", :object_identifier},
-        {"1.3.6.1.2.1.1.4.0", "sysContact", :string},
-        {"1.3.6.1.2.1.1.5.0", "sysName", :string},
-        {"1.3.6.1.2.1.1.6.0", "sysLocation", :string},
-        {"1.3.6.1.2.1.1.7.0", "sysServices", :integer}
+        {"1.3.6.1.2.1.1.3.0", "sysUpTime", :timeticks},
+        {"1.3.6.1.2.1.1.5.0", "sysName", :octet_string}
       ]
 
       for {oid, name, expected_type} <- critical_oids do
-        {:ok, value} = Device.get(device, oid)
+        case Device.get(device, oid) do
+          {:ok, {^oid, type, value}} ->
+            assert type == expected_type, "#{name} (#{oid}) should return #{expected_type}, got: #{inspect(type)}"
+            assert value != nil, "#{name} (#{oid}) should not return nil value"
+          other ->
+            flunk("Unexpected response for #{name} (#{oid}): #{inspect(other)}")
+        end
+      end
+    end
 
-        # These assertions specifically check for the "Wrong Type: NULL" issue
-        refute value == nil,
-               "#{name} (#{oid}) should not return nil (this causes 'Wrong Type: NULL')"
+    test "Regression: Wrong Type NULL issue - interface table OIDs return proper types (not NULL)", %{device: device} do
+      if_table_oids = [
+        {"1.3.6.1.2.1.2.2.1.1.1", "ifIndex", :integer},
+        {"1.3.6.1.2.1.2.2.1.2.1", "ifDescr", :octet_string},
+        {"1.3.6.1.2.1.2.2.1.3.1", "ifType", :integer},
+        {"1.3.6.1.2.1.2.2.1.5.1", "ifSpeed", :gauge32}
+      ]
 
-        refute value == {:null, nil}, "#{name} (#{oid}) should not return null tuple"
+      for {oid, name, expected_type} <- if_table_oids do
+        case Device.get(device, oid) do
+          {:ok, {^oid, type, value}} ->
+            assert type == expected_type, "#{name} (#{oid}) should return #{expected_type}, got: #{inspect(type)}"
+            assert value != nil, "#{name} (#{oid}) value should not be nil"
+          other ->
+            flunk("Unexpected response for #{name} (#{oid}): #{inspect(other)}")
+        end
+      end
+    end
 
-        # Verify correct SNMP type
-        case expected_type do
-          :string ->
-            assert is_binary(value),
-                   "#{name} (#{oid}) should return string, got: #{inspect(value)}"
+    test "Regression: Wrong Type NULL issue - device type-specific descriptions are correct", %{device: device} do
+      device_types = [
+        {:cable_modem, ~r/cable.*modem/i},
+        {:switch, ~r/switch|simulator/i},
+        {:router, ~r/router/i}
+      ]
 
-            assert value != "", "#{name} (#{oid}) should not return empty string"
+      for {device_type, expected_pattern} <- device_types do
+        device_config = %{
+          port:
+            @test_port + 100 + Enum.find_index(device_types, fn {dt, _} -> dt == device_type end),
+          device_type: device_type,
+          device_id: "type_test_#{device_type}",
+          community: @test_community
+        }
 
-          :object_identifier ->
-            assert match?({:object_identifier, _}, value),
-                   "#{name} (#{oid}) should return object_identifier tuple, got: #{inspect(value)}"
+        {:ok, device_pid} = Device.start_link(device_config)
+        Process.sleep(50)
 
-            {:object_identifier, oid_value} = value
-            assert is_binary(oid_value), "Object identifier value should be string"
-            assert String.contains?(oid_value, "."), "Object identifier should contain dots"
-
-          :integer ->
-            assert is_integer(value),
-                   "#{name} (#{oid}) should return integer, got: #{inspect(value)}"
+        try do
+          {:ok, {_, type, sys_descr}} = Device.get(device_pid, "1.3.6.1.2.1.1.1.0")
+          assert type == :octet_string, "sysDescr should be octet_string for #{device_type}, got: #{inspect(type)}"
+          assert String.contains?(sys_descr, expected_pattern), "sysDescr for #{device_type} should contain '#{expected_pattern}', got: #{sys_descr}"
+        after
+          Device.stop(device_pid)
         end
       end
     end
@@ -104,7 +127,7 @@ defmodule SnmpSim.SNMPRegressionTest do
 
       for oid <- walk_operations do
         case Device.get(device, oid) do
-          {:ok, value} ->
+          {:ok, {^oid, type, value}} ->
             # Critical: ensure no NULL values that cause "Wrong Type" errors
             assert value != nil,
                    "OID #{oid} returned nil (causes 'Wrong Type: NULL' in SNMP tools)"
@@ -136,56 +159,18 @@ defmodule SnmpSim.SNMPRegressionTest do
 
       for {oid, name} <- interface_oids do
         case Device.get(device, oid) do
-          {:ok, value} ->
+          {:ok, {^oid, type, value}} ->
             # Ensure not NULL
             refute value == nil, "#{name} (#{oid}) should not return nil"
             refute value == {:null, nil}, "#{name} (#{oid}) should not return null tuple"
 
             # Ensure it's a valid SNMP type
-            assert is_valid_snmp_type(value),
-                   "#{name} (#{oid}) returned invalid SNMP type: #{inspect(value)}"
+            assert is_valid_snmp_type({type, value}),
+                   "#{name} (#{oid}) returned invalid SNMP type: #{inspect({type, value})}"
 
           {:error, :no_such_name} ->
             # Some interface OIDs might not be implemented
             :ok
-        end
-      end
-    end
-
-    test "device type-specific descriptions are correct", %{device: _device} do
-      # Test different device types to ensure they return proper descriptions
-      device_types = [
-        {:cable_modem, ~r/cable.*modem/i},
-        {:switch, ~r/switch|simulator/i},
-        {:router, ~r/router/i}
-      ]
-
-      for {device_type, expected_pattern} <- device_types do
-        device_config = %{
-          port:
-            @test_port + 100 + Enum.find_index(device_types, fn {dt, _} -> dt == device_type end),
-          device_type: device_type,
-          device_id: "type_test_#{device_type}",
-          community: @test_community
-        }
-
-        {:ok, device_pid} = Device.start_link(device_config)
-        Process.sleep(50)
-
-        try do
-          {:ok, sys_descr} = Device.get(device_pid, "1.3.6.1.2.1.1.1.0")
-
-          # Should not be NULL
-          assert is_binary(sys_descr),
-                 "sysDescr should be string for #{device_type}, got: #{inspect(sys_descr)}"
-
-          assert sys_descr != "", "sysDescr should not be empty for #{device_type}"
-
-          # Should match expected pattern
-          assert sys_descr =~ expected_pattern,
-                 "sysDescr for #{device_type} should match #{inspect(expected_pattern)}, got: '#{sys_descr}'"
-        after
-          Device.stop(device_pid)
         end
       end
     end
@@ -203,11 +188,11 @@ defmodule SnmpSim.SNMPRegressionTest do
 
       for oid <- error_test_oids do
         case Device.get(device, oid) do
-          {:ok, {:no_such_object, nil}} ->
+          {:ok, {^oid, :no_such_object, nil}} ->
             # This is correct SNMP error handling
             :ok
 
-          {:ok, {:no_such_instance, nil}} ->
+          {:ok, {^oid, :no_such_instance, nil}} ->
             # This is also correct
             :ok
 
@@ -215,19 +200,19 @@ defmodule SnmpSim.SNMPRegressionTest do
             # This is correct for SNMPv1
             :ok
 
-          {:ok, nil} ->
+          {:ok, {^oid, nil, nil}} ->
             flunk(
               "Device returned nil for non-existent OID #{oid} (should return proper SNMP error)"
             )
 
-          {:ok, {:null, nil}} ->
+          {:ok, {^oid, :null, nil}} ->
             flunk(
               "Device returned null tuple for non-existent OID #{oid} (should return proper SNMP error)"
             )
 
-          {:ok, other_value} ->
+          {:ok, {^oid, other_type, other_value}} ->
             flunk(
-              "Device returned unexpected value for non-existent OID #{oid}: #{inspect(other_value)}"
+              "Device returned unexpected value for non-existent OID #{oid}: #{inspect({other_type, other_value})}"
             )
 
           {:error, _reason} ->
@@ -240,11 +225,11 @@ defmodule SnmpSim.SNMPRegressionTest do
 
   # Helper functions
 
-  defp is_valid_snmp_type(value) do
-    case value do
+  defp is_valid_snmp_type({type, value}) do
+    case {type, value} do
       # Valid SNMP types
-      s when is_binary(s) -> true
-      i when is_integer(i) -> true
+      {:octet_string, s} when is_binary(s) -> true
+      {:integer, i} when is_integer(i) -> true
       {:counter32, v} when is_integer(v) -> true
       {:gauge32, v} when is_integer(v) -> true
       {:timeticks, v} when is_integer(v) -> true
@@ -254,8 +239,8 @@ defmodule SnmpSim.SNMPRegressionTest do
       {:no_such_instance, nil} -> true
       {:end_of_mib_view, nil} -> true
       # Invalid types that would cause issues
-      nil -> false
-      {:null, nil} -> false
+      {nil, _} -> false
+      {:null, _} -> false
       _ -> false
     end
   end

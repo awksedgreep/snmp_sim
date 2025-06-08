@@ -126,5 +126,10 @@ config :snmp_sim, :health_check,
     :process_health
   ]
 
+# SNMP Server Configuration
+config :snmp_ex,
+  port: 49152,
+  ip: {127, 0, 0, 1}
+
 # Import environment-specific configuration
 import_config "#{config_env()}.exs"

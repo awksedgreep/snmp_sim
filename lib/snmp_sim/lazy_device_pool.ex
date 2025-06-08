@@ -11,6 +11,7 @@ defmodule SnmpSim.LazyDevicePool do
   - Resource monitoring and cleanup scheduling
   """
   use GenServer
+  require Logger
 
   alias SnmpSim.Device
 
@@ -35,7 +36,7 @@ defmodule SnmpSim.LazyDevicePool do
 
   # 30 minutes
   @default_idle_timeout_ms 30 * 60 * 1000
-  @default_max_devices 10_000
+  @default_max_devices 100
   # 5 minutes
   @cleanup_interval_ms 5 * 60 * 1000
 
@@ -253,9 +254,11 @@ defmodule SnmpSim.LazyDevicePool do
       {:error, :max_devices_reached}
     else
       device_type = determine_device_type(port, state.port_assignments)
+      Logger.debug("LazyDevicePool: Creating device for port #{port}, device_type: #{inspect(device_type)}")
 
       case device_type do
         nil ->
+          Logger.error("LazyDevicePool: Unknown port range for port #{port}")
           {:error, :unknown_port_range}
 
         device_type ->
@@ -265,6 +268,13 @@ defmodule SnmpSim.LazyDevicePool do
             device_id: generate_device_id(device_type, port),
             community: "public"
           }
+          
+          # Add walk_file for cable_modem devices
+          device_config = if device_type == :cable_modem do
+            Map.put(device_config, :walk_file, "priv/walks/cable_modem.walk")
+          else
+            device_config
+          end
 
           case Device.start_link(device_config) do
             {:ok, device_pid} ->
@@ -452,18 +462,13 @@ defmodule SnmpSim.LazyDevicePool do
 
   defp default_port_assignments do
     %{
-      # Cable modems: 30k-37k and 40k-48k ranges
-      cable_modem: [30_000..37_999, 40_000..48_999],
-      # MTAs: 38k range
-      mta: 38_000..38_999,
-      # Switches: includes 39_550 test port + 51k range
-      switch: [39_500..39_899, 51_000..51_999],
-      # Routers: includes existing + 52k range (port 52_001)
-      router: [39_900..39_949, 52_000..52_999],
-      # CMTS: includes 39_960 test port + 53k range  
-      cmts: [39_950..39_999, 53_000..53_999],
-      # Servers: 54k-59k range
-      server: 54_000..59_999
+      # Drastically reduced port ranges - only ~50 ports total
+      cable_modem: 30_000..30_009,      # 10 ports
+      mta: 30_010..30_014,              # 5 ports
+      switch: 30_015..30_024,           # 10 ports
+      router: 30_025..30_034,           # 10 ports
+      cmts: 30_035..30_039,             # 5 ports
+      server: 30_040..30_049            # 10 ports
     }
   end
 end

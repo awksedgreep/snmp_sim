@@ -56,4 +56,19 @@ defmodule SnmpSim do
   def start_device_population(device_configs, opts \\ []) do
     LazyDevicePool.start_device_population(device_configs, opts)
   end
+
+  def start(_type, _args) do
+    # Get port from configuration, default to 1161 for tests if not set
+    port = Application.get_env(:snmp_ex, :port, 1161)
+    
+    # Start SNMP with configured port
+    children = [
+      {SNMP, [
+        port: port
+      ]}
+    ]
+
+    opts = [strategy: :one_for_one, name: SnmpSim.Supervisor]
+    Supervisor.start_link(children, opts)
+  end
 end

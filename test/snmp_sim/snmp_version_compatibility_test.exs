@@ -49,10 +49,7 @@ defmodule SnmpSim.SnmpVersionCompatibilityTest do
       assert response_pdu.error_status == 0
       assert length(response_pdu.varbinds) == 1
 
-      [{oid, type, value}] = response_pdu.varbinds
-      assert oid == [1, 3, 6, 1, 2, 1, 1, 1, 0]
-      assert type == :octet_string
-      assert is_binary(value)
+      verify_response_data(response_pdu, "1.3.6.1.2.1.1.1.0")
     end
 
     test "SNMPv2c GET request returns v2c response", %{device_pid: device_pid} do
@@ -78,10 +75,7 @@ defmodule SnmpSim.SnmpVersionCompatibilityTest do
       assert response_pdu.error_status == 0
       assert length(response_pdu.varbinds) == 1
 
-      [{oid, type, value}] = response_pdu.varbinds
-      assert oid == [1, 3, 6, 1, 2, 1, 1, 1, 0]
-      assert type == :octet_string
-      assert is_binary(value)
+      verify_response_data(response_pdu, "1.3.6.1.2.1.1.1.0")
     end
 
     test "SNMPv1 GETNEXT request returns v1 response", %{device_pid: device_pid} do
@@ -101,6 +95,8 @@ defmodule SnmpSim.SnmpVersionCompatibilityTest do
       assert response_pdu.version == :v1
       assert response_pdu.type == :get_response
       assert response_pdu.request_id == 34567
+
+      verify_getnext_response(response_pdu, "1.3.6.1.2.1.1", "1.3.6.1.2.1.1.1.0")
     end
 
     test "SNMPv2c GETNEXT request returns v2c response", %{device_pid: device_pid} do
@@ -120,6 +116,8 @@ defmodule SnmpSim.SnmpVersionCompatibilityTest do
       assert response_pdu.version == :v2c
       assert response_pdu.type == :get_response
       assert response_pdu.request_id == 45678
+
+      verify_getnext_response(response_pdu, "1.3.6.1.2.1.1", "1.3.6.1.2.1.1.1.0")
     end
 
     test "SNMPv2c GETBULK request returns v2c response", %{device_pid: device_pid} do
@@ -192,10 +190,7 @@ defmodule SnmpSim.SnmpVersionCompatibilityTest do
 
       assert {:ok, response_pdu} = result
       assert response_pdu.version == :v1
-      [{oid, type, value}] = response_pdu.varbinds
-      assert oid == [1, 3, 6, 1, 2, 1, 2, 2, 1, 10, 1]
-      assert type == :counter32
-      assert is_integer(value)
+      verify_response_data(response_pdu, "1.3.6.1.2.1.2.2.1.10.1")
     end
 
     test "SNMPv2c returns Counter32 values correctly", %{device_pid: device_pid} do
@@ -214,10 +209,34 @@ defmodule SnmpSim.SnmpVersionCompatibilityTest do
 
       assert {:ok, response_pdu} = result
       assert response_pdu.version == :v2c
-      [{oid, type, value}] = response_pdu.varbinds
-      assert oid == [1, 3, 6, 1, 2, 1, 2, 2, 1, 10, 1]
-      assert type == :counter32
-      assert is_integer(value)
+      verify_response_data(response_pdu, "1.3.6.1.2.1.2.2.1.10.1")
+    end
+  end
+
+  defp verify_response_data(pdu, expected_oid_str) do
+    assert length(pdu.varbinds) == 1, "Response should have exactly 1 varbind"
+    
+    {oid_str, value} = List.first(pdu.varbinds)
+    assert oid_str == expected_oid_str, "Response OID should match request"
+    assert is_binary(value), "sysDescr value should be a string"
+    assert String.length(value) > 0, "sysDescr value should not be empty"
+  end
+  
+  defp verify_getnext_response(pdu, requested_oid_str, expected_next_oid_str) do
+    assert length(pdu.varbinds) == 1, "Response should have exactly 1 varbind"
+    
+    {oid_str, value} = List.first(pdu.varbinds)
+    assert oid_str == expected_next_oid_str, "GETNEXT should return next OID: expected #{expected_next_oid_str}, got #{oid_str}"
+    assert String.starts_with?(oid_str, requested_oid_str), "Next OID should be lexicographically after requested OID"
+    assert value != nil, "Value should not be nil"
+    
+    case oid_str do
+      "1.3.6.1.2.1.1.2.0" ->
+        assert is_binary(value), "sysObjectID value should be a string"
+      "1.3.6.1.2.1.1.3.0" ->
+        assert is_integer(value) or match?({:timeticks, _}, value), "sysUpTime value should be integer or timeticks"
+      _ ->
+        assert value != nil, "Value for OID #{oid_str} should not be nil"
     end
   end
 end

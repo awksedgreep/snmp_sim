@@ -75,7 +75,7 @@ defmodule SnmpSim.TestHelpers do
           {operation, Device.get_next(device, "1.3.6.1.2.1.1")}
 
         :get_bulk ->
-          {operation, Device.get_bulk(device, "1.3.6.1.2.1.1", 5)}
+          {operation, Device.get_bulk(device, ["1.3.6.1.2.1.1"], 0, 5)}
 
         :walk ->
           {operation, Device.walk(device, "1.3.6.1.2.1.1")}
@@ -590,7 +590,7 @@ defmodule SnmpSim.TestHelpers do
     case operation do
       :get -> Device.get(device, "1.3.6.1.2.1.1.1.0")
       :get_next -> Device.get_next(device, "1.3.6.1.2.1.1")
-      :get_bulk -> Device.get_bulk(device, "1.3.6.1.2.1.1", 5)
+      :get_bulk -> Device.get_bulk(device, ["1.3.6.1.2.1.1"], 0, 5)
       :walk -> Device.walk(device, "1.3.6.1.2.1.1")
     end
   end

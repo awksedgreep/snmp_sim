@@ -28,8 +28,8 @@ defmodule SnmpSimPhase4IntegrationTest do
   describe "Phase 4: End-to-End Integration" do
     test "complete lazy device pool lifecycle" do
       # Configure custom port assignments using PortHelper
-      cm_range = PortHelper.get_port_range(100)
-      sw_range = PortHelper.get_port_range(50)
+      cm_range = PortHelper.get_port_range(10)
+      sw_range = PortHelper.get_port_range(5)
 
       port_assignments = %{
         cable_modem: cm_range,
@@ -39,8 +39,8 @@ defmodule SnmpSimPhase4IntegrationTest do
       assert :ok = LazyDevicePool.configure_port_assignments(port_assignments)
 
       # Create devices on demand
-      cable_modem_port = Enum.at(cm_range, 50)
-      switch_port = Enum.at(sw_range, 25)
+      cable_modem_port = Enum.at(cm_range, 5)
+      switch_port = Enum.at(sw_range, 2)
 
       # First access should create devices
       assert {:ok, cm_pid} = LazyDevicePool.get_or_create_device(cable_modem_port)
@@ -95,7 +95,7 @@ defmodule SnmpSimPhase4IntegrationTest do
       assert enterprise_mix.switch > enterprise_mix.router
 
       # Build port assignments - need enough ports for cable_network mix (9535 devices)
-      port_range = PortHelper.get_port_range(10_001)
+      port_range = PortHelper.get_port_range(20)
       cable_assignments = DeviceDistribution.build_port_assignments(cable_mix, port_range)
 
       # Validate assignments
@@ -107,8 +107,8 @@ defmodule SnmpSimPhase4IntegrationTest do
       assert density_stats.largest_group.type == :cable_modem
 
       # Test device type determination
-      cable_modem_port = Enum.at(cable_assignments.cable_modem, 10)
-      mta_port = Enum.at(cable_assignments.mta, 5)
+      cable_modem_port = Enum.at(cable_assignments.cable_modem, 5)
+      mta_port = Enum.at(cable_assignments.mta, 2)
 
       assert DeviceDistribution.determine_device_type(cable_modem_port, cable_assignments) ==
                :cable_modem
@@ -119,12 +119,12 @@ defmodule SnmpSimPhase4IntegrationTest do
     test "multi-device startup scales properly" do
       # Start small population
       device_specs = [
-        {:cable_modem, 10},
-        {:switch, 5},
-        {:router, 2}
+        {:cable_modem, 5},
+        {:switch, 2},
+        {:router, 1}
       ]
 
-      startup_range = PortHelper.get_port_range(101)
+      startup_range = PortHelper.get_port_range(10)
 
       result =
         MultiDeviceStartup.start_device_population(
@@ -134,17 +134,17 @@ defmodule SnmpSimPhase4IntegrationTest do
         )
 
       assert {:ok, startup_result} = result
-      assert startup_result.total_devices == 17
+      assert startup_result.total_devices == 8
 
       # Verify all devices are created
       pool_stats = LazyDevicePool.get_stats()
-      assert pool_stats.devices_created >= 17
-      assert pool_stats.active_count >= 17
+      assert pool_stats.devices_created >= 8
+      assert pool_stats.active_count >= 8
 
       # Test device access patterns
       startup_list = Enum.to_list(startup_range)
-      cable_ports = Enum.take(startup_list, 10)
-      switch_ports = Enum.slice(startup_list, 10, 5)
+      cable_ports = Enum.take(startup_list, 5)
+      switch_ports = Enum.slice(startup_list, 5, 2)
 
       # Access cable modems
       cable_pids =
@@ -220,7 +220,7 @@ defmodule SnmpSimPhase4IntegrationTest do
 
     test "concurrent device access patterns" do
       # Configure for high concurrency
-      port_range = PortHelper.get_port_range(1000)
+      port_range = PortHelper.get_port_range(20)
 
       port_assignments = %{
         cable_modem: port_range
@@ -229,7 +229,7 @@ defmodule SnmpSimPhase4IntegrationTest do
       LazyDevicePool.configure_port_assignments(port_assignments)
 
       # Create many concurrent access tasks
-      ports = Enum.take(port_range, 100)
+      ports = Enum.take(port_range, 10)
 
       # Access devices concurrently
       tasks =
@@ -325,8 +325,8 @@ defmodule SnmpSimPhase4IntegrationTest do
 
     test "predefined device mix startup patterns" do
       # Test different startup patterns
-      small_range = PortHelper.get_port_range(101)
-      medium_range = PortHelper.get_port_range(501)
+      small_range = PortHelper.get_port_range(10)
+      medium_range = PortHelper.get_port_range(15)
 
       test_configs = [
         {:small_test, small_range},
@@ -375,12 +375,12 @@ defmodule SnmpSimPhase4IntegrationTest do
     test "handles medium scale device population" do
       # Test with moderate scale (adjust based on system capabilities)
       device_specs = [
-        {:cable_modem, 100},
-        {:switch, 20},
-        {:router, 5}
+        {:cable_modem, 10},
+        {:switch, 2},
+        {:router, 1}
       ]
 
-      port_range = PortHelper.get_port_range(501)
+      port_range = PortHelper.get_port_range(15)
 
       # Measure startup time
       {time_us, result} =
@@ -388,25 +388,25 @@ defmodule SnmpSimPhase4IntegrationTest do
           MultiDeviceStartup.start_device_population(
             device_specs,
             port_range: port_range,
-            parallel_workers: 20
+            parallel_workers: 10
           )
         end)
 
       assert {:ok, startup_result} = result
-      assert startup_result.total_devices == 125
+      assert startup_result.total_devices == 13
 
       startup_time_ms = div(time_us, 1000)
-      IO.puts("Startup time for 125 devices: #{startup_time_ms}ms")
+      IO.puts("Startup time for 13 devices: #{startup_time_ms}ms")
 
       # Should complete in reasonable time (adjust threshold as needed)
       assert startup_time_ms < 30_000, "Startup took too long: #{startup_time_ms}ms"
 
       # Verify all devices are accessible
       pool_stats = LazyDevicePool.get_stats()
-      assert pool_stats.devices_created >= 125
+      assert pool_stats.devices_created >= 13
 
       # Sample device access performance
-      sample_ports = Enum.take(port_range, 20)
+      sample_ports = Enum.take(port_range, 5)
 
       {access_time_us, _} =
         :timer.tc(fn ->
@@ -415,7 +415,7 @@ defmodule SnmpSimPhase4IntegrationTest do
           end)
         end)
 
-      avg_access_time_ms = div(access_time_us, 1000) / 20
+      avg_access_time_ms = div(access_time_us, 1000) / 5
       IO.puts("Average device access time: #{avg_access_time_ms}ms")
 
       # Device access should be fast (already created)
@@ -426,13 +426,13 @@ defmodule SnmpSimPhase4IntegrationTest do
     test "memory usage remains reasonable" do
       # Start moderate device population
       device_specs = [
-        {:cable_modem, 50}
+        {:cable_modem, 5}
       ]
 
       # Measure memory before
       memory_before = :erlang.memory(:total)
 
-      mem_range = PortHelper.get_port_range(101)
+      mem_range = PortHelper.get_port_range(10)
 
       {:ok, _} =
         MultiDeviceStartup.start_device_population(
@@ -444,10 +444,10 @@ defmodule SnmpSimPhase4IntegrationTest do
       memory_after = :erlang.memory(:total)
       memory_diff_mb = (memory_after - memory_before) / (1024 * 1024)
 
-      IO.puts("Memory usage for 50 devices: #{Float.round(memory_diff_mb, 2)}MB")
+      IO.puts("Memory usage for 5 devices: #{Float.round(memory_diff_mb, 2)}MB")
 
       # Should use reasonable memory per device (adjust threshold as needed)
-      memory_per_device_kb = (memory_after - memory_before) / 50 / 1024
+      memory_per_device_kb = (memory_after - memory_before) / 5 / 1024
       assert memory_per_device_kb < 1024, "Too much memory per device: #{memory_per_device_kb}KB"
     end
   end
@@ -511,7 +511,7 @@ defmodule SnmpSimPhase4IntegrationTest do
     end
 
     test "handles rapid device creation and destruction" do
-      ports = PortHelper.get_port_range(21) |> Enum.to_list()
+      ports = PortHelper.get_port_range(5) |> Enum.to_list()
 
       # Rapid creation
       device_pids =

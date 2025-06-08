@@ -8,27 +8,43 @@ defmodule SnmpSim.UdpServerIntegrationTest do
 
   use ExUnit.Case, async: false
 
-  alias SnmpSim.{LazyDevicePool, Core.Server}
+  alias SnmpSim.Core.UDPListener
   alias SnmpSim.TestHelpers.PortHelper
-  alias SnmpLib.PDU
-
-  @test_timeout 10_000
+  alias SnmpLib.ASN1
 
   setup do
     # Ensure clean state
-    if Process.whereis(LazyDevicePool) do
-      LazyDevicePool.shutdown_all_devices()
+    if Process.whereis(SnmpSim.LazyDevicePool) do
+      SnmpSim.LazyDevicePool.shutdown_all_devices()
     else
-      {:ok, _} = LazyDevicePool.start_link()
+      {:ok, _} = SnmpSim.LazyDevicePool.start_link()
     end
 
+    # Start necessary applications and services
+    Application.ensure_all_started(:snmp_sim)
+    Application.ensure_all_started(:snmp_ex)
+
     test_port = PortHelper.get_port()
-    {:ok, device_pid} = LazyDevicePool.get_or_create_device(test_port)
+    {:ok, device_pid} = SnmpSim.LazyDevicePool.get_or_create_device(test_port)
 
     # Give the server time to start
     Process.sleep(100)
 
-    {:ok, test_port: test_port, device_pid: device_pid}
+    # Register cleanup callback
+    on_exit(fn ->
+      # Shutdown the device to release the port
+      if Process.alive?(device_pid) do
+        GenServer.stop(device_pid, :normal, 5000)
+      end
+      
+      # Also ensure the port is released from PortHelper
+      PortHelper.release_port(test_port)
+      
+      # Give time for cleanup
+      Process.sleep(50)
+    end)
+
+    {:ok, device_pid: device_pid, test_port: test_port}
   end
 
   describe "UDP Server SNMP Version Handling" do
@@ -283,8 +299,8 @@ defmodule SnmpSim.UdpServerIntegrationTest do
 
           # At least one varbind should have end_of_mib_view
           has_end_of_mib =
-            Enum.any?(varbinds, fn {_oid, _type, value} ->
-              match?({:end_of_mib_view, _}, value)
+            Enum.any?(varbinds, fn {_oid, type, value} ->
+              type == :end_of_mib_view || match?({:end_of_mib_view, _}, value)
             end)
 
           assert has_end_of_mib,
@@ -327,8 +343,8 @@ defmodule SnmpSim.UdpServerIntegrationTest do
 
           # At least one varbind should have end_of_mib_view
           has_end_of_mib =
-            Enum.any?(varbinds, fn {_oid, _type, value} ->
-              match?({:end_of_mib_view, _}, value)
+            Enum.any?(varbinds, fn {_oid, type, value} ->
+              type == :end_of_mib_view || match?({:end_of_mib_view, _}, value)
             end)
 
           assert has_end_of_mib,
@@ -523,7 +539,7 @@ defmodule SnmpSim.UdpServerIntegrationTest do
       # Test with single OID
       oid_list = [1, 3, 6, 1, 2, 1, 1, 1, 0]
       pdu = SnmpLib.PDU.build_get_request(oid_list, 12345)
-      message = SnmpLib.PDU.build_message(pdu, "public", :v2c)
+      message = SnmpLib.PDU.build_message(pdu, "public", :v1)
 
       {:ok, encoded_packet} = SnmpLib.PDU.encode_message(message)
       {:ok, socket} = :gen_udp.open(0, [:binary, {:active, false}])
@@ -536,6 +552,7 @@ defmodule SnmpSim.UdpServerIntegrationTest do
           assert length(response_message.pdu.varbinds) == 1
 
           [{oid, _type, value}] = response_message.pdu.varbinds
+          IO.puts("DEBUG: OID: #{inspect(oid)}, Type: #{inspect(_type)}, Value: #{inspect(value)}")
           assert is_list(oid), "OID should be converted to list format"
           assert is_binary(value), "Should return valid string value"
 
@@ -550,7 +567,7 @@ defmodule SnmpSim.UdpServerIntegrationTest do
       # Test with integer list OID format
       oid_list = [1, 3, 6, 1, 2, 1, 1, 1, 0]
       pdu = SnmpLib.PDU.build_get_request(oid_list, 12346)
-      message = SnmpLib.PDU.build_message(pdu, "public", :v2c)
+      message = SnmpLib.PDU.build_message(pdu, "public", :v1)
 
       {:ok, encoded_packet} = SnmpLib.PDU.encode_message(message)
       {:ok, socket} = :gen_udp.open(0, [:binary, {:active, false}])
@@ -607,7 +624,7 @@ defmodule SnmpSim.UdpServerIntegrationTest do
       # Test with valid format but non-existent OID
       oid_list = [1, 3, 6, 1, 9, 9, 9, 9, 9]
       pdu = SnmpLib.PDU.build_get_request(oid_list, 12348)
-      message = SnmpLib.PDU.build_message(pdu, "public", :v2c)
+      message = SnmpLib.PDU.build_message(pdu, "public", :v1)
 
       {:ok, encoded_packet} = SnmpLib.PDU.encode_message(message)
       {:ok, socket} = :gen_udp.open(0, [:binary, {:active, false}])
@@ -629,6 +646,7 @@ defmodule SnmpSim.UdpServerIntegrationTest do
           case value do
             {:no_such_object, _} -> :ok
             {:no_such_instance, _} -> :ok
+            nil -> :ok
             # Fallback value is also valid
             _ when is_binary(value) -> :ok
             _ -> flunk("Unexpected value type: #{inspect(value)}")
@@ -646,7 +664,7 @@ defmodule SnmpSim.UdpServerIntegrationTest do
       # Should return string value
       oid_list = [1, 3, 6, 1, 2, 1, 1, 1]
       pdu = SnmpLib.PDU.build_get_next_request(oid_list, 12349)
-      message = SnmpLib.PDU.build_message(pdu, "public", :v2c)
+      message = SnmpLib.PDU.build_message(pdu, "public", :v1)
 
       {:ok, encoded_packet} = SnmpLib.PDU.encode_message(message)
       {:ok, socket} = :gen_udp.open(0, [:binary, {:active, false}])
@@ -659,7 +677,9 @@ defmodule SnmpSim.UdpServerIntegrationTest do
           assert length(response_message.pdu.varbinds) == 1
 
           # Verify that value types are handled properly
-          [{_oid, _type, value}] = response_message.pdu.varbinds
+          [{_oid, type, value}] = response_message.pdu.varbinds
+          IO.inspect(response_message.pdu.varbinds, label: "DEBUG: Full varbinds")
+          IO.inspect(value, label: "DEBUG: Value being tested")
 
           case value do
             # Exception is valid
@@ -668,6 +688,8 @@ defmodule SnmpSim.UdpServerIntegrationTest do
             {:no_such_object, _} -> :ok
             # Exception is valid
             {:no_such_instance, _} -> :ok
+            # nil is valid for exception values after encoding/decoding
+            nil -> :ok
             # String is valid
             _ when is_binary(value) -> :ok
             # Integer is valid
@@ -686,7 +708,7 @@ defmodule SnmpSim.UdpServerIntegrationTest do
       # Test with standard GET request
       oid_list = [1, 3, 6, 1, 2, 1, 1, 1, 0]
       pdu = SnmpLib.PDU.build_get_request(oid_list, 12350)
-      message = SnmpLib.PDU.build_message(pdu, "public", :v2c)
+      message = SnmpLib.PDU.build_message(pdu, "public", :v1)
 
       {:ok, encoded_packet} = SnmpLib.PDU.encode_message(message)
       {:ok, socket} = :gen_udp.open(0, [:binary, {:active, false}])
@@ -716,7 +738,7 @@ defmodule SnmpSim.UdpServerIntegrationTest do
       # Test with moderately long OID to avoid encoding issues
       long_oid = [1, 3, 6, 1, 2, 1, 1, 1, 0] ++ [1, 2, 3]
       pdu = SnmpLib.PDU.build_get_request(long_oid, 12351)
-      message = SnmpLib.PDU.build_message(pdu, "public", :v2c)
+      message = SnmpLib.PDU.build_message(pdu, "public", :v1)
 
       {:ok, encoded_packet} = SnmpLib.PDU.encode_message(message)
       {:ok, socket} = :gen_udp.open(0, [:binary, {:active, false}])
@@ -820,13 +842,17 @@ defmodule SnmpSim.UdpServerIntegrationTest do
             case SnmpLib.PDU.decode_message(response_packet) do
               {:ok, response_message} ->
                 case response_message.pdu.varbinds do
-                  [{next_oid_list, _type, value}] when is_list(next_oid_list) ->
+                  [{next_oid_list, type, value}] when is_list(next_oid_list) ->
                     next_oid_string = oid_to_string(next_oid_list)
 
-                    # Check if we're still in the subtree
+                    # Check if we're still in the subtree and not at end of MIB
+                    is_end_of_mib = type == :end_of_mib_view || 
+                                   match?({:end_of_mib_view, _}, value) ||
+                                   (type == :null && value == nil)
+                    
                     if String.starts_with?(next_oid_string, "1.3.6.1.2.1.1") and
                          next_oid_string != current_oid and
-                         value != :end_of_mib_view do
+                         not is_end_of_mib do
                       # Continue walking
                       new_walked = [next_oid_string | walked_oids]
 

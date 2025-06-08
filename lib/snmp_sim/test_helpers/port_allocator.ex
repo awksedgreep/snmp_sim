@@ -9,9 +9,9 @@ defmodule SnmpSim.TestHelpers.PortAllocator do
   use GenServer
   require Logger
 
-  # Use server range for tests to avoid conflicts (54,000-59,999)
-  @start_port 54_000
-  @end_port 60_000
+  # Use reduced port range for tests (30,000-30,049)
+  @start_port 30_000
+  @end_port 30_050
 
   defstruct [
     # Next available port to allocate

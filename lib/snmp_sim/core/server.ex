@@ -190,7 +190,7 @@ defmodule SnmpSim.Core.Server do
               end
 
             complete_pdu = %{
-              version: message.version,
+              version: message.version + 1,  # Convert message version to PDU version: 0->1 (SNMPv1), 1->2 (SNMPv2c)
               community: message.community,
               type: message.pdu.type,
               request_id: message.pdu.request_id,
@@ -218,6 +218,7 @@ defmodule SnmpSim.Core.Server do
     rescue
       error ->
         Logger.error("Error processing SNMP packet: #{inspect(error)}")
+        Logger.error("Stacktrace: #{inspect(__STACKTRACE__)}")
         send(server_pid, {:update_stats, :processing_errors})
     end
 
@@ -240,6 +241,15 @@ defmodule SnmpSim.Core.Server do
         # Function handler
         case handler.(pdu, %{client_ip: client_ip, client_port: client_port}) do
           {:ok, response_pdu} ->
+            Logger.debug("Device returned response: #{inspect(response_pdu)}")
+            IO.puts("Server: Device returned response PDU: #{inspect(response_pdu)}")
+            send_response_async(state, client_ip, client_port, response_pdu)
+            send(server_pid, {:update_stats, :successful_responses})
+
+          %{type: _type} = response_pdu when is_map(response_pdu) ->
+            # Direct PDU response from walk processors
+            Logger.debug("Device returned direct response: #{inspect(response_pdu)}")
+            IO.puts("Server: Device returned direct response PDU: #{inspect(response_pdu)}")
             send_response_async(state, client_ip, client_port, response_pdu)
             send(server_pid, {:update_stats, :successful_responses})
 
@@ -253,6 +263,8 @@ defmodule SnmpSim.Core.Server do
         # Module/function handler
         case apply(module, function, [pdu, %{client_ip: client_ip, client_port: client_port}]) do
           {:ok, response_pdu} ->
+            Logger.debug("Device returned response: #{inspect(response_pdu)}")
+            IO.puts("Server: Device returned response PDU: #{inspect(response_pdu)}")
             send_response_async(state, client_ip, client_port, response_pdu)
             send(server_pid, {:update_stats, :successful_responses})
 
@@ -276,6 +288,7 @@ defmodule SnmpSim.Core.Server do
                  ) do
               {:ok, response_pdu} ->
                 Logger.debug("Device returned response: #{inspect(response_pdu)}")
+                IO.puts("Server: Device returned response PDU: #{inspect(response_pdu)}")
                 send_response_async(state, client_ip, client_port, response_pdu)
                 send(server_pid, {:update_stats, :successful_responses})
 
@@ -343,195 +356,37 @@ defmodule SnmpSim.Core.Server do
   end
 
   defp send_response_async(state, client_ip, client_port, response_pdu) do
-    # Create message with PDU and community string
-    community = to_string(state.community || "public")
-
-    # Convert response PDU to proper message format
+    community = Map.get(response_pdu, :community, "public")
+    version = Map.get(response_pdu, :version, 0)
+    
+    # Debug logging
+    Logger.debug("Response PDU before encoding: #{inspect(response_pdu)}")
+    IO.puts("Server: Response PDU before encoding: #{inspect(response_pdu)}")
+    
     response_message =
-      case response_pdu do
-        # Handle SnmpLib.PDU struct format (returned by Device module)
-        %{
-          version: version,
-          request_id: request_id,
-          error_status: error_status,
-          error_index: error_index,
-          varbinds: varbinds
-        } ->
-          # Convert variable_bindings from Device format to snmp_lib varbinds format
-          varbinds =
-            Enum.map(varbinds, fn varbind ->
-              case varbind do
-                {oid_list, type, value} when is_list(oid_list) ->
-                  # Device returns proper 3-tuple format - use as is
-                  {oid_list, type, value}
-
-                {oid_string, value} when is_binary(oid_string) ->
-                  oid_list = String.split(oid_string, ".") |> Enum.map(&String.to_integer/1)
-                  # Determine type based on value
-                  type =
-                    case value do
-                      {:no_such_object, _} -> :no_such_object
-                      {:no_such_instance, _} -> :no_such_instance
-                      {:end_of_mib_view, _} -> :end_of_mib_view
-                      {:counter32, _} -> :counter32
-                      {:counter64, _} -> :counter64
-                      {:gauge32, _} -> :gauge32
-                      {:timeticks, _} -> :timeticks
-                      {:object_identifier, _} -> :object_identifier
-                      {:ip_address, _} -> :ip_address
-                      {:opaque, _} -> :opaque
-                      _ when is_binary(value) -> :string
-                      _ when is_integer(value) -> :integer
-                      _ -> :string
-                    end
-
-                  # Extract actual value from typed tuples
-                  actual_value =
-                    case value do
-                      {:counter32, val} -> val
-                      {:counter64, val} -> val
-                      {:gauge32, val} -> val
-                      {:timeticks, val} -> val
-                      {:object_identifier, val} -> val
-                      {:ip_address, val} -> val
-                      {:opaque, val} -> val
-                      {:no_such_object, _} -> :no_such_object
-                      {:no_such_instance, _} -> :no_such_instance
-                      {:end_of_mib_view, _} -> :end_of_mib_view
-                      other -> other
-                    end
-
-                  {oid_list, type, actual_value}
-
-                {oid_list, value} when is_list(oid_list) ->
-                  # Determine type based on value
-                  type =
-                    case value do
-                      {:no_such_object, _} -> :no_such_object
-                      {:no_such_instance, _} -> :no_such_instance
-                      {:end_of_mib_view, _} -> :end_of_mib_view
-                      {:counter32, _} -> :counter32
-                      {:counter64, _} -> :counter64
-                      {:gauge32, _} -> :gauge32
-                      {:timeticks, _} -> :timeticks
-                      {:object_identifier, _} -> :object_identifier
-                      {:ip_address, _} -> :ip_address
-                      {:opaque, _} -> :opaque
-                      _ when is_binary(value) -> :string
-                      _ when is_integer(value) -> :integer
-                      _ -> :string
-                    end
-
-                  # Extract actual value from typed tuples
-                  actual_value =
-                    case value do
-                      {:counter32, val} -> val
-                      {:counter64, val} -> val
-                      {:gauge32, val} -> val
-                      {:timeticks, val} -> val
-                      {:object_identifier, val} -> val
-                      {:ip_address, val} -> val
-                      {:opaque, val} -> val
-                      {:no_such_object, _} -> :no_such_object
-                      {:no_such_instance, _} -> :no_such_instance
-                      {:end_of_mib_view, _} -> :end_of_mib_view
-                      other -> other
-                    end
-
-                  {oid_list, type, actual_value}
-
-                other ->
-                  Logger.warning("Unexpected varbind format: #{inspect(other)}")
-                  other
-              end
-            end)
-
-          # Convert varbinds to proper SNMP types for PDU.build_response
-          typed_varbinds =
-            Enum.map(varbinds, fn {oid_list, type, value} ->
-              # Ensure OID is an integer list for snmp_lib encoding
-              normalized_oid =
-                case oid_list do
-                  oid when is_list(oid) ->
-                    oid
-
-                  oid when is_binary(oid) ->
-                    case SnmpLib.OID.string_to_list(oid) do
-                      {:ok, list} ->
-                        list
-
-                      {:error, _} ->
-                        # Fallback: manual string parsing
-                        String.split(oid, ".") |> Enum.map(&String.to_integer/1)
-                    end
-
-                  # Safe default
-                  _ ->
-                    [1, 3, 6, 1]
-                end
-
-              # Convert walk file type to SnmpLib atom, fallback to :auto
-              snmp_type = convert_walk_type_to_snmp_atom(type)
-
-              # Convert value format for specific types
-              converted_value = case {snmp_type, value} do
-                {:object_identifier, oid_string} when is_binary(oid_string) ->
-                  # Convert OID string to integer list for :object_identifier type
-                  case SnmpLib.OID.string_to_list(oid_string) do
-                    {:ok, oid_list} -> oid_list
-                    {:error, _} -> 
-                      # Fallback: manual parsing
-                      String.split(oid_string, ".") |> Enum.map(&String.to_integer/1)
-                  end
-                _ ->
-                  # Keep value as-is for other types
-                  value
-              end
-
-              {normalized_oid, snmp_type, converted_value}
-            end)
-
-          # Build PDU response with error handling
-          pdu = try do
-            PDU.build_response(request_id, error_status, error_index, typed_varbinds)
-          rescue
-            e ->
-              require Logger
-              Logger.error("Error building PDU response: #{inspect(e)}")
-              Logger.error("Varbinds that caused error: #{inspect(typed_varbinds)}")
-              # Fallback to error response
-              PDU.build_response(request_id, 5, 1, [])  # genErr
-          end
-          
-          PDU.build_message(pdu, community, version)
-
-        # Handle map format (legacy)
-        %{
-          type: _pdu_type,
-          request_id: request_id,
-          error_status: error_status,
-          error_index: error_index,
-          varbinds: varbinds
-        } ->
-          pdu = PDU.build_response(request_id, error_status, error_index, varbinds)
-          # Legacy format defaults to v1
-          PDU.build_message(pdu, community, :v1)
-
-        other ->
-          Logger.warning("Unexpected PDU format: #{inspect(other)}")
-          # Create error response
-          # genErr
-          pdu = PDU.build_response(0, 5, 0, [])
-          # Default to v1 for errors
-          PDU.build_message(pdu, community, :v1)
+      case version do
+        1 ->
+          # PDU version 1 = SNMPv1 -> message version 0
+          PDU.build_message(response_pdu, community, :v1)
+        2 ->
+          # PDU version 2 = SNMPv2c -> message version 1
+          PDU.build_message(response_pdu, community, :v2c)
+        _ ->
+          # Default to SNMPv1 for version 0 or unknown versions
+          PDU.build_message(response_pdu, community, :v1)
       end
-
+      
+    Logger.debug("Response message before encoding: #{inspect(response_message)}")
+    IO.puts("Server: Response message before encoding: #{inspect(response_message)}")
+    
     case PDU.encode_message(response_message) do
       {:ok, encoded_packet} ->
+        IO.puts("Server: Successfully encoded packet, sending response")
         :gen_udp.send(state.socket, client_ip, client_port, encoded_packet)
 
       {:error, reason} ->
         Logger.error("Failed to encode SNMP response: #{inspect(reason)}")
+        Logger.error("Response message that failed: #{inspect(response_message)}")
     end
   end
 

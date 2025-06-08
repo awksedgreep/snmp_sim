@@ -8,7 +8,7 @@ defmodule SnmpSim.CounterEncodingTest do
 
   use ExUnit.Case, async: false
 
-  alias SnmpSim.{LazyDevicePool}
+  alias SnmpSim.{LazyDevicePool, Device}
   alias SnmpSim.TestHelpers.PortHelper
 
   setup do
@@ -21,11 +21,11 @@ defmodule SnmpSim.CounterEncodingTest do
 
     test_port = PortHelper.get_port()
     {:ok, device_pid} = LazyDevicePool.get_or_create_device(test_port)
-    {:ok, test_port: test_port, device_pid: device_pid}
+    {:ok, device: Device.new(device_pid), test_port: test_port, device_pid: device_pid}
   end
 
   describe "Counter32 and Gauge32 encoding" do
-    test "Counter32 values return proper integer tuples, not NULL", %{device_pid: device_pid} do
+    test "Counter32 values return proper integer tuples, not NULL", %{device: device} do
       # Test interface counter OIDs that should return Counter32 values
       counter_oids = [
         # ifInOctets.1
@@ -35,33 +35,19 @@ defmodule SnmpSim.CounterEncodingTest do
       ]
 
       for oid <- counter_oids do
-        result = GenServer.call(device_pid, {:get_oid, oid})
-
-        case result do
-          {:ok, {:counter32, value}} ->
-            # This is the correct format - Counter32 with actual value
-            assert is_integer(value),
-                   "Counter32 value should be an integer, got: #{inspect(value)}"
-
-            assert value >= 0, "Counter32 value should be non-negative, got: #{value}"
-
-          {:ok, value} when is_integer(value) ->
-            # This is also acceptable - direct integer value
-            assert value >= 0, "Counter value should be non-negative, got: #{value}"
-
-          {:ok, nil} ->
-            flunk("Counter32 OID #{oid} returned NULL - this indicates the encoding bug!")
-
-          {:ok, other} ->
-            flunk("Counter32 OID #{oid} returned unexpected format: #{inspect(other)}")
-
+        case Device.get(device, oid) do
+          {:ok, {^oid, :counter32, value}} ->
+            assert is_integer(value), "Counter32 OID #{oid} should return integer value, got: #{inspect(value)}"
+            assert value >= 0, "Counter32 OID #{oid} value should be non-negative, got: #{value}"
           {:error, reason} ->
             flunk("Counter32 OID #{oid} failed with error: #{inspect(reason)}")
+          other ->
+            flunk("Counter32 OID #{oid} returned unexpected format: #{inspect(other)}")
         end
       end
     end
 
-    test "Gauge32 values return proper integer tuples, not NULL", %{device_pid: device_pid} do
+    test "Gauge32 values return proper integer tuples, not NULL", %{device: device} do
       # Test interface speed OID that should return Gauge32 value
       gauge_oids = [
         # ifSpeed.1
@@ -69,44 +55,29 @@ defmodule SnmpSim.CounterEncodingTest do
       ]
 
       for oid <- gauge_oids do
-        result = GenServer.call(device_pid, {:get_oid, oid})
-
-        case result do
-          {:ok, {:gauge32, value}} ->
-            # This is the correct format - Gauge32 with actual value
-            assert is_integer(value), "Gauge32 value should be an integer, got: #{inspect(value)}"
-            assert value >= 0, "Gauge32 value should be non-negative, got: #{value}"
-
-          {:ok, value} when is_integer(value) ->
-            # This is also acceptable - direct integer value
-            assert value >= 0, "Gauge value should be non-negative, got: #{value}"
-
-          {:ok, nil} ->
-            flunk("Gauge32 OID #{oid} returned NULL - this indicates the encoding bug!")
-
-          {:ok, other} ->
-            flunk("Gauge32 OID #{oid} returned unexpected format: #{inspect(other)}")
-
+        case Device.get(device, oid) do
+          {:ok, {^oid, :gauge32, value}} ->
+            assert is_integer(value), "Gauge32 OID #{oid} should return integer value, got: #{inspect(value)}"
+            assert value >= 0, "Gauge32 OID #{oid} value should be non-negative, got: #{value}"
           {:error, reason} ->
             flunk("Gauge32 OID #{oid} failed with error: #{inspect(reason)}")
+          other ->
+            flunk("Gauge32 OID #{oid} returned unexpected format: #{inspect(other)}")
         end
       end
     end
 
-    test "Counter32 values are non-zero and realistic", %{device_pid: device_pid} do
+    test "Counter32 values are non-zero and realistic", %{device: device} do
       # Interface counters should have realistic non-zero values
-      result = GenServer.call(device_pid, {:get_oid, "1.3.6.1.2.1.2.2.1.10.1"})
+      result = Device.get(device, "1.3.6.1.2.1.2.2.1.10.1")
 
       case result do
-        {:ok, {:counter32, value}} ->
-          # Counter should be a reasonable value, can be 0 for newly started interface
-          assert value >= 0, "Interface counter should be >= 0, got: #{value}"
-          assert value < 4_294_967_296, "Counter32 should be within 32-bit range, got: #{value}"
-
-        {:ok, value} when is_integer(value) ->
-          assert value >= 0, "Interface counter should be >= 0, got: #{value}"
-          assert value < 4_294_967_296, "Counter32 should be within 32-bit range, got: #{value}"
-
+        {:ok, {oid, :counter32, value}} ->
+          assert oid == "1.3.6.1.2.1.2.2.1.10.1", "OID should match, got: #{oid}"
+          assert value > 0, "Counter32 value should be greater than 0, got: #{value}"
+          assert value < 4_294_967_296, "Counter32 value should be less than 2^32, got: #{value}"
+        {:error, reason} ->
+          flunk("Expected Counter32 value, got error: #{inspect(reason)}")
         other ->
           flunk("Expected Counter32 value, got: #{inspect(other)}")
       end
