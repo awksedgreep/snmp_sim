@@ -144,17 +144,38 @@ defmodule SnmpSim.Device.OidHandler do
   end
 
   def get_oid_value(oid, device_struct) when is_list(oid) and is_map(device_struct) and is_map_key(device_struct, :device_type) do
-    case get_device_specific_value(device_struct.device_type, oid) do
-      {:ok, value} -> {:ok, value}
-      {:error, _} -> {:error, :no_such_name}
+    # Check if device has walk data loaded in SharedProfiles
+    if Map.get(device_struct, :has_walk_data, false) do
+      # Convert device_type to atom since SharedProfiles uses atoms as keys
+      device_type_atom = if is_binary(device_struct.device_type), do: String.to_atom(device_struct.device_type), else: device_struct.device_type
+      oid_string = oid_to_string(oid)
+      case SnmpSim.MIB.SharedProfiles.get_oid_value(device_type_atom, oid_string, device_struct) do
+        {:ok, {type, value}} -> {:ok, {oid_string, type, value}}
+        {:error, reason} -> {:error, reason}
+      end
+    else
+      case get_device_specific_value(device_struct.device_type, oid) do
+        {:ok, value} -> {:ok, value}
+        {:error, _} -> {:error, :no_such_name}
+      end
     end
   end
 
   def get_oid_value(oid, device_struct) when is_binary(oid) and is_map(device_struct) and is_map_key(device_struct, :device_type) do
-    oid_list = string_to_oid_list(oid)
-    case get_device_specific_value(device_struct.device_type, oid_list) do
-      {:ok, value} -> {:ok, value}
-      {:error, _} -> {:error, :no_such_name}
+    # Check if device has walk data loaded in SharedProfiles
+    if Map.get(device_struct, :has_walk_data, false) do
+      # Convert device_type to atom since SharedProfiles uses atoms as keys
+      device_type_atom = if is_binary(device_struct.device_type), do: String.to_atom(device_struct.device_type), else: device_struct.device_type
+      case SnmpSim.MIB.SharedProfiles.get_oid_value(device_type_atom, oid, device_struct) do
+        {:ok, {type, value}} -> {:ok, {oid, type, value}}
+        {:error, reason} -> {:error, reason}
+      end
+    else
+      oid_list = string_to_oid_list(oid)
+      case get_device_specific_value(device_struct.device_type, oid_list) do
+        {:ok, value} -> {:ok, value}
+        {:error, _} -> {:error, :no_such_name}
+      end
     end
   end
 
@@ -216,9 +237,56 @@ defmodule SnmpSim.Device.OidHandler do
         {:ok, {oid_string, :counter32, 7654321}}
       _ ->
         case SharedProfiles.get_oid_value(device_type, oid_string, %{uptime: 0, device_type: device_type}) do
-          {:ok, value} -> {:ok, value}
+          {:ok, {type, value}} -> {:ok, {oid_string, type, value}}
           {:error, reason} -> {:error, reason}
         end
+    end
+  end
+
+  defp get_hardcoded_oid_value(_device_type, oid_list) do
+    oid_string = Enum.join(oid_list, ".")
+    case oid_string do
+      # System group OIDs (1.3.6.1.2.1.1.x.0)
+      "1.3.6.1.2.1.1.1.0" -> # sysDescr.0
+        {:ok, {oid_string, :octet_string, "Cable Modem Simulator"}}
+      "1.3.6.1.2.1.1.2.0" -> # sysObjectID.0
+        {:ok, {oid_string, :object_identifier, [1, 3, 6, 1, 4, 1, 1, 1]}}
+      "1.3.6.1.2.1.1.3.0" -> # sysUpTime.0
+        {:ok, {oid_string, :timeticks, 12345}}
+      "1.3.6.1.2.1.1.4.0" -> # sysContact.0
+        {:ok, {oid_string, :octet_string, "admin@example.com"}}
+      "1.3.6.1.2.1.1.5.0" -> # sysName.0
+        {:ok, {oid_string, :octet_string, "cable-modem-sim"}}
+      "1.3.6.1.2.1.1.6.0" -> # sysLocation.0
+        {:ok, {oid_string, :octet_string, "Lab Environment"}}
+      "1.3.6.1.2.1.1.7.0" -> # sysServices.0
+        {:ok, {oid_string, :integer, 72}}
+      
+      # Interface group OIDs (1.3.6.1.2.1.2.x.0)
+      "1.3.6.1.2.1.2.1.0" -> # ifNumber.0
+        {:ok, {oid_string, :integer, 2}}
+      
+      # Interface table OIDs (1.3.6.1.2.1.2.2.1.x.y)
+      "1.3.6.1.2.1.2.2.1.1.1" -> # ifIndex.1
+        {:ok, {oid_string, :integer, 1}}
+      "1.3.6.1.2.1.2.2.1.1.2" -> # ifIndex.2
+        {:ok, {oid_string, :integer, 2}}
+      "1.3.6.1.2.1.2.2.1.2.1" -> # ifDescr.1
+        {:ok, {oid_string, :octet_string, "eth0"}}
+      "1.3.6.1.2.1.2.2.1.2.2" -> # ifDescr.2
+        {:ok, {oid_string, :octet_string, "eth1"}}
+      "1.3.6.1.2.1.2.2.1.3.1" -> # ifType.1
+        {:ok, {oid_string, :integer, 6}}
+      "1.3.6.1.2.1.2.2.1.3.2" -> # ifType.2
+        {:ok, {oid_string, :integer, 6}}
+      oid when oid == "1.3.6.1.2.1.2.2.1.5.1" -> # Gauge32 (ifSpeed)
+        {:ok, {oid_string, :gauge32, 100000000}}
+      oid when oid == "1.3.6.1.2.1.2.2.1.10.1" -> # Counter32 (ifInOctets)
+        {:ok, {oid_string, :counter32, 1234567}}
+      oid when oid == "1.3.6.1.2.1.2.2.1.16.1" -> # Counter32 (ifOutOctets)
+        {:ok, {oid_string, :counter32, 7654321}}
+      _ ->
+        {:error, :no_such_name}
     end
   end
 
@@ -348,40 +416,63 @@ defmodule SnmpSim.Device.OidHandler do
   """
   def get_next_oid_value(device_type, oid, state) do
     IO.inspect({device_type, oid, state}, label: "get_next_oid_value input")
-    # If we have oid_map from walk file, use it instead of hardcoded OIDs
-    if Map.has_key?(state, :oid_map) do
-      IO.inspect("Using oid_map path", label: "get_next_oid_value")
-      get_next_oid_value_from_map(oid, state.oid_map)
-    else
-      IO.inspect("Using hardcoded OIDs path", label: "get_next_oid_value")
-      # Fallback to original implementation for compatibility
-      with {:ok, oids} <- {:ok, get_known_oids(device_type)},
-           {:ok, next_oid} <- find_next_oid(Enum.map(oids, &oid_to_string/1), oid_to_string(oid)) do
-        IO.inspect({oids, next_oid}, label: "get_next_oid_value found next_oid")
-        oid_list = string_to_oid_list(next_oid)
-        IO.inspect({oid_list, state}, label: "get_next_oid_value calling get_oid_value with")
-        case get_oid_value(oid_list, state) do
-          {:ok, %{type: type, value: value}} -> 
-            result = {:ok, {string_to_oid_list(next_oid), String.to_atom(String.downcase(type)), value}}
-            IO.inspect(result, label: "get_next_oid_value result (map format)")
-            result
-          {:ok, {_oid_string, type, value}} -> 
-            result = {:ok, {string_to_oid_list(next_oid), type, value}}
-            IO.inspect(result, label: "get_next_oid_value result (3-tuple format)")
-            result
-          {:ok, {type, value}} -> 
-            result = {:ok, {string_to_oid_list(next_oid), type, value}}
-            IO.inspect(result, label: "get_next_oid_value result (tuple format)")
-            result
-          error_result -> 
-            IO.inspect(error_result, label: "get_next_oid_value get_oid_value returned error")
+    
+    # Check if device has walk data loaded in SharedProfiles
+    cond do
+      Map.has_key?(state, :oid_map) ->
+        IO.inspect("Using oid_map path", label: "get_next_oid_value")
+        get_next_oid_value_from_map(oid, state.oid_map)
+      
+      Map.get(state, :has_walk_data, false) ->
+        IO.inspect("Using SharedProfiles path", label: "get_next_oid_value")
+        oid_string = oid_to_string(oid)
+        # Convert device_type to atom since SharedProfiles uses atoms as keys
+        device_type_atom = if is_binary(device_type), do: String.to_atom(device_type), else: device_type
+        case SnmpSim.MIB.SharedProfiles.get_next_oid(device_type_atom, oid_string) do
+          {:ok, next_oid_string} ->
+            case SnmpSim.MIB.SharedProfiles.get_oid_value(device_type_atom, next_oid_string, state) do
+              {:ok, {type, value}} ->
+                next_oid_list = string_to_oid_list(next_oid_string)
+                {:ok, {next_oid_list, type, value}}
+              {:error, reason} ->
+                {:error, reason}
+            end
+          :end_of_mib ->
+            {:error, :end_of_mib}
+          {:error, reason} ->
+            {:error, reason}
+        end
+      
+      true ->
+        IO.inspect("Using hardcoded OIDs path", label: "get_next_oid_value")
+        # Fallback to original implementation for compatibility
+        with {:ok, oids} <- {:ok, get_known_oids(device_type)},
+             {:ok, next_oid} <- find_next_oid(Enum.map(oids, &oid_to_string/1), oid_to_string(oid)) do
+          IO.inspect({oids, next_oid}, label: "get_next_oid_value found next_oid")
+          oid_list = string_to_oid_list(next_oid)
+          IO.inspect({oid_list, state}, label: "get_next_oid_value calling get_oid_value with")
+          case get_oid_value(oid_list, state) do
+            {:ok, %{type: type, value: value}} -> 
+              result = {:ok, {string_to_oid_list(next_oid), String.to_atom(String.downcase(type)), value}}
+              IO.inspect(result, label: "get_next_oid_value result (map format)")
+              result
+            {:ok, {_oid_string, type, value}} -> 
+              result = {:ok, {string_to_oid_list(next_oid), type, value}}
+              IO.inspect(result, label: "get_next_oid_value result (3-tuple format)")
+              result
+            {:ok, {type, value}} -> 
+              result = {:ok, {string_to_oid_list(next_oid), type, value}}
+              IO.inspect(result, label: "get_next_oid_value result (tuple format)")
+              result
+            error_result -> 
+              IO.inspect(error_result, label: "get_next_oid_value get_oid_value returned error")
+              {:error, :end_of_mib_view}
+          end
+        else
+          error -> 
+            IO.inspect(error, label: "get_next_oid_value error")
             {:error, :end_of_mib_view}
         end
-      else
-        error -> 
-          IO.inspect(error, label: "get_next_oid_value error")
-          {:error, :end_of_mib_view}
-      end
     end
   end
 
@@ -403,27 +494,56 @@ defmodule SnmpSim.Device.OidHandler do
   end
 
   defp find_next_oid(oids, oid) do
-    # Sort OIDs numerically by converting to integer lists for comparison
-    sorted_oids = Enum.sort_by(oids, fn oid_str ->
-      oid_str
-      |> String.split(".")
-      |> Enum.map(&String.to_integer/1)
-    end)
-    
-    case Enum.find_index(sorted_oids, &(&1 == oid)) do
-      nil ->
-        # If exact match not found, find the first OID numerically after the requested one
-        oid_parts = oid |> String.split(".") |> Enum.map(&String.to_integer/1)
-        next_index = Enum.find_index(sorted_oids, fn candidate_oid ->
-          candidate_parts = candidate_oid |> String.split(".") |> Enum.map(&String.to_integer/1)
-          compare_oid_lists(candidate_parts, oid_parts) == :gt
+    # Validate input OID format first
+    case validate_and_parse_oid(oid) do
+      {:error, _} -> {:error, :invalid_oid}
+      {:ok, oid_parts} ->
+        # Sort OIDs numerically by converting to integer lists for comparison
+        # Filter out any invalid OIDs during sorting
+        sorted_oids = oids
+        |> Enum.filter(fn oid_str ->
+          case validate_and_parse_oid(oid_str) do
+            {:ok, _} -> true
+            {:error, _} -> false
+          end
         end)
-        if next_index, do: {:ok, Enum.at(sorted_oids, next_index)}, else: {:error, :not_found}
-      index ->
-        # If exact match found, get the next one if it exists
-        if index + 1 < length(sorted_oids), do: {:ok, Enum.at(sorted_oids, index + 1)}, else: {:error, :not_found}
+        |> Enum.sort_by(fn oid_str ->
+          {:ok, parts} = validate_and_parse_oid(oid_str)
+          parts
+        end)
+        
+        case Enum.find_index(sorted_oids, &(&1 == oid)) do
+          nil ->
+            # If exact match not found, find the first OID numerically after the requested one
+            next_index = Enum.find_index(sorted_oids, fn candidate_oid ->
+              {:ok, candidate_parts} = validate_and_parse_oid(candidate_oid)
+              compare_oid_lists(candidate_parts, oid_parts) == :gt
+            end)
+            if next_index, do: {:ok, Enum.at(sorted_oids, next_index)}, else: {:error, :not_found}
+          index ->
+            # If exact match found, get the next one if it exists
+            if index + 1 < length(sorted_oids), do: {:ok, Enum.at(sorted_oids, index + 1)}, else: {:error, :not_found}
+        end
     end
   end
+
+  # Helper function to validate and parse OID string
+  defp validate_and_parse_oid(oid) when is_binary(oid) do
+    case oid do
+      "" -> {:error, :empty_oid}
+      _ ->
+        try do
+          parts = oid
+          |> String.split(".")
+          |> Enum.map(&String.to_integer/1)
+          {:ok, parts}
+        rescue
+          _ -> {:error, :invalid_oid_format}
+        end
+    end
+  end
+  
+  defp validate_and_parse_oid(_), do: {:error, :invalid_oid_type}
 
   # Helper function to compare OID lists numerically
   defp compare_oid_lists([], []), do: :eq
@@ -609,7 +729,7 @@ defmodule SnmpSim.Device.OidHandler do
     if current_index != nil and current_index + 1 < length(known_oids) do
       next_index = current_index + 1
       next_oid = Enum.at(known_oids, next_index)
-      case get_dynamic_oid_value(oid_to_string(next_oid), state) do
+      case get_hardcoded_oid_value(device_type, next_oid) do
         {:ok, {_oid, type, value}} when type == :object_identifier ->
           {next_oid, type, value}
         {:ok, {_oid, type, value}} ->
@@ -625,7 +745,7 @@ defmodule SnmpSim.Device.OidHandler do
       sorted_oids = Enum.sort_by(known_oids, &oid_to_string/1)
       next_oid = Enum.find(sorted_oids, fn oid -> oid_to_string(oid) > current_oid_str end)
       if next_oid do
-        case get_dynamic_oid_value(oid_to_string(next_oid), state) do
+        case get_hardcoded_oid_value(device_type, next_oid) do
           {:ok, {_oid, type, value}} when type == :object_identifier ->
             {next_oid, type, value}
           {:ok, {_oid, type, value}} ->
@@ -637,7 +757,7 @@ defmodule SnmpSim.Device.OidHandler do
         end
       else
         # Truly no more OIDs available
-        {:error, :end_of_mib_view}
+        {current_oid_str, :end_of_mib_view, {:end_of_mib_view, nil}}
       end
     end
   end

@@ -122,9 +122,9 @@ defmodule SnmpSim.Device.WalkPduProcessor do
           {:ok, varbind} ->
             {:cont, {[varbind | acc_varbinds], 0, 0}}
           {:error, :no_such_name} ->
-            # Return original OID with null value and set error
-            original_varbind = {oid, :null, :null}
-            {:halt, {[original_varbind | acc_varbinds], 2, index}}  # noSuchName = 2
+            # Return end_of_mib_view instead of original OID for GETBULK
+            end_of_mib_varbind = {oid, :end_of_mib_view, {:end_of_mib_view, nil}}
+            {:cont, {[end_of_mib_varbind | acc_varbinds], 0, 0}}
         end
       end)
     
@@ -160,14 +160,16 @@ defmodule SnmpSim.Device.WalkPduProcessor do
             {:error, :no_such_name}
         end
         
-      {:error, :end_of_mib} ->
+      :end_of_mib ->
         Logger.debug("WalkPduProcessor: End of MIB reached for #{oid_string}")
         {:error, :no_such_name}
         
-      {:error, _reason} ->
+      {:error, reason} ->
+        Logger.debug("WalkPduProcessor: Error getting next OID for #{oid_string}: #{inspect(reason)}")
         {:error, :no_such_name}
         
       :not_found ->
+        Logger.debug("WalkPduProcessor: No next OID found for #{oid_string}")
         {:error, :no_such_name}
     end
   end
@@ -250,7 +252,7 @@ defmodule SnmpSim.Device.WalkPduProcessor do
             end
         end
         
-      {:error, :end_of_mib} ->
+      :end_of_mib ->
         Logger.debug("WalkPduProcessor: End of MIB reached for #{oid_string}")
         if pdu_version == 1 do
           {oid, :no_such_name, {:no_such_name, nil}}
@@ -357,7 +359,7 @@ defmodule SnmpSim.Device.WalkPduProcessor do
     case SharedProfiles.get_next_oid(device_type, current_oid) do
       {:ok, next_oid} ->
         collect_bulk_oids(next_oid, remaining - 1, device_type, [next_oid | acc])
-      {:error, :end_of_mib} ->
+      :end_of_mib ->
         # End of MIB reached, fill remaining slots with end_of_mib markers
         end_of_mib_markers = List.duplicate(:end_of_mib_marker, remaining)
         Enum.reverse(acc) ++ end_of_mib_markers

@@ -119,10 +119,10 @@ config :snmp_sim, :behaviors,
   device_characteristics_enabled: false
 
 # Configure SNMP server for testing
-config :snmp_ex, [
-  port: 1161
-  # Other SNMP configuration options as needed
-]
+config :snmp_ex,
+  port: 1161,
+  # Disable MIB loading to prevent startup errors
+  mibs: []
 
 # Test-specific ExUnit configuration
 config :ex_unit,

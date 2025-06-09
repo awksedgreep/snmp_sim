@@ -142,7 +142,14 @@ defmodule SnmpSim.MIB.SharedProfiles do
       oid when is_binary(oid) -> 
         case String.split(oid, ".") do
           [""] -> []  # Handle empty string case
-          parts -> Enum.map(parts, &String.to_integer/1)
+          parts -> 
+            try do
+              Enum.map(parts, &String.to_integer/1)
+            rescue
+              ArgumentError -> 
+                # Invalid OID format, return empty list to handle gracefully
+                []
+            end
         end
       oid when is_list(oid) -> oid
     end
@@ -151,7 +158,14 @@ defmodule SnmpSim.MIB.SharedProfiles do
       oid when is_binary(oid) -> 
         case String.split(oid, ".") do
           [""] -> []  # Handle empty string case
-          parts -> Enum.map(parts, &String.to_integer/1)
+          parts -> 
+            try do
+              Enum.map(parts, &String.to_integer/1)
+            rescue
+              ArgumentError -> 
+                # Invalid OID format, return empty list to handle gracefully
+                []
+            end
         end
       oid when is_list(oid) -> oid
     end
@@ -274,7 +288,7 @@ defmodule SnmpSim.MIB.SharedProfiles do
           state
         )
 
-      {:error, :end_of_mib} ->
+      :end_of_mib ->
         {:ok, []}
 
       {:error, reason} ->
@@ -509,7 +523,7 @@ defmodule SnmpSim.MIB.SharedProfiles do
           |> Enum.sort(&compare_oids_lexicographically/2)
 
         case find_next_oid_in_list(all_oids, oid) do
-          nil -> {:error, :end_of_mib}
+          nil -> :end_of_mib
           next_oid -> {:ok, next_oid}
         end
     end
@@ -566,7 +580,7 @@ defmodule SnmpSim.MIB.SharedProfiles do
             )
         end
 
-      {:error, :end_of_mib} ->
+      :end_of_mib ->
         # Convert OID list to 3-tuples with actual values from walk file
         oid_tuples =
           Enum.map(Enum.reverse(acc), fn oid ->

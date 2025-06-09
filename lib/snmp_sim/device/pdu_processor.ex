@@ -37,13 +37,13 @@ defmodule SnmpSim.Device.PduProcessor do
           varbinds = Map.get(pdu, :varbinds, Map.get(pdu, :variable_bindings, []))
           processed = process_get_request(varbinds, state)
           response = create_get_response_with_fields(pdu, processed)
-          {:ok, response}
+          response
           
         :get_next_request -> 
           varbinds = Map.get(pdu, :varbinds, Map.get(pdu, :variable_bindings, []))
           processed = process_getnext_request(varbinds, state)
           response = create_get_response_with_fields(pdu, processed)
-          {:ok, response}
+          response
           
         :get_bulk_request -> 
           varbinds = Map.get(pdu, :varbinds, Map.get(pdu, :variable_bindings, []))
@@ -51,10 +51,10 @@ defmodule SnmpSim.Device.PduProcessor do
           max_repetitions = Map.get(pdu, :max_repetitions, 0)
           processed = process_getbulk_request(varbinds, state, non_repeaters, max_repetitions)
           response = create_getbulk_response(pdu, processed)
-          {:ok, response}
+          response
           
         _ -> 
-          {:ok, process_unsupported_pdu(pdu)}
+          process_unsupported_pdu(pdu)
       end
     end
   end

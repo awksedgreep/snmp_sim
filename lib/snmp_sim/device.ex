@@ -382,9 +382,10 @@ defmodule SnmpSim.Device do
 
   @impl true
   def handle_call({:get_oid, oid}, _from, state) do
-    result = SnmpSim.Device.OidHandler.get_oid_value(state.device_type, oid)
+    result = SnmpSim.Device.OidHandler.get_oid_value(oid, state)
     formatted_result = case result do
-      {:ok, {oid, type, value}} -> {:ok, {oid, type, value}}
+      {:ok, {_oid, :octet_string, value}} -> {:ok, value}  # Return just the string value for octet_string
+      {:ok, {_oid, type, value}} -> {:ok, {type, value}}   # Return {type, value} for other types
       {:ok, {oid, value}} -> {:ok, {oid, :octet_string, value}}
       {:ok, value} -> {:ok, value}
       error -> error
@@ -616,6 +617,7 @@ defmodule SnmpSim.Device do
   defp initialize_device_state(state) do
     # Try to load actual profile data from SharedProfiles
     profiles = SnmpSim.MIB.SharedProfiles.list_profiles()
+    Logger.info("Device #{state.device_id} checking profiles: #{inspect(profiles)} for device_type: #{inspect(state.device_type)}")
     
     case Enum.member?(profiles, state.device_type) do
       true ->
@@ -680,36 +682,23 @@ defmodule SnmpSim.Device do
     # For GETBULK, we need to get the NEXT OIDs, not the exact OIDs
     non_repeater_results =
       non_repeater_vars
-      |> Enum.map(fn {oid, _} ->
-        oid_string = case oid do
-          oid when is_list(oid) -> OidHandler.oid_to_string(oid)
-          oid when is_binary(oid) -> oid
-          _ -> to_string(oid)
-        end
-
+      |> Enum.map(fn {_oid, _} ->
         device_state = %{device_type: device_type, uptime: 0}
-        case SnmpSim.Device.OidHandler.get_next_oid_value(device_type, oid_string, device_state) do
+        case SnmpSim.Device.OidHandler.get_next_oid_value(device_type, _oid, device_state) do
           {:ok, {next_oid, type, value}} -> {next_oid, type, value}
           {:ok, {next_oid, value}} -> {next_oid, :octet_string, value}
-          {:ok, value} -> {oid_string, :octet_string, value}
-          {:error, _} -> {oid_string, :no_such_name, :null}
+          {:ok, value} -> {_oid, :octet_string, value}
+          {:error, _} -> {_oid, :no_such_name, :null}
         end
       end)
     IO.inspect(non_repeater_results, label: "GETBULK non_repeater_results")
 
     repeater_results =
       repeater_vars
-      |> Enum.flat_map(fn {oid, _} ->
-        oid_string = case oid do
-          oid when is_list(oid) -> OidHandler.oid_to_string(oid)
-          oid when is_binary(oid) -> oid
-          _ -> to_string(oid)
-        end
-        IO.inspect({oid, oid_string}, label: "GETBULK processing repeater OID")
-
+      |> Enum.flat_map(fn {_oid, _} ->
         1..max_repetitions
         |> Enum.reduce_while([], fn _i, acc ->
-          current_oid = if acc == [], do: oid_string, else: elem(List.last(acc), 0)
+          current_oid = if acc == [], do: _oid, else: elem(List.last(acc), 0)
           IO.inspect(current_oid, label: "GETBULK current_oid for iteration")
         
           device_state = %{device_type: device_type, uptime: 0}

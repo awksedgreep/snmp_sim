@@ -95,10 +95,13 @@ defmodule SnmpSim.SnmpWalkFixTest do
     end
 
     test "OidHandler.get_fallback_next_oid/2 handles the problematic transition" do
-      # Test the fallback case - should return end_of_mib_view since SharedProfiles handles real data
-      result = OidHandler.get_fallback_next_oid("1.3.6.1.2.1.2.2.1.1.2", %{})
+      # Test the fallback case - should return the next hardcoded OID if available
+      oid_list = [1, 3, 6, 1, 2, 1, 2, 2, 1, 1, 2]
+      state = %{device_type: :cable_modem}
+      result = OidHandler.get_fallback_next_oid(oid_list, state)
       
-      assert {"1.3.6.1.2.1.2.2.1.1.2", :end_of_mib_view, {:end_of_mib_view, nil}} = result
+      # Should return the next hardcoded OID: ifDescr.1 (1.3.6.1.2.1.2.2.1.2.1)
+      assert {[1, 3, 6, 1, 2, 1, 2, 2, 1, 2, 1], :octet_string, "eth0"} = result
     end
 
     @tag :walk_test

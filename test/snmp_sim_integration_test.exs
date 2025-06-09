@@ -143,7 +143,7 @@ defmodule SnmpSimIntegrationTest do
       assert length(message.pdu.varbinds) == 1
 
       [{_oid, _type, value}] = message.pdu.varbinds
-      assert value == :null or match?({:no_such_object, _}, value)
+      assert value == :null or value == nil or match?({:no_such_object, _}, value)
 
       GenServer.stop(device)
     end

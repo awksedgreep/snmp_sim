@@ -7,6 +7,7 @@ defmodule SnmpSim.Core.Server do
   use GenServer
   require Logger
   alias SnmpLib.PDU, as: PDU
+  alias SnmpSim.Device.OidHandler
 
   # Suppress Dialyzer warnings for async functions and pattern matches
   @dialyzer [
@@ -441,27 +442,37 @@ defmodule SnmpSim.Core.Server do
   defp normalize_varbinds(pdu) do
     normalized_varbinds = 
       Enum.map(pdu.varbinds || [], fn
-        # Handle 2-tuple format {oid, :null}
-        {oid, :null} -> {oid, :null, nil}
+        # Handle 2-tuple format {oid, :null} - normalize OID
+        {oid, :null} -> 
+          normalized_oid = normalize_oid(oid)
+          {normalized_oid, :null, nil}
+        # Handle 2-tuple format {oid, string_value} - assume octet_string type
+        {oid, value} when is_binary(value) -> 
+          normalized_oid = normalize_oid(oid)
+          {normalized_oid, :octet_string, value}
         # Handle 3-tuple format {oid, type, value}
         {oid, type, value} ->
+          normalized_oid = normalize_oid(oid)
           normalized_value = normalize_varbind_value(type, value)
-          {oid, type, normalized_value}
+          {normalized_oid, type, normalized_value}
       end)
     
     Map.put(pdu, :varbinds, normalized_varbinds)
   end
-  
+
+  # Convert string OIDs to integer lists
+  defp normalize_oid(oid) when is_binary(oid) do
+    OidHandler.string_to_oid_list(oid)
+  end
+  defp normalize_oid(oid) when is_list(oid), do: oid
+  defp normalize_oid(oid), do: oid
+
   # Convert varbind values to formats expected by snmp_lib
   defp normalize_varbind_value(:object_identifier, value) when is_binary(value) do
-    # Convert string OID to OID list
-    # For now, we'll use a simple conversion - this could be enhanced to parse OID strings
+    # Convert string OID to OID list, handling both dotted notation and named OIDs
     case parse_oid_string(value) do
       {:ok, oid_list} -> oid_list
-      {:error, _} -> 
-        # Fallback: use a default OID if parsing fails
-        Logger.warning("Failed to parse OID string: #{value}, using default")
-        [1, 3, 6, 1, 2, 1, 1, 1, 0]
+      {:error, _} -> OidHandler.string_to_oid_list(value)  # Fallback to original function
     end
   end
   

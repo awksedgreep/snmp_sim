@@ -184,8 +184,8 @@ defmodule SnmpSim.GetbulkEndOfMibTest do
       # Test that GETBULK from last OID returns proper endOfMibView response
       
       {output, exit_code} = System.cmd("snmpbulkget", [
-        "-v2c", "-c", "public", "127.0.0.1:#{port}",
-        "-Cn0", "-Cr1", last_oid
+        "-v2c", "-c", "public", "-Cn0", "-Cr1", 
+        "127.0.0.1:#{port}", last_oid
       ], stderr_to_stdout: true)
       
       assert exit_code == 0, "SNMP command failed: #{output}"

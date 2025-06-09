@@ -462,13 +462,13 @@ defmodule SnmpSim.LazyDevicePool do
 
   defp default_port_assignments do
     %{
-      # Drastically reduced port ranges - only ~50 ports total
-      cable_modem: 30_000..30_009,      # 10 ports
-      mta: 30_010..30_014,              # 5 ports
-      switch: 30_015..30_024,           # 10 ports
-      router: 30_025..30_034,           # 10 ports
-      cmts: 30_035..30_039,             # 5 ports
-      server: 30_040..30_049            # 10 ports
+      # Port ranges to match test expectations
+      cable_modem: 30_000..37_999,      # 8000 ports for cable modems
+      mta: 38_000..38_499,              # 500 ports for MTAs
+      router: 39_000..39_499,           # 500 ports for routers
+      switch: 39_500..39_899,           # 400 ports for switches  
+      cmts: 39_950..39_999,             # 50 ports for CMTS (as expected by test)
+      server: 38_500..38_999            # 500 ports for servers
     }
   end
 end

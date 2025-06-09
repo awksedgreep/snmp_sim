@@ -26,7 +26,8 @@ defmodule SnmpSim.GetbulkFunctionalityTest do
       GenServer.start_link(Device, %{
         device_type: :cable_modem,
         device_id: "test_#{:rand.uniform(10000)}",
-        port: 20000 + :rand.uniform(1000)
+        port: 20000 + :rand.uniform(1000),
+        walk_file: "priv/walks/cable_modem.walk"
       })
 
     # Call the device with our test PDU
@@ -86,22 +87,27 @@ defmodule SnmpSim.GetbulkFunctionalityTest do
         varbinds: [{"1.3.6.1", nil}]
       }
 
-      {:ok, response_pdu} = call_process_snmp_pdu(pdu, create_test_state())
+      response = call_process_snmp_pdu(pdu, create_test_state())
 
-      assert length(response_pdu.varbinds) >= 1
-      {first_oid, _type, _value} = hd(response_pdu.varbinds)
+      case response do
+        {:ok, response_pdu} ->
+          assert length(response_pdu.varbinds) >= 1
+          {first_oid, _type, _value} = hd(response_pdu.varbinds)
 
-      first_oid_str = if is_list(first_oid), do: Enum.join(first_oid, "."), else: first_oid
+          first_oid_str = if is_list(first_oid), do: Enum.join(first_oid, "."), else: first_oid
 
-      # The critical test: returned OID must be greater than query OID
-      query_oid = "1.3.6.1"
+          # The critical test: returned OID must be greater than query OID
+          query_oid = "1.3.6.1"
 
-      assert first_oid_str > query_oid,
-             "Returned OID '#{first_oid_str}' must be greater than query OID '#{query_oid}' to avoid 'OID not increasing' error"
+          assert first_oid_str > query_oid,
+                 "Returned OID '#{first_oid_str}' must be greater than query OID '#{query_oid}' to avoid 'OID not increasing' error"
 
-      # More specifically, it should start with the query OID but be longer
-      assert String.starts_with?(first_oid_str, query_oid <> "."),
-             "Returned OID should be under the queried subtree: '#{first_oid_str}' should start with '#{query_oid}.'"
+          # More specifically, it should start with the query OID but be longer
+          assert String.starts_with?(first_oid_str, query_oid <> "."),
+                 "Returned OID should be under the queried subtree: '#{first_oid_str}' should start with '#{query_oid}.'"
+        _ ->
+          flunk("Unexpected response format")
+      end
     end
 
     test "GETBULK returns consistent varbind format" do
@@ -115,16 +121,21 @@ defmodule SnmpSim.GetbulkFunctionalityTest do
         varbinds: [{"1.3.6.1.2.1.1", nil}]
       }
 
-      {:ok, response_pdu} = call_process_snmp_pdu(pdu, create_test_state())
+      response = call_process_snmp_pdu(pdu, create_test_state())
 
-      # All varbinds should be 3-tuples {oid, type, value}
-      Enum.each(response_pdu.varbinds, fn varbind ->
-        assert tuple_size(varbind) == 3, "Varbind should be 3-tuple: #{inspect(varbind)}"
-        {oid, type, _value} = varbind
-        assert is_binary(oid) or is_list(oid), "OID should be string or list: #{inspect(oid)}"
-        assert is_atom(type), "Type should be atom: #{inspect(type)}"
-        # Value can be anything
-      end)
+      case response do
+        {:ok, response_pdu} ->
+          # All varbinds should be 3-tuples {oid, type, value}
+          Enum.each(response_pdu.varbinds, fn varbind ->
+            assert tuple_size(varbind) == 3, "Varbind should be 3-tuple: #{inspect(varbind)}"
+            {oid, type, _value} = varbind
+            assert is_binary(oid) or is_list(oid), "OID should be string or list: #{inspect(oid)}"
+            assert is_atom(type), "Type should be atom: #{inspect(type)}"
+            # Value can be anything
+          end)
+        _ ->
+          flunk("Unexpected response format")
+      end
     end
 
     test "GETBULK error status should be 0 not 5" do
@@ -139,13 +150,18 @@ defmodule SnmpSim.GetbulkFunctionalityTest do
         varbinds: [{"1.3.6.1", nil}]
       }
 
-      {:ok, response_pdu} = call_process_snmp_pdu(pdu, create_test_state())
+      response = call_process_snmp_pdu(pdu, create_test_state())
 
-      # This should pass after fix - currently fails with error_status: 5
-      assert response_pdu.error_status == 0,
-             "GETBULK should return error_status 0, got #{response_pdu.error_status}"
+      case response do
+        {:ok, response_pdu} ->
+          # This should pass after fix - currently fails with error_status: 5
+          assert response_pdu.error_status == 0,
+                 "GETBULK should return error_status 0, got #{response_pdu.error_status}"
 
-      assert response_pdu.error_index == 0
+          assert response_pdu.error_index == 0
+        _ ->
+          flunk("Unexpected response format")
+      end
     end
 
     test "GETBULK should not return same OID as query" do
@@ -160,23 +176,28 @@ defmodule SnmpSim.GetbulkFunctionalityTest do
         varbinds: [{"1.3.6.1", nil}]
       }
 
-      {:ok, response_pdu} = call_process_snmp_pdu(pdu, create_test_state())
+      response = call_process_snmp_pdu(pdu, create_test_state())
 
-      # Extract first varbind - handle both 2-tuple and 3-tuple formats for now
-      first_varbind = hd(response_pdu.varbinds)
+      case response do
+        {:ok, response_pdu} ->
+          # Extract first varbind - handle both 2-tuple and 3-tuple formats for now
+          first_varbind = hd(response_pdu.varbinds)
 
-      first_oid =
-        case first_varbind do
-          {oid, _type, _value} -> oid
-          {oid, _value} -> oid
-          _ -> nil
-        end
+          first_oid =
+            case first_varbind do
+              {oid, _type, _value} -> oid
+              {oid, _value} -> oid
+              _ -> nil
+            end
 
-      first_oid_str = if is_list(first_oid), do: Enum.join(first_oid, "."), else: first_oid
+          first_oid_str = if is_list(first_oid), do: Enum.join(first_oid, "."), else: first_oid
 
-      # The core issue: should NOT return the same OID
-      refute first_oid_str == "1.3.6.1",
-             "GETBULK returned same OID '#{first_oid_str}' as query '1.3.6.1' - this causes 'OID not increasing' error"
+          # The core issue: should NOT return the same OID
+          refute first_oid_str == "1.3.6.1",
+                 "GETBULK returned same OID '#{first_oid_str}' as query '1.3.6.1' - this causes 'OID not increasing' error"
+        _ ->
+          flunk("Unexpected response format")
+      end
     end
 
     test "GETBULK fallback function format consistency" do
@@ -192,14 +213,15 @@ defmodule SnmpSim.GetbulkFunctionalityTest do
         varbinds: [{"1.3.6.1", nil}]
       }
 
-      {:ok, response_pdu} = call_process_snmp_pdu(pdu, create_test_state())
+      response = call_process_snmp_pdu(pdu, create_test_state())
 
-      # Debug: print what we actually get
-      IO.inspect(response_pdu.varbinds, label: "GETBULK varbinds")
-      IO.inspect(response_pdu.error_status, label: "GETBULK error_status")
-
-      # This test is for debugging - we expect it to fail initially
-      assert length(response_pdu.varbinds) > 0, "Should have at least one varbind"
+      case response do
+        {:ok, response_pdu} ->
+          # This test is for debugging - we expect it to fail initially
+          assert length(response_pdu.varbinds) > 0, "Should have at least one varbind"
+        _ ->
+          flunk("Unexpected response format")
+      end
     end
   end
 end
