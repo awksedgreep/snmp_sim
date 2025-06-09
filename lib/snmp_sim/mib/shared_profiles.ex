@@ -99,6 +99,13 @@ defmodule SnmpSim.MIB.SharedProfiles do
   end
 
   @doc """
+  Get all OIDs for a device type.
+  """
+  def get_all_oids(device_type) do
+    GenServer.call(__MODULE__, {:get_all_oids, device_type})
+  end
+
+  @doc """
   Get memory usage statistics for the shared profiles.
   """
   def get_memory_stats do
@@ -267,6 +274,23 @@ defmodule SnmpSim.MIB.SharedProfiles do
     end
     
     {:reply, result, state}
+  end
+
+  @impl true
+  def handle_call({:get_all_oids, device_type}, _from, state) do
+    case Map.get(state.profile_tables, device_type) do
+      nil ->
+        {:reply, {:error, :device_type_not_found}, state}
+
+      table ->
+        # Get all OIDs and return them
+        all_oids =
+          :ets.tab2list(table)
+          |> Enum.map(fn {oid, _data} -> oid end)
+          |> Enum.sort(&compare_oids_lexicographically/2)
+
+        {:reply, {:ok, all_oids}, state}
+    end
   end
 
   @impl true

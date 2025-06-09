@@ -190,7 +190,7 @@ defmodule SnmpSim.SnmpVersionCompatibilityTest do
 
       assert {:ok, response_pdu} = result
       assert response_pdu.version == :v1
-      verify_response_data(response_pdu, "1.3.6.1.2.1.2.2.1.10.1")
+      verify_counter32_response(response_pdu, "1.3.6.1.2.1.2.2.1.10.1")
     end
 
     test "SNMPv2c returns Counter32 values correctly", %{device_pid: device_pid} do
@@ -209,14 +209,18 @@ defmodule SnmpSim.SnmpVersionCompatibilityTest do
 
       assert {:ok, response_pdu} = result
       assert response_pdu.version == :v2c
-      verify_response_data(response_pdu, "1.3.6.1.2.1.2.2.1.10.1")
+      verify_counter32_response(response_pdu, "1.3.6.1.2.1.2.2.1.10.1")
     end
   end
 
   defp verify_response_data(pdu, expected_oid_str) do
     assert length(pdu.varbinds) == 1, "Response should have exactly 1 varbind"
     
-    {oid_str, value} = List.first(pdu.varbinds)
+    {oid, _type, value} = List.first(pdu.varbinds)
+    oid_str = case oid do
+      oid_list when is_list(oid_list) -> Enum.join(oid_list, ".")
+      oid_str when is_binary(oid_str) -> oid_str
+    end
     assert oid_str == expected_oid_str, "Response OID should match request"
     assert is_binary(value), "sysDescr value should be a string"
     assert String.length(value) > 0, "sysDescr value should not be empty"
@@ -225,7 +229,11 @@ defmodule SnmpSim.SnmpVersionCompatibilityTest do
   defp verify_getnext_response(pdu, requested_oid_str, expected_next_oid_str) do
     assert length(pdu.varbinds) == 1, "Response should have exactly 1 varbind"
     
-    {oid_str, value} = List.first(pdu.varbinds)
+    {oid, _type, value} = List.first(pdu.varbinds)
+    oid_str = case oid do
+      oid_list when is_list(oid_list) -> Enum.join(oid_list, ".")
+      oid_str when is_binary(oid_str) -> oid_str
+    end
     assert oid_str == expected_next_oid_str, "GETNEXT should return next OID: expected #{expected_next_oid_str}, got #{oid_str}"
     assert String.starts_with?(oid_str, requested_oid_str), "Next OID should be lexicographically after requested OID"
     assert value != nil, "Value should not be nil"
@@ -238,5 +246,18 @@ defmodule SnmpSim.SnmpVersionCompatibilityTest do
       _ ->
         assert value != nil, "Value for OID #{oid_str} should not be nil"
     end
+  end
+
+  defp verify_counter32_response(pdu, expected_oid_str) do
+    assert length(pdu.varbinds) == 1, "Response should have exactly 1 varbind"
+    
+    {oid, _type, value} = List.first(pdu.varbinds)
+    oid_str = case oid do
+      oid_list when is_list(oid_list) -> Enum.join(oid_list, ".")
+      oid_str when is_binary(oid_str) -> oid_str
+    end
+    assert oid_str == expected_oid_str, "Response OID should match request"
+    assert is_integer(value), "Counter32 value should be an integer"
+    assert value >= 0, "Counter32 value should be non-negative"
   end
 end

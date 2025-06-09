@@ -21,7 +21,7 @@ defmodule SnmpSim.CounterEncodingTest do
 
     test_port = PortHelper.get_port()
     {:ok, device_pid} = LazyDevicePool.get_or_create_device(test_port)
-    {:ok, device: Device.new(device_pid), test_port: test_port, device_pid: device_pid}
+    {:ok, device: device_pid, test_port: test_port, device_pid: device_pid}
   end
 
   describe "Counter32 and Gauge32 encoding" do

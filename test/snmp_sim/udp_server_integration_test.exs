@@ -33,8 +33,16 @@ defmodule SnmpSim.UdpServerIntegrationTest do
     # Register cleanup callback
     on_exit(fn ->
       # Shutdown the device to release the port
-      if Process.alive?(device_pid) do
-        GenServer.stop(device_pid, :normal, 5000)
+      try do
+        if Process.alive?(device_pid) do
+          GenServer.stop(device_pid, :normal, 5000)
+        end
+      catch
+        :exit, {:noproc, _} -> :ok
+        :exit, {:normal, _} -> :ok
+        :exit, reason -> 
+          # Log unexpected exit reasons but don't fail the test
+          IO.puts("Process cleanup warning: #{inspect(reason)}")
       end
       
       # Also ensure the port is released from PortHelper
@@ -316,7 +324,7 @@ defmodule SnmpSim.UdpServerIntegrationTest do
     test "server handles GETBULK with mixed valid and invalid OIDs", %{test_port: test_port} do
       # Test GETBULK with a valid OID that will eventually lead to end_of_mib_view
       # Use an OID near the end of our known OID space to trigger end_of_mib_view
-      valid_oid = [1, 3, 6, 1, 2, 1, 1, 7, 0]  # sysServices - last in system group
+      valid_oid = [1, 3, 6, 1, 2, 1, 2, 2, 1, 21, 1]  # ifOutQLen.1 - near end of interface table
 
       # Create request with non_repeaters = 0 so the OID gets repeated
       # This will cause the system to walk beyond the last known OID
@@ -500,7 +508,7 @@ defmodule SnmpSim.UdpServerIntegrationTest do
           # First varbind should be the next OID after sysDescr (which is sysObjectID)
           {first_oid, first_type, first_value} = Enum.at(varbinds, 0)
           assert first_oid == [1, 3, 6, 1, 2, 1, 1, 2, 0]  # sysObjectID (next after sysDescr)
-          assert first_type == :auto  # Simulator uses :auto type
+          assert first_type == :object_identifier  # sysObjectID has object identifier type
           assert is_binary(first_value) or is_list(first_value)
 
           # Second varbind should be no_such_name for invalid OID (or next valid OID)
@@ -513,7 +521,7 @@ defmodule SnmpSim.UdpServerIntegrationTest do
           {third_oid, third_type, third_value} = Enum.at(varbinds, 2)
           # sysUpTime [1, 3, 6, 1, 2, 1, 1, 3, 0] -> next should be sysContact [1, 3, 6, 1, 2, 1, 1, 4, 0]
           assert third_oid == [1, 3, 6, 1, 2, 1, 1, 4, 0]  # sysContact (next after sysUpTime)
-          assert third_type == :auto  # Simulator uses :auto type
+          assert third_type == :octet_string  # sysContact is an octet string
           assert is_binary(third_value)
 
           # Remaining varbinds should be from the interfaces subtree (repeaters)

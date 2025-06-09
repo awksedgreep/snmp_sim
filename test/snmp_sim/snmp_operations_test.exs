@@ -43,13 +43,18 @@ defmodule SnmpSim.SNMPOperationsTest do
     test "GET operation returns proper SNMP data types", %{device: device} do
       test_cases = [
         {"1.3.6.1.2.1.1.1.0", &is_binary/1, "sysDescr should be string"},
-        {"1.3.6.1.2.1.1.2.0", &is_list/1, "sysObjectID should be OID"},
-        {"1.3.6.1.2.1.1.3.0", &(is_integer(&1) or is_tuple(&1)), "sysUpTime should be integer or timeticks"}
+        {"1.3.6.1.2.1.1.2.0", &is_list/1, "sysObjectID should be OID list"},
+        {"1.3.6.1.2.1.1.3.0", &is_integer/1, "sysUpTime should be integer"}
       ]
 
       for {oid, validator, description} <- test_cases do
         {:ok, {^oid, type, value}} = Device.get(device, oid)
-        assert validator.(value), "#{description}, got: #{inspect({type, value})}"
+        # Handle the case where value might be a typed tuple
+        actual_value = case value do
+          {_type, actual_val} -> actual_val
+          actual_val -> actual_val
+        end
+        assert validator.(actual_value), "#{description}, got: #{inspect({type, actual_value})}"
       end
     end
 
@@ -83,12 +88,20 @@ defmodule SnmpSim.SNMPOperationsTest do
 
     test "simulated SNMP walk returns sequential OIDs with proper types", %{device: device} do
       # Perform a walk from sysDescr (1.3.6.1.2.1.1.1.0)
-      walk_results = Device.walk(device, [1, 3, 6, 1, 2, 1, 1, 1, 0])
+      {:ok, walk_results} = Device.walk(device, [1, 3, 6, 1, 2, 1, 1, 1, 0])
       assert length(walk_results) > 0, "Walk should return at least one result"
 
-      # Check if results are in lexicographical order
+      # Check if results are in numerical order
       oids = Enum.map(walk_results, fn {oid, _value} -> oid end)
-      assert oids == Enum.sort(oids), "OIDs should be in lexicographical order"
+      IO.inspect(oids, label: "Walk OIDs returned")
+      # Sort OIDs numerically by converting to integer lists
+      sorted_oids = Enum.sort_by(oids, fn oid_string ->
+        oid_string
+        |> String.split(".")
+        |> Enum.map(&String.to_integer/1)
+      end)
+      IO.inspect(sorted_oids, label: "Walk OIDs sorted")
+      assert oids == sorted_oids, "OIDs should be in numerical order"
 
       # Check values and types for specific OIDs
       for {oid, value} <- walk_results do
@@ -180,7 +193,7 @@ defmodule SnmpSim.SNMPOperationsTest do
 
       # Process the PDU through the device
       case GenServer.call(device, {:handle_snmp, request_pdu, %{}}) do
-        {:ok, response_pdu} ->
+        {:ok, {:ok, response_pdu}} ->
           # Verify response structure
           assert response_pdu.version == request_pdu.version
           assert response_pdu.community == request_pdu.community
@@ -238,8 +251,9 @@ defmodule SnmpSim.SNMPOperationsTest do
       }
 
       # Process the PDU
-      case GenServer.call(device, {:handle_snmp, request_pdu, %{}}) do
-        {:ok, response_pdu} ->
+      response = GenServer.call(device, {:handle_snmp, request_pdu, %{}})
+      case response do
+        {:ok, {:ok, response_pdu}} ->
           assert response_pdu.type == :get_response
           assert response_pdu.request_id == request_pdu.request_id
           assert response_pdu.error_status == 0
@@ -256,8 +270,12 @@ defmodule SnmpSim.SNMPOperationsTest do
           assert is_valid_snmp_type(next_value),
                  "GETNEXT value should be valid SNMP type, got: #{inspect(next_value)}"
 
+        {:ok, {:error, reason}} ->
+          flunk("GETNEXT PDU processing failed: #{inspect(reason)}")
         {:error, reason} ->
           flunk("GETNEXT PDU processing failed: #{inspect(reason)}")
+        other ->
+          flunk("Unexpected response format: #{inspect(other)}")
       end
     end
   end

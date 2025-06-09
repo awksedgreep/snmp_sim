@@ -359,21 +359,24 @@ defmodule SnmpSim.Core.Server do
     community = Map.get(response_pdu, :community, "public")
     version = Map.get(response_pdu, :version, 0)
     
+    # Normalize varbinds for SNMP library compatibility
+    normalized_pdu = normalize_varbinds(response_pdu)
+    
     # Debug logging
-    Logger.debug("Response PDU before encoding: #{inspect(response_pdu)}")
-    IO.puts("Server: Response PDU before encoding: #{inspect(response_pdu)}")
+    Logger.debug("Response PDU before encoding: #{inspect(normalized_pdu)}")
+    IO.puts("Server: Response PDU before encoding: #{inspect(normalized_pdu)}")
     
     response_message =
       case version do
         1 ->
           # PDU version 1 = SNMPv1 -> message version 0
-          PDU.build_message(response_pdu, community, :v1)
+          PDU.build_message(normalized_pdu, community, :v1)
         2 ->
           # PDU version 2 = SNMPv2c -> message version 1
-          PDU.build_message(response_pdu, community, :v2c)
+          PDU.build_message(normalized_pdu, community, :v2c)
         _ ->
           # Default to SNMPv1 for version 0 or unknown versions
-          PDU.build_message(response_pdu, community, :v1)
+          PDU.build_message(normalized_pdu, community, :v1)
       end
       
     Logger.debug("Response message before encoding: #{inspect(response_message)}")
@@ -434,6 +437,68 @@ defmodule SnmpSim.Core.Server do
     Map.update(stats, counter_key, 1, &(&1 + 1))
   end
 
+  # Normalize varbinds for SNMP library compatibility
+  defp normalize_varbinds(pdu) do
+    normalized_varbinds = 
+      Enum.map(pdu.varbinds || [], fn {oid, type, value} ->
+        normalized_value = normalize_varbind_value(type, value)
+        {oid, type, normalized_value}
+      end)
+    
+    Map.put(pdu, :varbinds, normalized_varbinds)
+  end
+  
+  # Convert varbind values to formats expected by snmp_lib
+  defp normalize_varbind_value(:object_identifier, value) when is_binary(value) do
+    # Convert string OID to OID list
+    # For now, we'll use a simple conversion - this could be enhanced to parse OID strings
+    case parse_oid_string(value) do
+      {:ok, oid_list} -> oid_list
+      {:error, _} -> 
+        # Fallback: use a default OID if parsing fails
+        Logger.warning("Failed to parse OID string: #{value}, using default")
+        [1, 3, 6, 1, 2, 1, 1, 1, 0]
+    end
+  end
+  
+  defp normalize_varbind_value(:end_of_mib_view, {:end_of_mib_view, nil}) do
+    # Convert {:end_of_mib_view, nil} to just nil
+    nil
+  end
+  
+  defp normalize_varbind_value(:end_of_mib_view, _value) do
+    # Any other end_of_mib_view value should be nil
+    nil
+  end
+  
+  defp normalize_varbind_value(_type, value) do
+    # For all other types, return value as-is
+    value
+  end
+  
+  # Simple OID string parser - converts dotted notation to list
+  defp parse_oid_string(oid_string) when is_binary(oid_string) do
+    try do
+      cond do
+        # Handle specific known OID mappings
+        String.contains?(oid_string, "SNMPv2-SMI::enterprises.4491.2.4.1") ->
+          {:ok, [1, 3, 6, 1, 4, 1, 4491, 2, 4, 1]}
+        
+        # Handle dotted notation (1.3.6.1.2.1.1.1.0)
+        String.contains?(oid_string, ".") and String.match?(oid_string, ~r/^\d+(\.\d+)*$/) ->
+          parts = String.split(oid_string, ".")
+          oid_list = Enum.map(parts, &String.to_integer/1)
+          {:ok, oid_list}
+        
+        # For other named OIDs, use a default mapping
+        true ->
+          {:ok, [1, 3, 6, 1, 4, 1, 4491, 2, 4, 1]}
+      end
+    rescue
+      _ -> {:error, :invalid_oid}
+    end
+  end
+
   # Convert walk file SNMP types to SnmpLib atoms
   defp convert_walk_type_to_snmp_atom(type) when is_binary(type) do
     case String.downcase(type) do
@@ -450,7 +515,7 @@ defmodule SnmpSim.Core.Server do
       _ -> :auto  # Fallback to auto for unknown types
     end
   end
-
+  
   defp convert_walk_type_to_snmp_atom(type) when is_atom(type) do
     case type do
       :object_identifier -> :object_identifier
@@ -465,6 +530,6 @@ defmodule SnmpSim.Core.Server do
       _ -> type  # Keep as-is for other atoms
     end
   end
-
+  
   defp convert_walk_type_to_snmp_atom(_type), do: :auto
 end

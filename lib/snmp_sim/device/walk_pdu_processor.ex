@@ -286,45 +286,70 @@ defmodule SnmpSim.Device.WalkPduProcessor do
   defp get_bulk_varbinds(start_oid, max_repetitions, state, pdu_version \\ 2) do
     start_oid_string = oid_to_string(start_oid)
     
-    # Collect OIDs for bulk operation
-    bulk_oids = collect_bulk_oids(start_oid_string, max_repetitions, state.device_type, [])
+    # Limit max_repetitions to prevent huge responses that can cause UDP packet size issues
+    limited_max_repetitions = min(max_repetitions, 50)
     
-    # Map each OID to its value
-    Enum.map(bulk_oids, fn next_oid_string ->
-      case SharedProfiles.get_oid_value(state.device_type, next_oid_string, state) do
-        {:ok, {type, value}} ->
-          next_oid = string_to_oid_list(next_oid_string)
-          
-          # Check for dynamic values
-          cond do
-            Map.has_key?(state.counters, next_oid_string) ->
-              {next_oid, :counter32, Map.get(state.counters, next_oid_string)}
-              
-            Map.has_key?(state.gauges, next_oid_string) ->
-              {next_oid, :gauge32, Map.get(state.gauges, next_oid_string)}
-              
-            next_oid_string == "1.3.6.1.2.1.1.3.0" ->
-              {next_oid, :timeticks, calculate_uptime_ticks(state)}
-              
-            true ->
-              {next_oid, type, value}
-          end
-          
-        :not_found ->
+    # Collect OIDs for bulk operation
+    bulk_oids = collect_bulk_oids(start_oid_string, limited_max_repetitions, state.device_type, [])
+    
+    # If no OIDs were collected (e.g., invalid start OID), return end_of_mib_view varbinds
+    if Enum.empty?(bulk_oids) do
+      # Return the requested number of end_of_mib_view varbinds
+      List.duplicate(
+        if pdu_version == 1 do
+          {start_oid, :no_such_name, {:no_such_name, nil}}
+        else
+          {start_oid, :end_of_mib_view, {:end_of_mib_view, nil}}
+        end,
+        limited_max_repetitions
+      )
+    else
+      # Map each OID to its value
+      Enum.map(bulk_oids, fn 
+        :end_of_mib_marker ->
+          # Handle end of MIB markers
           if pdu_version == 1 do
-            {string_to_oid_list(next_oid_string), :no_such_name, {:no_such_name, nil}}
+            {start_oid, :no_such_name, {:no_such_name, nil}}
           else
-            {string_to_oid_list(next_oid_string), :end_of_mib_view, {:end_of_mib_view, nil}}
+            {start_oid, :end_of_mib_view, {:end_of_mib_view, nil}}
           end
           
-        {:error, :no_such_name} ->
-          if pdu_version == 1 do
-            {string_to_oid_list(next_oid_string), :no_such_name, {:no_such_name, nil}}
-          else
-            {string_to_oid_list(next_oid_string), :end_of_mib_view, {:end_of_mib_view, nil}}
+        next_oid_string ->
+          case SharedProfiles.get_oid_value(state.device_type, next_oid_string, state) do
+            {:ok, {type, value}} ->
+              next_oid = string_to_oid_list(next_oid_string)
+              
+              # Check for dynamic values
+              cond do
+                Map.has_key?(state.counters, next_oid_string) ->
+                  {next_oid, :counter32, Map.get(state.counters, next_oid_string)}
+                  
+                Map.has_key?(state.gauges, next_oid_string) ->
+                  {next_oid, :gauge32, Map.get(state.gauges, next_oid_string)}
+                  
+                next_oid_string == "1.3.6.1.2.1.1.3.0" ->
+                  {next_oid, :timeticks, calculate_uptime_ticks(state)}
+                  
+                true ->
+                  {next_oid, type, value}
+              end
+              
+            :not_found ->
+              if pdu_version == 1 do
+                {string_to_oid_list(next_oid_string), :no_such_name, {:no_such_name, nil}}
+              else
+                {string_to_oid_list(next_oid_string), :end_of_mib_view, {:end_of_mib_view, nil}}
+              end
+              
+            {:error, :no_such_name} ->
+              if pdu_version == 1 do
+                {string_to_oid_list(next_oid_string), :no_such_name, {:no_such_name, nil}}
+              else
+                {string_to_oid_list(next_oid_string), :end_of_mib_view, {:end_of_mib_view, nil}}
+              end
           end
-      end
-    end)
+      end)
+    end
   end
 
   defp collect_bulk_oids(_current_oid, 0, _device_type, acc), do: Enum.reverse(acc)
@@ -332,8 +357,14 @@ defmodule SnmpSim.Device.WalkPduProcessor do
     case SharedProfiles.get_next_oid(device_type, current_oid) do
       {:ok, next_oid} ->
         collect_bulk_oids(next_oid, remaining - 1, device_type, [next_oid | acc])
+      {:error, :end_of_mib} ->
+        # End of MIB reached, fill remaining slots with end_of_mib markers
+        end_of_mib_markers = List.duplicate(:end_of_mib_marker, remaining)
+        Enum.reverse(acc) ++ end_of_mib_markers
       :not_found ->
-        Enum.reverse(acc)
+        # No next OID found, fill remaining slots with end_of_mib markers  
+        end_of_mib_markers = List.duplicate(:end_of_mib_marker, remaining)
+        Enum.reverse(acc) ++ end_of_mib_markers
     end
   end
 
