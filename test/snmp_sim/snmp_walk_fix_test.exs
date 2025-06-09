@@ -4,7 +4,6 @@ defmodule SnmpSim.SnmpWalkFixTest do
   alias SnmpSim.{Device, LazyDevicePool}
   alias SnmpSim.Device.OidHandler
   alias SnmpSim.TestHelpers.PortHelper
-  alias SnmpSim.ProfileLoader
   alias SnmpLib.PDU
 
   @moduletag :unit
@@ -12,7 +11,7 @@ defmodule SnmpSim.SnmpWalkFixTest do
   describe "SNMP Walk OID Loading and Responses" do
     setup do
       # Load the walk file profile first
-      {:ok, _profile} = ProfileLoader.load_profile(
+      {:ok, _profile} = SnmpSim.ProfileLoader.load_profile(
         :cable_modem,
         {:walk_file, "priv/walks/cable_modem.walk"}
       )
@@ -108,9 +107,9 @@ defmodule SnmpSim.SnmpWalkFixTest do
     test "walk file data is loaded and interface OIDs are accessible", %{device_pid: device_pid} do
       # Test that we can access specific OIDs from the walk file
       working_cases = [
-        {"1.3.6.1.2.1.1.1.0", "Motorola SB6141 DOCSIS 3.0 Cable Modem"},  # sysDescr
-        {"1.3.6.1.2.1.2.1.0", {:integer, 2}},  # ifNumber
-        {"1.3.6.1.2.1.2.2.1.1.1", {:integer, 1}}  # ifIndex.1
+        {"1.3.6.1.2.1.1.1.0", {"1.3.6.1.2.1.1.1.0", :octet_string, "Motorola SB6141 DOCSIS 3.0 Cable Modem"}},  # sysDescr
+        {"1.3.6.1.2.1.2.1.0", {"1.3.6.1.2.1.2.1.0", :integer, 2}},  # ifNumber
+        {"1.3.6.1.2.1.2.2.1.1.1", {"1.3.6.1.2.1.2.2.1.1.1", :integer, 1}}  # ifIndex.1
       ]
       
       Enum.each(working_cases, fn {oid, expected_value} ->

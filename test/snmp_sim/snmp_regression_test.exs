@@ -97,7 +97,7 @@ defmodule SnmpSim.SNMPRegressionTest do
         try do
           {:ok, {_, type, sys_descr}} = Device.get(device_pid, "1.3.6.1.2.1.1.1.0")
           assert type == :octet_string, "sysDescr should be octet_string for #{device_type}, got: #{inspect(type)}"
-          assert String.contains?(sys_descr, expected_pattern), "sysDescr for #{device_type} should contain '#{expected_pattern}', got: #{sys_descr}"
+          assert Regex.match?(expected_pattern, sys_descr), "sysDescr for #{device_type} should match '#{inspect(expected_pattern)}', got: #{sys_descr}"
         after
           Device.stop(device_pid)
         end

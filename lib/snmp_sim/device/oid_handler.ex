@@ -198,7 +198,15 @@ defmodule SnmpSim.Device.OidHandler do
     case oid_string do
       # System group OIDs (1.3.6.1.2.1.1.x.0)
       "1.3.6.1.2.1.1.1.0" -> # sysDescr.0
-        {:ok, {oid_string, :octet_string, "Cable Modem Simulator"}}
+        device_type_str =
+          case device_type do
+            :cable_modem -> "Motorola SB6141 DOCSIS 3.0 Cable Modem"
+            :cmts -> "Cisco CMTS Cable Modem Termination System"
+            :router -> "Cisco Router"
+            :switch -> "SNMP Simulator Device"
+            _ -> "SNMP Simulator Device"
+          end
+        {:ok, {oid_string, :octet_string, device_type_str}}
       "1.3.6.1.2.1.1.2.0" -> # sysObjectID.0
         {:ok, {oid_string, :object_identifier, [1, 3, 6, 1, 4, 1, 1, 1]}}
       "1.3.6.1.2.1.1.3.0" -> # sysUpTime.0
@@ -243,12 +251,20 @@ defmodule SnmpSim.Device.OidHandler do
     end
   end
 
-  defp get_hardcoded_oid_value(_device_type, oid_list) do
+  defp get_hardcoded_oid_value(device_type, oid_list) do
     oid_string = Enum.join(oid_list, ".")
     case oid_string do
       # System group OIDs (1.3.6.1.2.1.1.x.0)
       "1.3.6.1.2.1.1.1.0" -> # sysDescr.0
-        {:ok, {oid_string, :octet_string, "Cable Modem Simulator"}}
+        device_type_str =
+          case device_type do
+            :cable_modem -> "Motorola SB6141 DOCSIS 3.0 Cable Modem"
+            :cmts -> "Cisco CMTS Cable Modem Termination System"
+            :router -> "Cisco Router"
+            :switch -> "SNMP Simulator Device"
+            _ -> "SNMP Simulator Device"
+          end
+        {:ok, {oid_string, :octet_string, device_type_str}}
       "1.3.6.1.2.1.1.2.0" -> # sysObjectID.0
         {:ok, {oid_string, :object_identifier, [1, 3, 6, 1, 4, 1, 1, 1]}}
       "1.3.6.1.2.1.1.3.0" -> # sysUpTime.0
@@ -415,16 +431,12 @@ defmodule SnmpSim.Device.OidHandler do
   - `{:error, :end_of_mib}` - No more OIDs available
   """
   def get_next_oid_value(device_type, oid, state) do
-    IO.inspect({device_type, oid, state}, label: "get_next_oid_value input")
-    
     # Check if device has walk data loaded in SharedProfiles
     cond do
       Map.has_key?(state, :oid_map) ->
-        IO.inspect("Using oid_map path", label: "get_next_oid_value")
         get_next_oid_value_from_map(oid, state.oid_map)
       
       Map.get(state, :has_walk_data, false) ->
-        IO.inspect("Using SharedProfiles path", label: "get_next_oid_value")
         oid_string = oid_to_string(oid)
         # Convert device_type to atom since SharedProfiles uses atoms as keys
         device_type_atom = if is_binary(device_type), do: String.to_atom(device_type), else: device_type
@@ -444,33 +456,25 @@ defmodule SnmpSim.Device.OidHandler do
         end
       
       true ->
-        IO.inspect("Using hardcoded OIDs path", label: "get_next_oid_value")
         # Fallback to original implementation for compatibility
         with {:ok, oids} <- {:ok, get_known_oids(device_type)},
              {:ok, next_oid} <- find_next_oid(Enum.map(oids, &oid_to_string/1), oid_to_string(oid)) do
-          IO.inspect({oids, next_oid}, label: "get_next_oid_value found next_oid")
           oid_list = string_to_oid_list(next_oid)
-          IO.inspect({oid_list, state}, label: "get_next_oid_value calling get_oid_value with")
           case get_oid_value(oid_list, state) do
             {:ok, %{type: type, value: value}} -> 
               result = {:ok, {string_to_oid_list(next_oid), String.to_atom(String.downcase(type)), value}}
-              IO.inspect(result, label: "get_next_oid_value result (map format)")
               result
             {:ok, {_oid_string, type, value}} -> 
               result = {:ok, {string_to_oid_list(next_oid), type, value}}
-              IO.inspect(result, label: "get_next_oid_value result (3-tuple format)")
               result
             {:ok, {type, value}} -> 
               result = {:ok, {string_to_oid_list(next_oid), type, value}}
-              IO.inspect(result, label: "get_next_oid_value result (tuple format)")
               result
             error_result -> 
-              IO.inspect(error_result, label: "get_next_oid_value get_oid_value returned error")
               {:error, :end_of_mib_view}
           end
         else
           error -> 
-            IO.inspect(error, label: "get_next_oid_value error")
             {:error, :end_of_mib_view}
         end
     end
@@ -614,7 +618,8 @@ defmodule SnmpSim.Device.OidHandler do
     case get_next_oid_value(state.device_type, oid, state) do
       {:ok, {next_oid, type, value}} ->
         # Check if next_oid is still within the root subtree
-        if oid_within_subtree?(next_oid, root_oid) do
+        within_subtree = oid_within_subtree?(next_oid, root_oid)
+        if within_subtree do
           # Continue walking within the subtree
           walk_oid_recursive(next_oid, root_oid, state, [{next_oid, {type, value}} | acc])
         else
@@ -624,7 +629,7 @@ defmodule SnmpSim.Device.OidHandler do
       {:error, :end_of_mib_view} ->
         # Reached end of MIB, return what we have accumulated
         finish_walk(acc)
-      {:error, _reason} ->
+      {:error, reason} ->
         # Some other error occurred, return what we have so far
         finish_walk(acc)
     end

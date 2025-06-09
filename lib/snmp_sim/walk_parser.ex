@@ -182,9 +182,24 @@ defmodule SnmpSim.WalkParser do
     end
   end
 
-  # Parse OID values that may start with dots
+  # Parse OID values that may start with dots or contain MIB names
   defp parse_oid_value(value) do
-    String.trim_leading(value, ".")
+    cleaned_value = String.trim_leading(value, ".")
+    
+    # Handle SNMPv2-SMI::enterprises prefix
+    case String.starts_with?(cleaned_value, "SNMPv2-SMI::enterprises.") do
+      true ->
+        # Replace SNMPv2-SMI::enterprises with 1.3.6.1.4.1
+        suffix = String.replace_prefix(cleaned_value, "SNMPv2-SMI::enterprises.", "")
+        oid_string = "1.3.6.1.4.1.#{suffix}"
+        # Convert to OID list for object_identifier types
+        oid_string
+        |> String.split(".")
+        |> Enum.map(&String.to_integer/1)
+      false ->
+        # For other OID values, just clean and return as string
+        cleaned_value
+    end
   end
 
   # Parse IP addresses

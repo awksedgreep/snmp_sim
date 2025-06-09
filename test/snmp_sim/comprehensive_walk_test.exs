@@ -41,15 +41,16 @@ defmodule SnmpSim.ComprehensiveWalkTest do
       assert is_list(oid_value_pairs)
       assert length(oid_value_pairs) > 0
 
-      # Verify all OIDs are strings and values are present
-      for {oid, value} <- oid_value_pairs do
+      # Verify all OIDs are strings, types are atoms, and values are present
+      for {oid, type, value} <- oid_value_pairs do
         assert is_binary(oid)
+        assert is_atom(type)
         assert String.starts_with?(oid, "1.3.6.1.2.1.1")
         assert value != nil
       end
 
       # Should contain system description
-      assert Enum.any?(oid_value_pairs, fn {oid, _} -> oid == "1.3.6.1.2.1.1.1.0" end)
+      assert Enum.any?(oid_value_pairs, fn {oid, _type, _value} -> oid == "1.3.6.1.2.1.1.1.0" end)
     end
 
     test "SNMPv2c walk returns consistent format", %{device_pid: device_pid} do
@@ -61,8 +62,9 @@ defmodule SnmpSim.ComprehensiveWalkTest do
       assert length(oid_value_pairs) > 0
 
       # Verify format consistency
-      for {oid, value} <- oid_value_pairs do
+      for {oid, type, value} <- oid_value_pairs do
         assert is_binary(oid)
+        assert is_atom(type)
         assert String.starts_with?(oid, "1.3.6.1.2.1.1")
         assert value != nil
       end
@@ -219,7 +221,7 @@ defmodule SnmpSim.ComprehensiveWalkTest do
       assert {:ok, oid_value_pairs} = result
 
       # All OIDs should be strings or lists
-      for {oid, _value} <- oid_value_pairs do
+      for {oid, type, value} <- oid_value_pairs do
         assert is_list(oid) or is_binary(oid)
       end
     end
@@ -234,8 +236,9 @@ defmodule SnmpSim.ComprehensiveWalkTest do
       assert {:ok, oid_value_pairs} = result
 
       # Even with fallbacks, format should be consistent
-      for {oid, value} <- oid_value_pairs do
+      for {oid, type, value} <- oid_value_pairs do
         assert is_list(oid) or is_binary(oid)
+        assert is_atom(type)
         assert value != nil
       end
     end

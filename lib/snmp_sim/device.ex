@@ -384,10 +384,9 @@ defmodule SnmpSim.Device do
   def handle_call({:get_oid, oid}, _from, state) do
     result = SnmpSim.Device.OidHandler.get_oid_value(oid, state)
     formatted_result = case result do
-      {:ok, {_oid, :octet_string, value}} -> {:ok, value}  # Return just the string value for octet_string
-      {:ok, {_oid, type, value}} -> {:ok, {type, value}}   # Return {type, value} for other types
-      {:ok, {oid, value}} -> {:ok, {oid, :octet_string, value}}
-      {:ok, value} -> {:ok, value}
+      {:ok, {oid_string, type, value}} -> {:ok, {oid_string, type, value}}  # Return 3-tuple format consistently
+      {:ok, {type, value}} -> {:ok, {oid, type, value}}   # Return {oid, type, value} for other formats
+      {:ok, value} -> {:ok, {oid, :octet_string, value}}  # Default to octet_string type
       error -> error
     end
     new_state = %{state | last_access: System.monotonic_time(:millisecond)}
@@ -411,11 +410,11 @@ defmodule SnmpSim.Device do
     # Convert OIDs to varbind format expected by process_get_bulk_varbinds
     varbinds = case oids do
       oid when is_binary(oid) -> [{oid, :null}]
-      oid_list when is_list(oid_list) -> 
+      oid_list when is_list(oid_list) ->
         Enum.map(oid_list, fn oid -> {oid, :null} end)
       _ -> [{oids, :null}]
     end
-    
+
     result = process_get_bulk_varbinds(varbinds, non_repeaters, max_repetitions, state.device_type)
     IO.inspect(result, label: "GETBULK result from process_get_bulk_varbinds")
     formatted_result = Enum.map(result, fn
@@ -432,7 +431,7 @@ defmodule SnmpSim.Device do
       {:ok, results} ->
         # Convert OIDs to strings and sort them properly using numerical comparison
         sorted_results = results
-        |> Enum.map(fn {oid, {type, value}} -> 
+        |> Enum.map(fn {oid, {type, value}} ->
           oid_string = OidHandler.oid_to_string(oid)
           {oid_string, type, value}
         end)
@@ -442,8 +441,8 @@ defmodule SnmpSim.Device do
           |> String.split(".")
           |> Enum.map(&String.to_integer/1)
         end)
-        |> Enum.map(fn {oid_string, _type, value} -> {oid_string, value} end)
-        
+        |> Enum.map(fn {oid_string, type, value} -> {oid_string, type, value} end)
+
         new_state = %{state | last_access: System.monotonic_time(:millisecond)}
         {:reply, {:ok, sorted_results}, new_state}
       {:error, reason} ->
@@ -618,13 +617,13 @@ defmodule SnmpSim.Device do
     # Try to load actual profile data from SharedProfiles
     profiles = SnmpSim.MIB.SharedProfiles.list_profiles()
     Logger.info("Device #{state.device_id} checking profiles: #{inspect(profiles)} for device_type: #{inspect(state.device_type)}")
-    
+
     case Enum.member?(profiles, state.device_type) do
       true ->
         Logger.info("Device #{state.device_id} initialized with profile for device type: #{state.device_type}")
         # Profile exists in SharedProfiles, device will use it via OidHandler
         {:ok, %{state | has_walk_data: true}}
-        
+
       false ->
         # Fallback to mock implementation for testing
         Logger.info("Device #{state.device_id} initialized with mock profile for testing")
@@ -700,7 +699,7 @@ defmodule SnmpSim.Device do
         |> Enum.reduce_while([], fn _i, acc ->
           current_oid = if acc == [], do: _oid, else: elem(List.last(acc), 0)
           IO.inspect(current_oid, label: "GETBULK current_oid for iteration")
-        
+
           device_state = %{device_type: device_type, uptime: 0}
           case SnmpSim.Device.OidHandler.get_next_oid_value(device_type, current_oid, device_state) do
             {:ok, {next_oid, type, value}} ->

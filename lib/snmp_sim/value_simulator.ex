@@ -566,8 +566,14 @@ defmodule SnmpSim.ValueSimulator do
           "timeticks" -> {:timeticks, data_value || 0}
           "integer" -> data_value || 0
           "string" -> to_string(data_value || "")
+          "object_identifier" -> data_value  # Preserve OID list format
+          "oid" -> data_value  # Preserve OID list format (alternate name)
           _ -> to_string(data_value || "")
         end
+
+      :object_identifier ->
+        # Handle atom type for object_identifier - preserve list format
+        data_value
 
       _ ->
         # Type is not a string, return value as-is
@@ -717,7 +723,8 @@ defmodule SnmpSim.ValueSimulator do
         backbone_pattern(hour, day_of_week)
 
       :cmts ->
-        # Cable head-end - aggregate of residential patterns
+        # CMTS aggregates many residential customers
+        # Similar to residential but with higher baseline due to aggregation
         cmts_pattern(hour, day_of_week)
 
       :server ->
@@ -808,7 +815,7 @@ defmodule SnmpSim.ValueSimulator do
   end
 
   defp cmts_pattern(hour, day_of_week) do
-    # CMTS aggregates many residential customers
+    # CMTS aggregates many signals, more stable
     # Similar to residential but with higher baseline due to aggregation
     residential_factor = residential_pattern(hour, day_of_week)
     # Higher baseline, less variation

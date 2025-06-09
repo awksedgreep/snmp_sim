@@ -35,21 +35,22 @@ defmodule SnmpSim.DeviceWalkOidTest do
       assert is_list(oid_value_pairs)
       assert length(oid_value_pairs) > 0
 
-      # Each element should be a {oid_string, value} tuple
-      for {oid, value} <- oid_value_pairs do
+      # Each element should be a {oid_string, type, value} tuple
+      for {oid, type, value} <- oid_value_pairs do
         assert is_binary(oid)
+        assert is_atom(type)
         assert String.starts_with?(oid, "1.3.6.1.2.1.1")
         assert value != nil
       end
 
       # Should contain the system description
       system_desc =
-        Enum.find(oid_value_pairs, fn {oid, _value} ->
+        Enum.find(oid_value_pairs, fn {oid, _type, _value} ->
           oid == "1.3.6.1.2.1.1.1.0"
         end)
 
       assert system_desc != nil
-      {_oid, desc_value} = system_desc
+      {_oid, _type, desc_value} = system_desc
       assert is_binary(desc_value)
 
       assert String.contains?(desc_value, "Cable Modem") or
@@ -88,7 +89,7 @@ defmodule SnmpSim.DeviceWalkOidTest do
         assert is_list(oid_value_pairs)
 
         # All returned OIDs should be strings
-        for {returned_oid, _value} <- oid_value_pairs do
+        for {returned_oid, _type, _value} <- oid_value_pairs do
           assert is_binary(returned_oid)
         end
       end
@@ -113,7 +114,7 @@ defmodule SnmpSim.DeviceWalkOidTest do
       assert {:ok, oid_value_pairs} = result
 
       # Every OID in the result should be a string, not a list
-      for {oid, _value} <- oid_value_pairs do
+      for {oid, _type, _value} <- oid_value_pairs do
         assert is_binary(oid)
         refute is_list(oid), "OID should be string, not list: #{inspect(oid)}"
 
@@ -128,7 +129,7 @@ defmodule SnmpSim.DeviceWalkOidTest do
 
       assert {:ok, oid_value_pairs} = result
 
-      for {oid, _value} <- oid_value_pairs do
+      for {oid, _type, _value} <- oid_value_pairs do
         assert String.starts_with?(oid, "1.3.6.1.2.1.1"),
                "OID #{oid} should start with requested prefix"
       end
@@ -173,7 +174,7 @@ defmodule SnmpSim.DeviceWalkOidTest do
 
       # Should contain the system description that was causing the crash
       system_desc =
-        Enum.find(oid_value_pairs, fn {oid, _value} ->
+        Enum.find(oid_value_pairs, fn {oid, _type, _value} ->
           oid == "1.3.6.1.2.1.1.1.0"
         end)
 
@@ -192,8 +193,9 @@ defmodule SnmpSim.DeviceWalkOidTest do
 
       # If get_next_oid_value was returning inconsistent formats,
       # this would fail with a pattern matching error
-      for {oid, value} <- oid_value_pairs do
+      for {oid, type, value} <- oid_value_pairs do
         assert is_binary(oid)
+        assert is_atom(type)
         assert value != nil
       end
     end
