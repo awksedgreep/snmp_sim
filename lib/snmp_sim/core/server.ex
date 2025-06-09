@@ -243,14 +243,14 @@ defmodule SnmpSim.Core.Server do
         case handler.(pdu, %{client_ip: client_ip, client_port: client_port}) do
           {:ok, response_pdu} ->
             Logger.debug("Device returned response: #{inspect(response_pdu)}")
-            IO.puts("Server: Device returned response PDU: #{inspect(response_pdu)}")
+            Logger.debug("Server: Device returned response PDU: #{inspect(response_pdu)}")
             send_response_async(state, client_ip, client_port, response_pdu)
             send(server_pid, {:update_stats, :successful_responses})
 
           %{type: _type} = response_pdu when is_map(response_pdu) ->
             # Direct PDU response from walk processors
             Logger.debug("Device returned direct response: #{inspect(response_pdu)}")
-            IO.puts("Server: Device returned direct response PDU: #{inspect(response_pdu)}")
+            Logger.debug("Server: Device returned direct response PDU: #{inspect(response_pdu)}")
             send_response_async(state, client_ip, client_port, response_pdu)
             send(server_pid, {:update_stats, :successful_responses})
 
@@ -265,7 +265,7 @@ defmodule SnmpSim.Core.Server do
         case apply(module, function, [pdu, %{client_ip: client_ip, client_port: client_port}]) do
           {:ok, response_pdu} ->
             Logger.debug("Device returned response: #{inspect(response_pdu)}")
-            IO.puts("Server: Device returned response PDU: #{inspect(response_pdu)}")
+            Logger.debug("Server: Device returned response PDU: #{inspect(response_pdu)}")
             send_response_async(state, client_ip, client_port, response_pdu)
             send(server_pid, {:update_stats, :successful_responses})
 
@@ -289,7 +289,7 @@ defmodule SnmpSim.Core.Server do
                  ) do
               {:ok, response_pdu} ->
                 Logger.debug("Device returned response: #{inspect(response_pdu)}")
-                IO.puts("Server: Device returned response PDU: #{inspect(response_pdu)}")
+                Logger.debug("Server: Device returned response PDU: #{inspect(response_pdu)}")
                 send_response_async(state, client_ip, client_port, response_pdu)
                 send(server_pid, {:update_stats, :successful_responses})
 
@@ -365,7 +365,7 @@ defmodule SnmpSim.Core.Server do
     
     # Debug logging
     Logger.debug("Response PDU before encoding: #{inspect(normalized_pdu)}")
-    IO.puts("Server: Response PDU before encoding: #{inspect(normalized_pdu)}")
+    Logger.debug("Server: Response PDU before encoding: #{inspect(normalized_pdu)}")
     
     response_message =
       case version do
@@ -381,11 +381,11 @@ defmodule SnmpSim.Core.Server do
       end
       
     Logger.debug("Response message before encoding: #{inspect(response_message)}")
-    IO.puts("Server: Response message before encoding: #{inspect(response_message)}")
+    Logger.debug("Server: Response message before encoding: #{inspect(response_message)}")
     
     case PDU.encode_message(response_message) do
       {:ok, encoded_packet} ->
-        IO.puts("Server: Successfully encoded packet, sending response")
+        Logger.debug("Server: Successfully encoded packet, sending response")
         :gen_udp.send(state.socket, client_ip, client_port, encoded_packet)
 
       {:error, reason} ->

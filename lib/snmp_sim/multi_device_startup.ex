@@ -256,10 +256,14 @@ defmodule SnmpSim.MultiDeviceStartup do
       Task.async(fn -> start_single_device(task) end)
     end)
     |> Enum.map(fn task_ref ->
-      case Task.await(task_ref, timeout_ms) do
-        {:ok, result} -> {:ok, result}
-        {:error, reason} -> {:error, reason}
-        result -> {:error, {:unexpected_result, result}}
+      try do
+        case Task.await(task_ref, timeout_ms) do
+          {:ok, result} -> {:ok, result}
+          {:error, reason} -> {:error, reason}
+          result -> {:error, {:unexpected_result, result}}
+        end
+      catch
+        :exit, {:timeout, _} -> {:error, :timeout}
       end
     end)
     |> collect_batch_results()

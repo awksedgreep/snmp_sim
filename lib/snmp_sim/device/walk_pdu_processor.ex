@@ -58,7 +58,7 @@ defmodule SnmpSim.Device.WalkPduProcessor do
     %{non_repeaters: non_repeaters, max_repetitions: max_repetitions, varbinds: varbinds} = pdu
     
     Logger.debug("WalkPduProcessor: Processing GETBULK with PDU: #{inspect(pdu)}")
-    IO.puts("WalkPduProcessor: PDU version: #{inspect(pdu.version)}")
+    Logger.debug("WalkPduProcessor: PDU version: #{inspect(pdu.version)}")
     
     # For SNMPv1, GETBULK is not officially supported, but we'll process it as GETNEXT
     if pdu.version == 1 do

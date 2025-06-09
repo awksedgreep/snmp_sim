@@ -1,6 +1,7 @@
 defmodule SnmpSim.GetbulkRegressionTest do
   use ExUnit.Case, async: false
   alias SnmpSim.MIB.SharedProfiles
+  require Logger
 
   @moduletag :integration
 
@@ -24,7 +25,7 @@ defmodule SnmpSim.GetbulkRegressionTest do
   describe "GETBULK end-of-MIB regression tests" do
     test "get_next_oid does not return same OID (infinite loop fix)", %{device_type: device_type, walk_file_exists: walk_file_exists} do
       if not walk_file_exists do
-        IO.puts("Skipping test - walk file not found")
+        Logger.debug("Skipping test - walk file not found")
         assert true
       else
         # Test the specific problematic OID that was causing infinite loops
@@ -33,16 +34,16 @@ defmodule SnmpSim.GetbulkRegressionTest do
         case SharedProfiles.get_next_oid(device_type, problematic_oid) do
           {:ok, next_oid} ->
             assert next_oid != problematic_oid, "get_next_oid still returns same OID: #{next_oid}"
-            IO.puts("✓ get_next_oid(#{problematic_oid}) = #{next_oid} (different OID)")
+            Logger.debug("✓ get_next_oid(#{problematic_oid}) = #{next_oid} (different OID)")
           :end_of_mib ->
-            IO.puts("✓ get_next_oid(#{problematic_oid}) = :end_of_mib (reached end)")
+            Logger.debug("✓ get_next_oid(#{problematic_oid}) = :end_of_mib (reached end)")
         end
       end
     end
     
     test "get_bulk_oids from broad OID does not hang", %{device_type: device_type, walk_file_exists: walk_file_exists} do
       if not walk_file_exists do
-        IO.puts("Skipping test - walk file not found")
+        Logger.debug("Skipping test - walk file not found")
         assert true
       else
         # Test GETBULK from broad OID that was causing hangs
@@ -61,7 +62,7 @@ defmodule SnmpSim.GetbulkRegressionTest do
         case result do
           {:ok, bulk_oids} ->
             assert is_list(bulk_oids), "GETBULK should return a list"
-            IO.puts("✓ GETBULK from #{start_oid} returned #{length(bulk_oids)} OIDs in #{duration}ms")
+            Logger.debug("✓ GETBULK from #{start_oid} returned #{length(bulk_oids)} OIDs in #{duration}ms")
           {:error, reason} ->
             flunk("GETBULK failed: #{inspect(reason)}")
         end
@@ -70,7 +71,7 @@ defmodule SnmpSim.GetbulkRegressionTest do
     
     test "get_bulk_oids simulates walk without infinite loops", %{device_type: device_type, walk_file_exists: walk_file_exists} do
       if not walk_file_exists do
-        IO.puts("Skipping test - walk file not found")
+        Logger.debug("Skipping test - walk file not found")
         assert true
       else
         # Simulate snmpbulkwalk behavior
@@ -111,13 +112,13 @@ defmodule SnmpSim.GetbulkRegressionTest do
         assert final_time < 10000, "Walk took too long: #{final_time}ms"
         assert final_total > 0, "No OIDs collected during walk"
         
-        IO.puts("✓ GETBULK walk completed: #{final_iterations} iterations, #{final_total} OIDs, #{final_time}ms")
+        Logger.debug("✓ GETBULK walk completed: #{final_iterations} iterations, #{final_total} OIDs, #{final_time}ms")
       end
     end
     
     test "get_bulk_oids does not include starting OID", %{device_type: device_type, walk_file_exists: walk_file_exists} do
       if not walk_file_exists do
-        IO.puts("Skipping test - walk file not found")
+        Logger.debug("Skipping test - walk file not found")
         assert true
       else
         # Test that GETBULK doesn't include the starting OID in results
@@ -130,7 +131,7 @@ defmodule SnmpSim.GetbulkRegressionTest do
             refute Enum.member?(returned_oids, start_oid), 
               "GETBULK incorrectly included starting OID #{start_oid} in results"
             
-            IO.puts("✓ GETBULK from #{start_oid} correctly excluded starting OID")
+            Logger.debug("✓ GETBULK from #{start_oid} correctly excluded starting OID")
             
           {:error, reason} ->
             flunk("GETBULK failed: #{inspect(reason)}")
@@ -142,7 +143,7 @@ defmodule SnmpSim.GetbulkRegressionTest do
   describe "End-of-MIB handling" do
     test "GETBULK at end of MIB returns empty list", %{device_type: device_type, walk_file_exists: walk_file_exists} do
       if not walk_file_exists do
-        IO.puts("Skipping test - walk file not found")
+        Logger.debug("Skipping test - walk file not found")
         assert true
       else
         # Find the last OID by walking to the end
@@ -161,7 +162,7 @@ defmodule SnmpSim.GetbulkRegressionTest do
           # GETBULK from last OID should return empty list
           case SharedProfiles.get_bulk_oids(device_type, last_oid, 5) do
             {:ok, []} ->
-              IO.puts("✓ GETBULK from last OID #{last_oid} correctly returned empty list")
+              Logger.debug("✓ GETBULK from last OID #{last_oid} correctly returned empty list")
             {:ok, bulk_oids} ->
               flunk("GETBULK from last OID should return empty list, got: #{inspect(bulk_oids)}")
             {:error, reason} ->
@@ -177,7 +178,7 @@ defmodule SnmpSim.GetbulkRegressionTest do
   describe "Performance and stability" do
     test "repeated GETBULK calls are stable", %{device_type: device_type, walk_file_exists: walk_file_exists} do
       if not walk_file_exists do
-        IO.puts("Skipping test - walk file not found")
+        Logger.debug("Skipping test - walk file not found")
         assert true
       else
         # Test that repeated GETBULK calls return consistent results
@@ -195,7 +196,7 @@ defmodule SnmpSim.GetbulkRegressionTest do
           assert result == first_result, "GETBULK call #{i} returned different result than first call"
         end
         
-        IO.puts("✓ 5 repeated GETBULK calls returned consistent results")
+        Logger.debug("✓ 5 repeated GETBULK calls returned consistent results")
       end
     end
   end

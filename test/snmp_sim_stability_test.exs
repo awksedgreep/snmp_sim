@@ -134,7 +134,7 @@ defmodule SnmpSimStabilityTest do
     # Memory should not grow unbounded
     memory_growth_percent = (final_memory - initial_memory) / initial_memory * 100
 
-    IO.puts("""
+    Logger.debug("""
     Memory Stability Test Results:
     - Duration: #{@memory_test_duration_minutes} minutes
     - Initial Memory: #{format_memory(initial_memory)}
@@ -180,7 +180,7 @@ defmodule SnmpSimStabilityTest do
     error_rate = StabilityTestHelper.calculate_error_rate(metrics.errors, metrics.total_requests)
     max_process_count = Enum.max(metrics.process_counts)
 
-    IO.puts("""
+    Logger.debug("""
     Load Test Results:
     - Duration: #{@load_test_duration_minutes} minutes
     - Target RPS: #{@load_test_requests_per_second}
@@ -227,7 +227,7 @@ defmodule SnmpSimStabilityTest do
     assert results.deadlock_detected == false, "Deadlock detected"
     assert results.resource_exhaustion == false, "Resource exhaustion occurred"
 
-    IO.puts("""
+    Logger.debug("""
     Endurance Test Results:
     - Duration: #{@endurance_test_duration_hours} hours
     - Total Cycles: #{results.total_cycles}
@@ -245,7 +245,7 @@ defmodule SnmpSimStabilityTest do
     ramp_up_steps = [10, 25, 50, 75, @stress_test_device_count]
 
     Enum.each(ramp_up_steps, fn device_count ->
-      IO.puts("Testing with #{device_count} devices...")
+      Logger.debug("Testing with #{device_count} devices...")
 
       # Create devices in batches to avoid overwhelming system
       batch_size = 10
@@ -300,7 +300,7 @@ defmodule SnmpSimStabilityTest do
     ]
 
     Enum.each(scenarios, fn scenario ->
-      IO.puts("Testing recovery from: #{scenario.name}")
+      Logger.debug("Testing recovery from: #{scenario.name}")
 
       # Create baseline system state
       baseline_devices = create_test_devices(50)
@@ -330,7 +330,7 @@ defmodule SnmpSimStabilityTest do
       assert length(post_recovery_devices) == 10,
              "System not fully functional after #{scenario.name}"
 
-      IO.puts("  Recovery time: #{recovery_time_ms}ms")
+      Logger.debug("  Recovery time: #{recovery_time_ms}ms")
 
       # Cleanup
       cleanup_devices(baseline_devices ++ post_recovery_devices)

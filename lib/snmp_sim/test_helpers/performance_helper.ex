@@ -1,4 +1,5 @@
 defmodule SnmpSim.TestHelpers.PerformanceHelper do
+  require Logger
   @moduledoc """
   Performance testing utilities for SnmpSim.
   """
@@ -108,7 +109,7 @@ defmodule SnmpSim.TestHelpers.PerformanceHelper do
   """
   def measure_latency_under_load(devices, load_scenarios) do
     Enum.map(load_scenarios, fn scenario ->
-      IO.puts("Testing latency under #{scenario.rps} RPS load...")
+      Logger.debug("Testing latency under #{scenario.rps} RPS load...")
 
       # Run load test for scenario
       results =
@@ -139,7 +140,7 @@ defmodule SnmpSim.TestHelpers.PerformanceHelper do
     rps_levels = 0..max_rps//step_size |> Enum.to_list()
 
     Enum.map(rps_levels, fn target_rps ->
-      IO.puts("Benchmarking throughput at #{target_rps} RPS...")
+      Logger.debug("Benchmarking throughput at #{target_rps} RPS...")
 
       results =
         run_sustained_load_test(
@@ -166,7 +167,7 @@ defmodule SnmpSim.TestHelpers.PerformanceHelper do
   """
   def analyze_memory_patterns(devices, test_scenarios) do
     Enum.map(test_scenarios, fn scenario ->
-      IO.puts("Analyzing memory patterns for scenario: #{scenario.name}")
+      Logger.debug("Analyzing memory patterns for scenario: #{scenario.name}")
 
       # Take initial memory snapshot
       initial_memory = get_current_memory_usage()
@@ -225,7 +226,7 @@ defmodule SnmpSim.TestHelpers.PerformanceHelper do
     device_counts = base_device_count..max_device_count//step_size |> Enum.to_list()
 
     Enum.map(device_counts, fn device_count ->
-      IO.puts("Testing scalability with #{device_count} devices...")
+      Logger.debug("Testing scalability with #{device_count} devices...")
 
       # Create devices for this test
       devices = create_test_devices_for_scalability(device_count)
@@ -318,7 +319,7 @@ defmodule SnmpSim.TestHelpers.PerformanceHelper do
         reason: :max_rps_reached
       }
     else
-      IO.puts("Testing breaking point at #{current_rps} RPS...")
+      Logger.debug("Testing breaking point at #{current_rps} RPS...")
 
       results =
         run_sustained_load_test(

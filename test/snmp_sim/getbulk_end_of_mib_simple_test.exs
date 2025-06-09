@@ -1,6 +1,9 @@
 defmodule SnmpSim.GetbulkEndOfMibSimpleTest do
   use ExUnit.Case, async: false
   alias SnmpSim.MIB.SharedProfiles
+  require Logger
+
+  @moduletag :integration
 
   setup_all do
     # Start the application
@@ -125,7 +128,7 @@ defmodule SnmpSim.GetbulkEndOfMibSimpleTest do
       # Should collect all test OIDs
       assert final_total > 0, "No OIDs collected during GETBULK walk"
       
-      IO.puts("GETBULK walk completed in #{final_iterations} iterations, collected #{final_total} OIDs")
+      Logger.debug("GETBULK walk completed in #{final_iterations} iterations, collected #{final_total} OIDs")
     end
   end
 

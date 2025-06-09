@@ -5,6 +5,7 @@ defmodule SnmpSim.SnmpWalkFixTest do
   alias SnmpSim.Device.OidHandler
   alias SnmpSim.TestHelpers.PortHelper
   alias SnmpLib.PDU
+  require Logger
 
   @moduletag :unit
 
@@ -50,7 +51,7 @@ defmodule SnmpSim.SnmpWalkFixTest do
       # From "1.3.6.1.2.1.2.2.1.1.2" (ifIndex.2) to "1.3.6.1.2.1.2.2.1.2.1" (ifDescr.1)
       
       result = Device.get_next(device_pid, "1.3.6.1.2.1.2.2.1.1.2")
-      IO.puts("get_next result: #{inspect(result)}")
+      Logger.debug("get_next result: #{inspect(result)}")
       
       assert {:ok, {"1.3.6.1.2.1.2.2.1.2.1", :octet_string, "cable-modem0"}} = result
     end
@@ -62,12 +63,12 @@ defmodule SnmpSim.SnmpWalkFixTest do
       
       case Device.get_next(device_pid, initial_oid) do
         {:ok, {first_oid, first_type, first_value}} ->
-          IO.puts("First OID found: #{first_oid} (#{first_type}) = #{inspect(first_value)}")
+          Logger.debug("First OID found: #{first_oid} (#{first_type}) = #{inspect(first_value)}")
           
           # Try to get the next one
           case Device.get_next(device_pid, first_oid) do
             {:ok, {second_oid, second_type, second_value}} ->
-              IO.puts("Second OID found: #{second_oid} (#{second_type}) = #{inspect(second_value)}")
+              Logger.debug("Second OID found: #{second_oid} (#{second_type}) = #{inspect(second_value)}")
               
               # Test the specific transition that was problematic
               if first_oid == "1.3.6.1.2.1.2.2.1.1.2" do
@@ -78,15 +79,15 @@ defmodule SnmpSim.SnmpWalkFixTest do
               end
               
             {:error, reason} ->
-              IO.puts("Second get_next failed: #{inspect(reason)}")
+              Logger.debug("Second get_next failed: #{inspect(reason)}")
           end
           
         {:error, reason} ->
-          IO.puts("First get_next failed: #{inspect(reason)}")
+          Logger.debug("First get_next failed: #{inspect(reason)}")
           # Let's try a different starting point
           case Device.get_next(device_pid, "1.3.6.1.2.1.1") do
             {:ok, {oid, type, value}} ->
-              IO.puts("Alternative starting point found: #{oid} (#{type}) = #{inspect(value)}")
+              Logger.debug("Alternative starting point found: #{oid} (#{type}) = #{inspect(value)}")
             {:error, alt_reason} ->
               flunk("No OIDs found at all: #{inspect(alt_reason)}")
           end
@@ -115,7 +116,7 @@ defmodule SnmpSim.SnmpWalkFixTest do
       Enum.each(working_cases, fn {oid, expected_value} ->
         case Device.get(device_pid, oid) do
           {:ok, ^expected_value} ->
-            IO.puts("✓ #{oid} = #{inspect(expected_value)}")
+            Logger.debug("✓ #{oid} = #{inspect(expected_value)}")
           {:ok, actual_value} ->
             flunk("OID #{oid} returned #{inspect(actual_value)}, expected #{inspect(expected_value)}")
           {:error, reason} ->
@@ -124,12 +125,12 @@ defmodule SnmpSim.SnmpWalkFixTest do
       end)
       
       # Now test get_next from ifIndex.1 to see what happens
-      IO.puts("\nTesting get_next from ifIndex.1:")
+      Logger.debug("\nTesting get_next from ifIndex.1:")
       case Device.get_next(device_pid, "1.3.6.1.2.1.2.2.1.1.1") do
         {:ok, {next_oid, _type, value}} ->
-          IO.puts("✓ get_next(1.3.6.1.2.1.2.2.1.1.1) = #{next_oid} = #{inspect(value)}")
+          Logger.debug("✓ get_next(1.3.6.1.2.1.2.2.1.1.1) = #{next_oid} = #{inspect(value)}")
         {:error, reason} ->
-          IO.puts("✗ get_next(1.3.6.1.2.1.2.2.1.1.1) failed: #{inspect(reason)}")
+          Logger.debug("✗ get_next(1.3.6.1.2.1.2.2.1.1.1) failed: #{inspect(reason)}")
       end
     end
 
@@ -160,9 +161,9 @@ defmodule SnmpSim.SnmpWalkFixTest do
       # Extract varbinds from the response
       varbinds = decoded_response.pdu.varbinds
       
-      IO.puts("GETBULK response varbinds (#{length(varbinds)}):")
+      Logger.debug("GETBULK response varbinds (#{length(varbinds)}):")
       Enum.with_index(varbinds, 1) |> Enum.each(fn {varbind, index} ->
-        IO.puts("  #{index}. #{inspect(varbind)}")
+        Logger.debug("  #{index}. #{inspect(varbind)}")
       end)
       
       # Verify we get multiple varbinds (should continue walking)
@@ -211,29 +212,29 @@ defmodule SnmpSim.SnmpWalkFixTest do
       |> Enum.reject(&is_nil/1)
       |> Enum.sort()
 
-      IO.puts("Expected #{length(expected_oids)} OIDs from walk file")
+      Logger.debug("Expected #{length(expected_oids)} OIDs from walk file")
 
       # Perform comprehensive GETBULK walk starting from the beginning
       all_oids = perform_complete_getbulk_walk(device_pid)
       
-      IO.puts("Retrieved #{length(all_oids)} OIDs via GETBULK walk")
-      IO.puts("First 10 retrieved OIDs:")
-      all_oids |> Enum.take(10) |> Enum.each(&IO.puts("  #{&1}"))
-      IO.puts("Last 10 retrieved OIDs:")
-      all_oids |> Enum.take(-10) |> Enum.each(&IO.puts("  #{&1}"))
+      Logger.debug("Retrieved #{length(all_oids)} OIDs via GETBULK walk")
+      Logger.debug("First 10 retrieved OIDs:")
+      all_oids |> Enum.take(10) |> Enum.each(&Logger.debug("  #{&1}"))
+      Logger.debug("Last 10 retrieved OIDs:")
+      all_oids |> Enum.take(-10) |> Enum.each(&Logger.debug("  #{&1}"))
 
       # Verify we got all expected OIDs
       missing_oids = expected_oids -- all_oids
       extra_oids = all_oids -- expected_oids
 
       if length(missing_oids) > 0 do
-        IO.puts("Missing OIDs (#{length(missing_oids)}):")
-        missing_oids |> Enum.take(10) |> Enum.each(&IO.puts("  #{&1}"))
+        Logger.debug("Missing OIDs (#{length(missing_oids)}):")
+        missing_oids |> Enum.take(10) |> Enum.each(&Logger.debug("  #{&1}"))
       end
 
       if length(extra_oids) > 0 do
-        IO.puts("Extra OIDs (#{length(extra_oids)}):")
-        extra_oids |> Enum.take(10) |> Enum.each(&IO.puts("  #{&1}"))
+        Logger.debug("Extra OIDs (#{length(extra_oids)}):")
+        extra_oids |> Enum.take(10) |> Enum.each(&Logger.debug("  #{&1}"))
       end
 
       # Test MUST pass only if we get all 50 OIDs
@@ -303,8 +304,8 @@ defmodule SnmpSim.SnmpWalkFixTest do
       # Use the built-in walk function starting from the root to capture ALL OIDs
       case SnmpSim.Device.walk(device_pid, "1.3.6.1.2.1") do
         {:ok, oids} ->
-          IO.puts("Walk returned #{length(oids)} OIDs")
-          IO.puts("First few OIDs from walk:")
+          Logger.debug("Walk returned #{length(oids)} OIDs")
+          Logger.debug("First few OIDs from walk:")
           oids |> Enum.take(5) |> Enum.each(&IO.inspect/1)
           
           oids
@@ -316,14 +317,14 @@ defmodule SnmpSim.SnmpWalkFixTest do
             oid when is_list(oid) -> Enum.join(oid, ".")
             oid when is_binary(oid) -> oid
             other -> 
-              IO.puts("Unexpected OID format: #{inspect(other)}")
+              Logger.debug("Unexpected OID format: #{inspect(other)}")
               nil
           end)
           |> Enum.reject(&is_nil/1)
           |> Enum.sort()
 
         {:error, reason} ->
-          IO.puts("Walk failed: #{inspect(reason)}")
+          Logger.debug("Walk failed: #{inspect(reason)}")
           []
       end
     end

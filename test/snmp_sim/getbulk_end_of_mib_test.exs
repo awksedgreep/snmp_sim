@@ -2,6 +2,7 @@ defmodule SnmpSim.GetbulkEndOfMibTest do
   use ExUnit.Case, async: false
   alias SnmpSim.MIB.SharedProfiles
   alias SnmpSim.Device
+  require Logger
 
   @moduletag :integration
 
@@ -155,7 +156,7 @@ defmodule SnmpSim.GetbulkEndOfMibTest do
       # Should collect a reasonable number of OIDs
       assert final_total > 0, "No OIDs collected during GETBULK walk"
 
-      IO.puts("GETBULK walk completed in #{final_iterations} iterations, collected #{final_total} OIDs")
+      Logger.debug("GETBULK walk completed in #{final_iterations} iterations, collected #{final_total} OIDs")
     end
   end
 
@@ -211,8 +212,8 @@ defmodule SnmpSim.GetbulkEndOfMibTest do
       ], stderr_to_stdout: true)
 
       # Debug output
-      # IO.puts("SNMP walk exit_code: #{exit_code}")
-      # IO.puts("SNMP walk output: #{inspect(output)}")
+      # Logger.debug("SNMP walk exit_code: #{exit_code}")
+      # Logger.debug("SNMP walk output: #{inspect(output)}")
 
       # Should complete within timeout (exit_code 0) or reach end of MIB gracefully
       # If it times out (exit_code 124), that indicates the old infinite loop bug

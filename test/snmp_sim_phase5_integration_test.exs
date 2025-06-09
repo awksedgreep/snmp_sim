@@ -3,6 +3,7 @@ defmodule SnmpSim.Phase5IntegrationTest do
 
   alias SnmpSim.{ValueSimulator, TimePatterns, CorrelationEngine}
   alias SnmpSim.TestHelpers.PortHelper
+  require Logger
 
   @moduletag :integration
 
@@ -483,11 +484,11 @@ defmodule SnmpSim.Phase5IntegrationTest do
       assert duration_ms < 200
 
       # Log performance for visibility
-      IO.puts(
+      Logger.debug(
         "Phase 5 simulation performance: #{Float.round(duration_ms, 2)}ms for 1000 simulations"
       )
 
-      IO.puts("Average per simulation: #{Float.round(duration_ms / 1000, 3)}ms")
+      Logger.debug("Average per simulation: #{Float.round(duration_ms / 1000, 3)}ms")
     end
 
     test "seasonal and weather patterns integration" do

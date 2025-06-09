@@ -65,27 +65,27 @@ defmodule SnmpSim.Device.PduProcessor do
   end
 
   defp process_get_request(variable_bindings, state) do
-    IO.puts("PDU Processor: variable_bindings = #{inspect(variable_bindings)}")
+    Logger.debug("PDU Processor: variable_bindings = #{inspect(variable_bindings)}")
     normalized_bindings =
       Enum.map(variable_bindings, fn
         # Extract OID from 3-tuple
         {oid, _type, _value} -> 
-          IO.puts("PDU Processor: Extracted OID from 3-tuple: #{inspect(oid)}")
+          Logger.debug("PDU Processor: Extracted OID from 3-tuple: #{inspect(oid)}")
           oid
         # Extract OID from 2-tuple (common in SNMP GET requests)
         {oid, _type} -> 
-          IO.puts("PDU Processor: Extracted OID from 2-tuple: #{inspect(oid)}")
+          Logger.debug("PDU Processor: Extracted OID from 2-tuple: #{inspect(oid)}")
           oid
         # Use OID as-is if it's just an OID
         oid -> 
-          IO.puts("PDU Processor: Using OID as-is: #{inspect(oid)}")
+          Logger.debug("PDU Processor: Using OID as-is: #{inspect(oid)}")
           oid
       end)
 
     Enum.map(normalized_bindings, fn oid ->
-      IO.puts("PDU Processor: Processing OID #{inspect(oid)}")
+      Logger.debug("PDU Processor: Processing OID #{inspect(oid)}")
       result = get_dynamic_oid_value(oid, state)
-      IO.puts("PDU Processor: get_dynamic_oid_value returned #{inspect(result)}")
+      Logger.debug("PDU Processor: get_dynamic_oid_value returned #{inspect(result)}")
       
       case result do
         {:ok, {_oid_str, type, value}} ->
@@ -98,7 +98,7 @@ defmodule SnmpSim.Device.PduProcessor do
           
         other ->
           Logger.debug("DEBUG: Unexpected result for OID #{inspect(oid)}: #{inspect(other)}")
-          IO.puts("PDU Processor: Unexpected result: #{inspect(other)}")
+          Logger.debug("PDU Processor: Unexpected result: #{inspect(other)}")
           # Check if it's the old format {oid, type, value}
           case other do
             {_oid, type, value} when is_atom(type) ->

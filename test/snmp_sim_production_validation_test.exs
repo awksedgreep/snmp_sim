@@ -73,7 +73,7 @@ defmodule SnmpSimProductionValidationTest do
     ]
 
     Enum.each(phases, fn phase ->
-      IO.puts("Testing capacity: #{phase.device_count} devices for #{phase.duration_ms}ms")
+      Logger.debug("Testing capacity: #{phase.device_count} devices for #{phase.duration_ms}ms")
 
       # Create devices
       start_time = System.monotonic_time(:millisecond)
@@ -104,7 +104,7 @@ defmodule SnmpSimProductionValidationTest do
       assert performance_metrics.error_rate <= @max_error_rate_percent,
              "Error rate too high: #{performance_metrics.error_rate}%"
 
-      IO.puts("""
+      Logger.debug("""
         Phase Results:
         - Creation Time: #{creation_time}ms
         - Operational Devices: #{operational_count}/#{phase.device_count} (#{Float.round(operational_percentage, 1)}%)
@@ -158,7 +158,7 @@ defmodule SnmpSimProductionValidationTest do
 
     max_memory_usage = Enum.max(load_test_results.memory_samples)
 
-    IO.puts("""
+    Logger.debug("""
     Performance Test Results:
     - Duration: #{test_duration_ms / 1000} seconds
     - Target Throughput: #{@min_throughput_rps} RPS
@@ -231,7 +231,7 @@ defmodule SnmpSimProductionValidationTest do
 
     max_recovery_time = Enum.max(reliability_results.recovery_times)
 
-    IO.puts("""
+    Logger.debug("""
     Reliability Test Results:
     - Test Duration: #{test_duration_ms / 1000} seconds
     - Total Downtime: #{total_downtime_ms}ms
@@ -272,7 +272,7 @@ defmodule SnmpSimProductionValidationTest do
     ]
 
     Enum.each(security_tests, fn security_test ->
-      IO.puts("Running security test: #{security_test.name}")
+      Logger.debug("Running security test: #{security_test.name}")
 
       result =
         ProductionTestHelper.run_security_test(security_test.test, %{
@@ -296,7 +296,7 @@ defmodule SnmpSimProductionValidationTest do
       assert length(result.security_events) > 0,
              "No security events logged for #{security_test.name}"
 
-      IO.puts("  ✓ #{security_test.name} passed")
+      Logger.debug("  ✓ #{security_test.name} passed")
     end)
   end
 
@@ -312,7 +312,7 @@ defmodule SnmpSimProductionValidationTest do
     ]
 
     Enum.each(monitoring_tests, fn test ->
-      IO.puts("Testing monitoring for: #{test.metric}")
+      Logger.debug("Testing monitoring for: #{test.metric}")
 
       # Inject condition that should trigger alert
       ProductionTestHelper.inject_monitoring_condition(test.inject, test.threshold)
@@ -339,7 +339,7 @@ defmodule SnmpSimProductionValidationTest do
       assert recovery_alert,
              "No recovery alert received for #{test.metric}"
 
-      IO.puts("  ✓ #{test.metric} monitoring verified")
+      Logger.debug("  ✓ #{test.metric} monitoring verified")
     end)
   end
 
@@ -356,7 +356,7 @@ defmodule SnmpSimProductionValidationTest do
     ]
 
     Enum.each(deployment_tests, fn test ->
-      IO.puts("Testing deployment scenario: #{test.name}")
+      Logger.debug("Testing deployment scenario: #{test.name}")
 
       result =
         ProductionTestHelper.run_deployment_test(test.test, %{
@@ -381,7 +381,7 @@ defmodule SnmpSimProductionValidationTest do
       assert result.data_integrity_maintained,
              "Data integrity not maintained during #{test.name}"
 
-      IO.puts("  ✓ #{test.name} completed successfully")
+      Logger.debug("  ✓ #{test.name} completed successfully")
     end)
   end
 
@@ -399,7 +399,7 @@ defmodule SnmpSimProductionValidationTest do
 
     Enum.each(integration_tests, fn test ->
       if ProductionTestHelper.integration_available?(test.system) do
-        IO.puts("Testing integration with: #{test.system}")
+        Logger.debug("Testing integration with: #{test.system}")
 
         result =
           ProductionTestHelper.run_integration_test(test.test, %{
@@ -417,9 +417,9 @@ defmodule SnmpSimProductionValidationTest do
         assert result.protocols_compatible,
                "Protocol compatibility issue with #{test.system}"
 
-        IO.puts("  ✓ #{test.system} integration verified")
+        Logger.debug("  ✓ #{test.system} integration verified")
       else
-        IO.puts("  - #{test.system} not available for testing")
+        Logger.debug("  - #{test.system} not available for testing")
       end
     end)
   end

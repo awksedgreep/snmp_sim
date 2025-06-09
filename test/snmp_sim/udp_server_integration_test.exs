@@ -9,6 +9,7 @@ defmodule SnmpSim.UdpServerIntegrationTest do
   use ExUnit.Case, async: false
 
   alias SnmpSim.Core.UDPListener
+  require Logger
   alias SnmpSim.TestHelpers.PortHelper
   alias SnmpLib.ASN1
 
@@ -42,7 +43,7 @@ defmodule SnmpSim.UdpServerIntegrationTest do
         :exit, {:normal, _} -> :ok
         :exit, reason -> 
           # Log unexpected exit reasons but don't fail the test
-          IO.puts("Process cleanup warning: #{inspect(reason)}")
+          Logger.debug("Process cleanup warning: #{inspect(reason)}")
       end
       
       # Also ensure the port is released from PortHelper
@@ -560,7 +561,7 @@ defmodule SnmpSim.UdpServerIntegrationTest do
           assert length(response_message.pdu.varbinds) == 1
 
           [{oid, _type, value}] = response_message.pdu.varbinds
-          IO.puts("DEBUG: OID: #{inspect(oid)}, Type: #{inspect(_type)}, Value: #{inspect(value)}")
+          Logger.debug("DEBUG: OID: #{inspect(oid)}, Type: #{inspect(_type)}, Value: #{inspect(value)}")
           assert is_list(oid), "OID should be converted to list format"
           assert is_binary(value), "Should return valid string value"
 
