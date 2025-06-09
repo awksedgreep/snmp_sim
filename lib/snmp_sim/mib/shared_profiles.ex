@@ -139,12 +139,20 @@ defmodule SnmpSim.MIB.SharedProfiles do
   def compare_oids_lexicographically(oid1, oid2) do
     # Convert OIDs to lists if they're strings
     oid1_list = case oid1 do
-      oid when is_binary(oid) -> String.split(oid, ".") |> Enum.map(&String.to_integer/1)
+      oid when is_binary(oid) -> 
+        case String.split(oid, ".") do
+          [""] -> []  # Handle empty string case
+          parts -> Enum.map(parts, &String.to_integer/1)
+        end
       oid when is_list(oid) -> oid
     end
     
     oid2_list = case oid2 do
-      oid when is_binary(oid) -> String.split(oid, ".") |> Enum.map(&String.to_integer/1)
+      oid when is_binary(oid) -> 
+        case String.split(oid, ".") do
+          [""] -> []  # Handle empty string case
+          parts -> Enum.map(parts, &String.to_integer/1)
+        end
       oid when is_list(oid) -> oid
     end
     

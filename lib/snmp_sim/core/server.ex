@@ -440,9 +440,13 @@ defmodule SnmpSim.Core.Server do
   # Normalize varbinds for SNMP library compatibility
   defp normalize_varbinds(pdu) do
     normalized_varbinds = 
-      Enum.map(pdu.varbinds || [], fn {oid, type, value} ->
-        normalized_value = normalize_varbind_value(type, value)
-        {oid, type, normalized_value}
+      Enum.map(pdu.varbinds || [], fn
+        # Handle 2-tuple format {oid, :null}
+        {oid, :null} -> {oid, :null, nil}
+        # Handle 3-tuple format {oid, type, value}
+        {oid, type, value} ->
+          normalized_value = normalize_varbind_value(type, value)
+          {oid, type, normalized_value}
       end)
     
     Map.put(pdu, :varbinds, normalized_varbinds)

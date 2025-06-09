@@ -97,10 +97,10 @@ defmodule SnmpSim.SNMPWalkRootTest do
 
       # Should be able to get subsequent OIDs using direct GET
       {:ok, sysObjectID} = Device.get(device_pid, "1.3.6.1.2.1.1.2.0")
-      assert {:object_identifier, _oid_str} = sysObjectID
+      assert {"1.3.6.1.2.1.1.2.0", :object_identifier, _oid_list} = sysObjectID
 
       {:ok, uptime} = Device.get(device_pid, "1.3.6.1.2.1.1.3.0")
-      assert {:timeticks, _ticks} = uptime
+      assert {"1.3.6.1.2.1.1.3.0", :timeticks, _ticks} = uptime
     end
   end
 

@@ -484,16 +484,23 @@ defmodule SnmpSim.Device.OidHandler do
   - `{:ok, oid_values}` - List of OID values
   """
   def walk_oid_values(oid, state) do
-    # Simple walk implementation - get next OIDs until end of MIB
-    # For testing purposes, we'll walk through all available OIDs starting from the given OID
-    walk_oid_recursive(oid, nil, state, [])
+    # Simple walk implementation - get next OIDs until end of MIB or outside subtree
+    # For testing purposes, we'll walk through available OIDs starting from the given OID
+    # but stay within the requested subtree
+    walk_oid_recursive(oid, oid, state, [])
   end
 
-  def walk_oid_recursive(oid, _root_oid, state, acc) when length(acc) < 100 do
+  def walk_oid_recursive(oid, root_oid, state, acc) when length(acc) < 100 do
     case get_next_oid_value(state.device_type, oid, state) do
       {:ok, {next_oid, type, value}} ->
-        # Continue walking through all available OIDs
-        walk_oid_recursive(next_oid, nil, state, [{next_oid, {type, value}} | acc])
+        # Check if next_oid is still within the root subtree
+        if oid_within_subtree?(next_oid, root_oid) do
+          # Continue walking within the subtree
+          walk_oid_recursive(next_oid, root_oid, state, [{next_oid, {type, value}} | acc])
+        else
+          # Reached outside the subtree, return what we have accumulated
+          finish_walk(acc)
+        end
       {:error, :end_of_mib_view} ->
         # Reached end of MIB, return what we have accumulated
         finish_walk(acc)
@@ -524,6 +531,60 @@ defmodule SnmpSim.Device.OidHandler do
     end)
     
     {:ok, sorted_results}
+  end
+
+  defp oid_within_subtree?(oid, root_oid) do
+    # Convert OIDs to strings if they aren't already
+    oid_str = if is_binary(oid), do: oid, else: Enum.join(oid, ".")
+    subtree_str = if is_binary(root_oid), do: root_oid, else: Enum.join(root_oid, ".")
+
+    # Check if the OID starts with the subtree OID
+    String.starts_with?(oid_str, subtree_str <> ".") or oid_str == subtree_str
+  end
+
+  @doc """
+  Gets fallback bulk OIDs for SNMP GetBulk operations.
+
+  ## Parameters
+  - `oid` - Starting OID
+  - `count` - Maximum number of OIDs to retrieve
+  - `state` - Device state
+
+  ## Returns
+  - List of `{oid, type, value}` tuples
+  """
+  def get_fallback_bulk_oids(start_oid, max_repetitions, state) do
+    # Convert OID to string if it's a list
+    start_oid_string = case start_oid do
+      oid when is_list(oid) -> oid_to_string(oid)
+      oid when is_binary(oid) -> oid
+    end
+
+    Logger.debug("Fallback bulk OIDs for #{start_oid_string}, max_repetitions: #{max_repetitions}")
+
+    # Collect bulk OIDs iteratively
+    get_bulk_oids_iteratively(start_oid, max_repetitions, state, [])
+  end
+
+  # Helper function to iteratively collect bulk OIDs
+  defp get_bulk_oids_iteratively(_current_oid, 0, _state, acc) do
+    # Reached max repetitions, return accumulated results
+    Enum.reverse(acc)
+  end
+
+  defp get_bulk_oids_iteratively(current_oid, remaining_count, state, acc) do
+    case get_fallback_next_oid(current_oid, state) do
+      {next_oid, :end_of_mib_view, value} ->
+        # Hit end of MIB, add this and stop
+        Enum.reverse([{next_oid, :end_of_mib_view, value} | acc])
+      {:error, :end_of_mib_view} ->
+        # Hit end of MIB, add end_of_mib_view entry with the current OID and stop
+        Enum.reverse([{current_oid, :end_of_mib_view, {:end_of_mib_view, nil}} | acc])
+      {next_oid, type, value} ->
+        # Got a valid OID, add it and continue
+        new_acc = [{next_oid, type, value} | acc]
+        get_bulk_oids_iteratively(next_oid, remaining_count - 1, state, new_acc)
+    end
   end
 
   @doc """
@@ -578,51 +639,6 @@ defmodule SnmpSim.Device.OidHandler do
         # Truly no more OIDs available
         {:error, :end_of_mib_view}
       end
-    end
-  end
-
-  @doc """
-  Gets fallback bulk OIDs for SNMP GetBulk operations.
-
-  ## Parameters
-  - `oid` - Starting OID
-  - `count` - Maximum number of OIDs to retrieve
-  - `state` - Device state
-
-  ## Returns
-  - List of `{oid, type, value}` tuples
-  """
-  def get_fallback_bulk_oids(start_oid, max_repetitions, state) do
-    # Convert OID to string if it's a list
-    start_oid_string = case start_oid do
-      oid when is_list(oid) -> oid_to_string(oid)
-      oid when is_binary(oid) -> oid
-    end
-
-    Logger.debug("Fallback bulk OIDs for #{start_oid_string}, max_repetitions: #{max_repetitions}")
-
-    # Collect bulk OIDs iteratively
-    get_bulk_oids_iteratively(start_oid, max_repetitions, state, [])
-  end
-
-  # Helper function to iteratively collect bulk OIDs
-  defp get_bulk_oids_iteratively(_current_oid, 0, _state, acc) do
-    # Reached max repetitions, return accumulated results
-    Enum.reverse(acc)
-  end
-
-  defp get_bulk_oids_iteratively(current_oid, remaining_count, state, acc) do
-    case get_fallback_next_oid(current_oid, state) do
-      {next_oid, :end_of_mib_view, value} ->
-        # Hit end of MIB, add this and stop
-        Enum.reverse([{next_oid, :end_of_mib_view, value} | acc])
-      {:error, :end_of_mib_view} ->
-        # Hit end of MIB, add end_of_mib_view entry with the current OID and stop
-        Enum.reverse([{current_oid, :end_of_mib_view, {:end_of_mib_view, nil}} | acc])
-      {next_oid, type, value} ->
-        # Got a valid OID, add it and continue
-        new_acc = [{next_oid, type, value} | acc]
-        get_bulk_oids_iteratively(next_oid, remaining_count - 1, state, new_acc)
     end
   end
 
@@ -1347,25 +1363,6 @@ defmodule SnmpSim.Device.OidHandler do
     # Build correlation factors for related OIDs
     # This could be expanded to track actual relationships
     %{}
-  end
-
-  @doc """
-  Checks if an OID is within the requested subtree.
-
-  ## Parameters
-  - `oid` - OID to check
-  - `root_oid` - Root OID of the subtree
-
-  ## Returns
-  - `true` if OID is within the subtree, `false` otherwise
-  """
-  def oid_within_subtree?(oid, subtree_oid) do
-    # Convert OIDs to strings if they aren't already
-    oid_str = if is_binary(oid), do: oid, else: Enum.join(oid, ".")
-    subtree_str = if is_binary(subtree_oid), do: subtree_oid, else: Enum.join(subtree_oid, ".")
-
-    # Check if the OID starts with the subtree OID
-    String.starts_with?(oid_str, subtree_str <> ".") or oid_str == subtree_str
   end
 
   defp get_known_oids(device_type) do
