@@ -13,6 +13,7 @@ defmodule SnmpSim.Device.PduProcessor do
   # SNMP Error Status constants
   @no_error 0
   @no_such_name 2
+  @read_only 4
   @gen_err 5
 
   def process_pdu(pdu, state) do
@@ -26,6 +27,7 @@ defmodule SnmpSim.Device.PduProcessor do
         :get_request -> WalkPduProcessor.process_get_request(pdu, state)
         :get_next_request -> WalkPduProcessor.process_getnext_request(pdu, state)
         :get_bulk_request -> WalkPduProcessor.process_getbulk_request(pdu, state)
+        :set_request -> WalkPduProcessor.process_set_request(pdu, state)
         _ -> process_unsupported_pdu(pdu)
       end
     else
@@ -52,6 +54,11 @@ defmodule SnmpSim.Device.PduProcessor do
           processed = process_getbulk_request(varbinds, state, non_repeaters, max_repetitions)
           response = create_getbulk_response(pdu, processed)
           response
+          
+        :set_request ->
+          # For legacy devices, return readOnly error for all SET attempts
+          varbinds = Map.get(pdu, :varbinds, Map.get(pdu, :variable_bindings, []))
+          create_set_error_response(pdu, varbinds)
           
         _ -> 
           process_unsupported_pdu(pdu)
@@ -320,6 +327,18 @@ defmodule SnmpSim.Device.PduProcessor do
     response_pdu
   end
 
+  defp create_set_error_response(request_pdu, variable_bindings) do
+    # SET responses always have error_status = 0 in SNMPv2c
+    %{
+      type: :get_response,
+      version: Map.get(request_pdu, :version, 1),  # Preserve version from request
+      request_id: request_pdu.request_id,
+      error_status: @read_only,
+      error_index: 0,
+      varbinds: Enum.reverse(variable_bindings)
+    }
+  end
+  
   defp process_unsupported_pdu(pdu) do
     # Return error response for unsupported PDU types
     %{

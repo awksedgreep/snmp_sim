@@ -818,6 +818,46 @@ defmodule SnmpSim.UdpServerIntegrationTest do
     end
   end
 
+  describe "SNMP SET Support" do
+    test "server returns readOnly error for SET requests on walk-based devices", %{test_port: test_port} do
+      # Test SET request on a known OID that exists in walk data
+      oid_list = [1, 3, 6, 1, 2, 1, 1, 1, 0]
+      new_value = "test_value"
+      
+      # Build SET request PDU
+      varbind = {oid_list, :octet_string, new_value}
+      pdu = %{
+        type: :set_request,
+        request_id: 12345,
+        error_status: 0,
+        error_index: 0,
+        varbinds: [varbind]
+      }
+      
+      message = SnmpLib.PDU.build_message(pdu, "public", :v2)
+      {:ok, encoded_packet} = SnmpLib.PDU.encode_message(message)
+      
+      {:ok, socket} = :gen_udp.open(0, [:binary, {:active, false}])
+      :ok = :gen_udp.send(socket, {127, 0, 0, 1}, test_port, encoded_packet)
+      
+      case :gen_udp.recv(socket, 0, 200) do
+        {:ok, {_ip, _port, response_data}} ->
+          {:ok, response_message} = SnmpLib.PDU.decode_message(response_data)
+          
+          # Should return readOnly error (4) instead of genErr (5)
+          assert response_message.pdu.error_status == 4, 
+                 "Expected readOnly error (4), got #{response_message.pdu.error_status}"
+          assert response_message.pdu.type == :get_response
+          assert response_message.pdu.request_id == 12345
+          
+        {:error, reason} ->
+          flunk("Failed to receive UDP response: #{inspect(reason)}")
+      end
+      
+      :gen_udp.close(socket)
+    end
+  end
+
   # Helper function to convert OID list to string
   defp oid_to_string(oid_list) when is_list(oid_list) do
     oid_list |> Enum.join(".")

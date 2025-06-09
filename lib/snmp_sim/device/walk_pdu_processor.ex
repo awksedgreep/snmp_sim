@@ -142,7 +142,21 @@ defmodule SnmpSim.Device.WalkPduProcessor do
       error_index: error_index
     }
   end
-  
+
+  @doc """
+  Process a SET request for walk-based devices.
+  Since walk files contain read-only data, all SET requests return readOnly error.
+  """
+  def process_set_request(pdu, _state) do
+    Logger.debug("WalkPduProcessor: Processing SET request - returning readOnly error")
+    
+    %{
+      pdu
+      | type: :get_response,
+        error_status: 4,  # readOnly error
+        error_index: 1    # First varbind caused the error
+    }
+  end
 
   defp get_next_varbind_value_v1(oid, state) do
     oid_string = oid_to_string(oid)
