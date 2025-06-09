@@ -2,23 +2,8 @@ defmodule SnmpSim.GetbulkFunctionalityTest do
   use ExUnit.Case, async: true
   alias SnmpSim.Device
 
-  # Test the GETBULK processing logic directly without starting UDP servers
-  defp create_test_state() do
-    %{
-      device_type: :cable_modem,
-      device_id: "test_device",
-      port: 20001,
-      last_access: System.monotonic_time(:millisecond),
-      counters: %{},
-      gauges: %{},
-      status_vars: %{},
-      community: "public",
-      error_conditions: %{}
-    }
-  end
-
   # Access the private process_snmp_pdu function for testing
-  defp call_process_snmp_pdu(pdu, _state) do
+  defp call_process_snmp_pdu(pdu) do
     # Use :sys.get_state to call private functions (test hack)
     # Since we can't call private functions directly, we'll test via the public interface
     # by creating a minimal device process
@@ -51,7 +36,7 @@ defmodule SnmpSim.GetbulkFunctionalityTest do
       }
 
       # Process the GETBULK request
-      {:ok, response_pdu} = call_process_snmp_pdu(pdu, create_test_state())
+      {:ok, response_pdu} = call_process_snmp_pdu(pdu)
 
       # Verify response structure
       assert response_pdu.type == :get_response
@@ -87,7 +72,7 @@ defmodule SnmpSim.GetbulkFunctionalityTest do
         varbinds: [{"1.3.6.1", nil}]
       }
 
-      response = call_process_snmp_pdu(pdu, create_test_state())
+      response = call_process_snmp_pdu(pdu)
 
       case response do
         {:ok, response_pdu} ->
@@ -121,7 +106,7 @@ defmodule SnmpSim.GetbulkFunctionalityTest do
         varbinds: [{"1.3.6.1.2.1.1", nil}]
       }
 
-      response = call_process_snmp_pdu(pdu, create_test_state())
+      response = call_process_snmp_pdu(pdu)
 
       case response do
         {:ok, response_pdu} ->
@@ -150,7 +135,7 @@ defmodule SnmpSim.GetbulkFunctionalityTest do
         varbinds: [{"1.3.6.1", nil}]
       }
 
-      response = call_process_snmp_pdu(pdu, create_test_state())
+      response = call_process_snmp_pdu(pdu)
 
       case response do
         {:ok, response_pdu} ->
@@ -176,7 +161,7 @@ defmodule SnmpSim.GetbulkFunctionalityTest do
         varbinds: [{"1.3.6.1", nil}]
       }
 
-      response = call_process_snmp_pdu(pdu, create_test_state())
+      response = call_process_snmp_pdu(pdu)
 
       case response do
         {:ok, response_pdu} ->
@@ -213,7 +198,7 @@ defmodule SnmpSim.GetbulkFunctionalityTest do
         varbinds: [{"1.3.6.1", nil}]
       }
 
-      response = call_process_snmp_pdu(pdu, create_test_state())
+      response = call_process_snmp_pdu(pdu)
 
       case response do
         {:ok, response_pdu} ->

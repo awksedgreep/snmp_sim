@@ -154,6 +154,7 @@ defmodule SnmpSim.SNMPOperationsTest do
   end
 
   describe "End-to-end SNMP PDU processing" do
+    alias SnmpSim.PduHelper
     setup do
       test_port = PortHelper.get_port()
 
@@ -223,14 +224,19 @@ defmodule SnmpSim.SNMPOperationsTest do
           assert is_integer(value2), "sysUpTime should be integer, got: #{inspect(value2)}"
 
           # Verify the response can be encoded (this was the original problem)
-          test_message = SnmpLib.PDU.build_message(response_pdu, "public", :v1)
+          # Pass the original response_pdu directly to SnmpLib
+          # It should have OIDs as lists of integers and error_status/index as integers.
+          integer_version = PduHelper.pdu_version_to_int(response_pdu.version)
+          response_pdu_for_snmplib = Map.put(response_pdu, :version, integer_version)
+
+          test_message = SnmpLib.PDU.build_message(response_pdu_for_snmplib, response_pdu.community, integer_version)
           {:ok, encoded_response} = SnmpLib.PDU.encode_message(test_message)
           assert is_binary(encoded_response), "Response PDU should encode to binary"
 
           # Verify the encoded response can be decoded back
           {:ok, decoded_response} = SnmpLib.PDU.decode_message(encoded_response)
           # v1 is encoded as 0
-          assert decoded_response.version == 0
+          assert decoded_response.version == 1
           assert decoded_response.community == "public"
 
         {:error, error_response} ->

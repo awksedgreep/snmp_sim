@@ -18,7 +18,6 @@ defmodule SnmpSim.Device do
   alias SnmpSim.Core.Server
   alias SnmpSim.Device.ErrorInjector
   alias SnmpSim.Device.OidHandler
-  alias SnmpSim.Device.PduProcessor
   import SnmpSim.Device.OidHandler
   import SnmpSim.Device.PduProcessor, only: [process_snmp_pdu: 2]
 
@@ -681,23 +680,23 @@ defmodule SnmpSim.Device do
     # For GETBULK, we need to get the NEXT OIDs, not the exact OIDs
     non_repeater_results =
       non_repeater_vars
-      |> Enum.map(fn {_oid, _} ->
+      |> Enum.map(fn {oid, _} ->
         device_state = %{device_type: device_type, uptime: 0}
-        case SnmpSim.Device.OidHandler.get_next_oid_value(device_type, _oid, device_state) do
+        case SnmpSim.Device.OidHandler.get_next_oid_value(device_type, oid, device_state) do
           {:ok, {next_oid, type, value}} -> {next_oid, type, value}
           {:ok, {next_oid, value}} -> {next_oid, :octet_string, value}
-          {:ok, value} -> {_oid, :octet_string, value}
-          {:error, _} -> {_oid, :no_such_name, :null}
+          {:ok, value} -> {oid, :octet_string, value}
+          {:error, _} -> {oid, :no_such_name, :null}
         end
       end)
     IO.inspect(non_repeater_results, label: "GETBULK non_repeater_results")
 
     repeater_results =
       repeater_vars
-      |> Enum.flat_map(fn {_oid, _} ->
+      |> Enum.flat_map(fn {oid, _} ->
         1..max_repetitions
         |> Enum.reduce_while([], fn _i, acc ->
-          current_oid = if acc == [], do: _oid, else: elem(List.last(acc), 0)
+          current_oid = if acc == [], do: oid, else: elem(List.last(acc), 0)
           IO.inspect(current_oid, label: "GETBULK current_oid for iteration")
 
           device_state = %{device_type: device_type, uptime: 0}

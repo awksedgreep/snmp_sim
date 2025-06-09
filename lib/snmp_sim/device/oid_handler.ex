@@ -470,11 +470,11 @@ defmodule SnmpSim.Device.OidHandler do
             {:ok, {type, value}} -> 
               result = {:ok, {string_to_oid_list(next_oid), type, value}}
               result
-            error_result -> 
+            _error_result -> 
               {:error, :end_of_mib_view}
           end
         else
-          error -> 
+          _error -> 
             {:error, :end_of_mib_view}
         end
     end
@@ -553,8 +553,8 @@ defmodule SnmpSim.Device.OidHandler do
   defp compare_oid_lists([], []), do: :eq
   defp compare_oid_lists([], _), do: :lt
   defp compare_oid_lists(_, []), do: :gt
-  defp compare_oid_lists([h1 | t1], [h2 | t2]) when h1 < h2, do: :lt
-  defp compare_oid_lists([h1 | t1], [h2 | t2]) when h1 > h2, do: :gt
+  defp compare_oid_lists([h1 | _t1], [h2 | _t2]) when h1 < h2, do: :lt
+  defp compare_oid_lists([h1 | _t1], [h2 | _t2]) when h1 > h2, do: :gt
   defp compare_oid_lists([h1 | t1], [h2 | t2]) when h1 == h2, do: compare_oid_lists(t1, t2)
 
   @doc """
@@ -629,7 +629,7 @@ defmodule SnmpSim.Device.OidHandler do
       {:error, :end_of_mib_view} ->
         # Reached end of MIB, return what we have accumulated
         finish_walk(acc)
-      {:error, reason} ->
+      {:error, _reason} ->
         # Some other error occurred, return what we have so far
         finish_walk(acc)
     end

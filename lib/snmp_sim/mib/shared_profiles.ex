@@ -593,7 +593,7 @@ defmodule SnmpSim.MIB.SharedProfiles do
 
         {:ok, oid_tuples}
 
-      {:error, reason} ->
+      {:error, _reason} ->
         # Convert accumulated OIDs to 3-tuples with actual values
         oid_tuples =
           Enum.map(Enum.reverse(acc), fn oid ->

@@ -34,7 +34,8 @@ defmodule SnmpSim.SNMPWalkRootTest do
       # Create a GETNEXT PDU starting from mib-2 root using new SnmpLib.PDU API
       oid_list = [1, 3, 6, 1, 2, 1]
       request_id = 12345
-      request_pdu = PDU.build_get_next_request(oid_list, request_id)
+      request_pdu_from_lib = PDU.build_get_next_request(oid_list, request_id)
+      request_pdu = Map.put(request_pdu_from_lib, :version, :v2c)
 
       # Send the PDU to the device
       {:ok, response_pdu} = GenServer.call(device_pid, {:handle_snmp, request_pdu, %{}})
@@ -66,7 +67,8 @@ defmodule SnmpSim.SNMPWalkRootTest do
 
       for root_oid <- root_oids do
         request_id = :rand.uniform(65535)
-        request_pdu = PDU.build_get_next_request(root_oid, request_id)
+        request_pdu_from_lib = PDU.build_get_next_request(root_oid, request_id)
+        request_pdu = Map.put(request_pdu_from_lib, :version, :v2c)
 
         {:ok, response_pdu} = GenServer.call(device_pid, {:handle_snmp, request_pdu, %{}})
 
@@ -87,7 +89,8 @@ defmodule SnmpSim.SNMPWalkRootTest do
       # Start from root and verify we can walk through the tree
       oid_list = [1, 3, 6, 1, 2, 1]
       request_id = 12345
-      request_pdu = PDU.build_get_next_request(oid_list, request_id)
+      request_pdu_from_lib = PDU.build_get_next_request(oid_list, request_id)
+      request_pdu = Map.put(request_pdu_from_lib, :version, :v2c)
 
       {:ok, response_pdu} = GenServer.call(device_pid, {:handle_snmp, request_pdu, %{}})
       [{response_oid_list, _type, response_value}] = response_pdu.varbinds
@@ -153,7 +156,8 @@ defmodule SnmpSim.SNMPWalkRootTest do
       # Create a GETNEXT PDU starting from mib-2 root
       oid_list = [1, 3, 6, 1, 2, 1]
       request_id = 12345
-      request_pdu = PDU.build_get_next_request(oid_list, request_id)
+      request_pdu_from_lib = PDU.build_get_next_request(oid_list, request_id)
+      request_pdu = Map.put(request_pdu_from_lib, :version, :v2c)
 
       # Send the PDU to the device
       {:ok, response_pdu} = GenServer.call(device_pid, {:handle_snmp, request_pdu, %{}})
@@ -188,7 +192,8 @@ defmodule SnmpSim.SNMPWalkRootTest do
 
       for root_oid <- root_oids do
         request_id = :rand.uniform(65535)
-        request_pdu = PDU.build_get_next_request(root_oid, request_id)
+        request_pdu_from_lib = PDU.build_get_next_request(root_oid, request_id)
+        request_pdu = Map.put(request_pdu_from_lib, :version, :v2c)
 
         {:ok, response_pdu} = GenServer.call(device_pid, {:handle_snmp, request_pdu, %{}})
 
@@ -213,7 +218,8 @@ defmodule SnmpSim.SNMPWalkRootTest do
       # Try a GETNEXT from an OID that doesn't exist and has no descendants
       oid_list = [9, 9, 9, 9, 9]
       request_id = 12345
-      request_pdu = PDU.build_get_next_request(oid_list, request_id)
+      request_pdu_from_lib = PDU.build_get_next_request(oid_list, request_id)
+      request_pdu = Map.put(request_pdu_from_lib, :version, :v2c)
 
       {:ok, response_pdu} = GenServer.call(device_pid, {:handle_snmp, request_pdu, %{}})
       [{_response_oid_list, _type, response_value}] = response_pdu.varbinds
@@ -239,7 +245,8 @@ defmodule SnmpSim.SNMPWalkRootTest do
 
       for edge_oid <- edge_case_oids do
         request_id = 12345
-        request_pdu = PDU.build_get_next_request(edge_oid, request_id)
+        request_pdu_from_lib = PDU.build_get_next_request(edge_oid, request_id)
+        request_pdu = Map.put(request_pdu_from_lib, :version, :v2c)
 
         # Should not crash
         result = GenServer.call(device_pid, {:handle_snmp, request_pdu, %{}})

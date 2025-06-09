@@ -513,38 +513,4 @@ defmodule SnmpSim.Core.Server do
       _ -> {:error, :invalid_oid}
     end
   end
-
-  # Convert walk file SNMP types to SnmpLib atoms
-  defp convert_walk_type_to_snmp_atom(type) when is_binary(type) do
-    case String.downcase(type) do
-      "counter32" -> :counter32
-      "counter64" -> :counter64
-      "gauge32" -> :gauge32
-      "gauge" -> :gauge32
-      "timeticks" -> :timeticks
-      "integer" -> :integer
-      "string" -> :string
-      "octet" -> :string
-      "oid" -> :object_identifier
-      "ipaddress" -> :ipaddress
-      _ -> :auto  # Fallback to auto for unknown types
-    end
-  end
-  
-  defp convert_walk_type_to_snmp_atom(type) when is_atom(type) do
-    case type do
-      :object_identifier -> :object_identifier
-      :counter32 -> :counter32
-      :counter64 -> :counter64
-      :gauge32 -> :gauge32
-      :timeticks -> :timeticks
-      :integer -> :integer
-      :string -> :string
-      :octet_string -> :string
-      :ipaddress -> :ipaddress
-      _ -> type  # Keep as-is for other atoms
-    end
-  end
-  
-  defp convert_walk_type_to_snmp_atom(_type), do: :auto
 end

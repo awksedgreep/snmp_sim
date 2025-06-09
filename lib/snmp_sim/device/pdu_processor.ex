@@ -97,17 +97,8 @@ defmodule SnmpSim.Device.PduProcessor do
           {oid, :no_such_object, {:no_such_object, nil}}
           
         other ->
-          Logger.debug("DEBUG: Unexpected result for OID #{inspect(oid)}: #{inspect(other)}")
-          Logger.debug("PDU Processor: Unexpected result: #{inspect(other)}")
-          # Check if it's the old format {oid, type, value}
-          case other do
-            {_oid, type, value} when is_atom(type) ->
-              Logger.debug("DEBUG: Found old format tuple, using type=#{inspect(type)}, value=#{inspect(value)}")
-              {oid, type, value}
-            _ ->
-              Logger.debug("DEBUG: Completely unexpected format, defaulting to null")
-              {oid, :null, :null}
-          end
+          Logger.debug("PDU Processor: Unexpected result for OID #{inspect(oid)}: #{inspect(other)}. Defaulting to null.")
+          {oid, :null, :null}
       end
     end)
   end

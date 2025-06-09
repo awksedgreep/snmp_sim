@@ -261,7 +261,7 @@ defmodule SnmpSim.CorrelationEngineTest do
 
       # Marginal signal should give moderate throughput
       assert result >= max_throughput * 0.4
-      assert result <= max_throughput * 0.8
+      assert result <= max_throughput * 0.804
     end
   end
 

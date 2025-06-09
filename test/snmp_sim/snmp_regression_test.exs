@@ -15,7 +15,38 @@ defmodule SnmpSim.SNMPRegressionTest do
   @test_port 19163
   @test_community "public"
 
+alias SnmpSim.MIB.SharedProfiles
+
+setup_all do
+  # Ensure SharedProfiles is available (usually started by test_helper)
+  # Application.ensure_all_started(:snmp_sim) # This is generally done in test_helper.exs
+
+  # 1. Clear any profiles loaded by previous test files
+  :ok = SnmpSim.MIB.SharedProfiles.clear_all_profiles()
+
+  # 2. Load the specific profiles needed for all tests in this module
+  walk_files = %{
+    cable_modem: "priv/walks/cable_modem.walk",
+    switch: "priv/walks/switch.walk", # Assumes this file will be created by the user
+    router: "priv/walks/router.walk"  # Assumes this file will be created by the user
+  }
+
+  Enum.each(Map.keys(walk_files), fn device_type ->
+    walk_file_path = walk_files[device_type]
+    case SnmpSim.MIB.SharedProfiles.load_walk_profile(device_type, walk_file_path) do
+      :ok ->
+        IO.puts("Successfully loaded profile for #{device_type} from #{walk_file_path} in snmp_regression_test.exs")
+      {:error, reason} ->
+        IO.inspect({:error, :profile_load_failed_in_regression_test, device_type, walk_file_path, reason})
+        # Depending on test strategy, you might want to flunk here if a profile is essential
+        # e.g., flunk("Failed to load critical profile for #{device_type}: #{inspect(reason)}")
+    end
+  end)
+  :ok
+end
+
   describe "Regression: Wrong Type NULL issue" do
+
     setup do
       device_config = %{
         port: @test_port,
