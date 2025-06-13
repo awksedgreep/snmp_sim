@@ -53,10 +53,12 @@ defmodule SnmpSim.SNMPOperationsTest do
       for {oid, validator, description} <- test_cases do
         {:ok, {^oid, type, value}} = Device.get(device, oid)
         # Handle the case where value might be a typed tuple
-        actual_value = case value do
-          {_type, actual_val} -> actual_val
-          actual_val -> actual_val
-        end
+        actual_value =
+          case value do
+            {_type, actual_val} -> actual_val
+            actual_val -> actual_val
+          end
+
         assert validator.(actual_value), "#{description}, got: #{inspect({type, actual_value})}"
       end
     end
@@ -70,7 +72,10 @@ defmodule SnmpSim.SNMPOperationsTest do
 
       for {current_oid, expected_next_oid} <- getnext_tests do
         {:ok, {next_oid, _type, value}} = Device.get_next(device, current_oid)
-        assert next_oid == expected_next_oid, "GETNEXT for #{current_oid} should return #{expected_next_oid}, got: #{next_oid}"
+
+        assert next_oid == expected_next_oid,
+               "GETNEXT for #{current_oid} should return #{expected_next_oid}, got: #{next_oid}"
+
         assert value != nil, "GETNEXT value for #{current_oid} should not be nil"
       end
     end
@@ -84,7 +89,10 @@ defmodule SnmpSim.SNMPOperationsTest do
 
       for {oid, expected_type} <- interface_oids do
         {:ok, {^oid, type, value}} = Device.get(device, oid)
-        assert type == expected_type, "#{oid} should return #{expected_type}, got: #{inspect(type)}"
+
+        assert type == expected_type,
+               "#{oid} should return #{expected_type}, got: #{inspect(type)}"
+
         assert value != nil, "#{oid} should have a non-nil value"
       end
     end
@@ -96,11 +104,14 @@ defmodule SnmpSim.SNMPOperationsTest do
 
       # Check if results are in numerical order
       oid_strings = Enum.map(walk_results, fn {oid, _type, _value} -> oid end)
-      sorted_oids = Enum.sort(oid_strings, fn oid1, oid2 ->
-        oid1_parts = String.split(oid1, ".") |> Enum.map(&String.to_integer/1)
-        oid2_parts = String.split(oid2, ".") |> Enum.map(&String.to_integer/1)
-        oid1_parts <= oid2_parts
-      end)
+
+      sorted_oids =
+        Enum.sort(oid_strings, fn oid1, oid2 ->
+          oid1_parts = String.split(oid1, ".") |> Enum.map(&String.to_integer/1)
+          oid2_parts = String.split(oid2, ".") |> Enum.map(&String.to_integer/1)
+          oid1_parts <= oid2_parts
+        end)
+
       assert oid_strings == sorted_oids, "OIDs should be in numerical order"
 
       # Verify that the walk returns valid OIDs with proper types
@@ -111,9 +122,13 @@ defmodule SnmpSim.SNMPOperationsTest do
 
           "1.3.6.1.2.1.1.2.0" ->
             # sysObjectID should be an OID (list of integers)
-            assert type == :object_identifier, "sysObjectID should have type :object_identifier, got #{inspect(type)}"
+            assert type == :object_identifier,
+                   "sysObjectID should have type :object_identifier, got #{inspect(type)}"
+
             assert is_list(value), "sysObjectID value should be a list"
-            assert Enum.all?(value, &is_integer/1), "sysObjectID value should be a list of integers"
+
+            assert Enum.all?(value, &is_integer/1),
+                   "sysObjectID value should be a list of integers"
 
           "1.3.6.1.2.1.1.7.0" ->
             assert is_integer(value), "sysServices should return an integer"
@@ -155,6 +170,7 @@ defmodule SnmpSim.SNMPOperationsTest do
 
   describe "End-to-end SNMP PDU processing" do
     alias SnmpSim.PduHelper
+
     setup do
       test_port = PortHelper.get_port()
 
@@ -229,7 +245,13 @@ defmodule SnmpSim.SNMPOperationsTest do
           integer_version = PduHelper.pdu_version_to_int(response_pdu.version)
           response_pdu_for_snmplib = Map.put(response_pdu, :version, integer_version)
 
-          test_message = SnmpLib.PDU.build_message(response_pdu_for_snmplib, response_pdu.community, integer_version)
+          test_message =
+            SnmpLib.PDU.build_message(
+              response_pdu_for_snmplib,
+              response_pdu.community,
+              integer_version
+            )
+
           {:ok, encoded_response} = SnmpLib.PDU.encode_message(test_message)
           assert is_binary(encoded_response), "Response PDU should encode to binary"
 
@@ -261,6 +283,7 @@ defmodule SnmpSim.SNMPOperationsTest do
 
       # Process the PDU
       response = GenServer.call(device, {:handle_snmp, request_pdu, %{}})
+
       case response do
         {:ok, response_pdu} ->
           assert response_pdu.type == :get_response
@@ -281,8 +304,10 @@ defmodule SnmpSim.SNMPOperationsTest do
 
         {:ok, {:error, reason}} ->
           flunk("GETNEXT PDU processing failed: #{inspect(reason)}")
+
         {:error, reason} ->
           flunk("GETNEXT PDU processing failed: #{inspect(reason)}")
+
         other ->
           flunk("Unexpected response format: #{inspect(other)}")
       end
@@ -363,7 +388,7 @@ defmodule SnmpSim.SNMPOperationsTest do
       # Basic SNMP types
       s when is_binary(s) -> true
       i when is_integer(i) -> true
-      # SNMP-specific types  
+      # SNMP-specific types
       {:counter32, v} when is_integer(v) -> true
       {:gauge32, v} when is_integer(v) -> true
       {:timeticks, v} when is_integer(v) -> true
